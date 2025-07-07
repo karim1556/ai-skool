@@ -10,9 +10,9 @@ import { User, Users, CheckCircle } from "lucide-react"
 
 export default function AddBatchPage() {
   const steps = [
-    { id: "basic", title: "Basic info", icon: <User className="h-4 w-4" /> },
-    { id: "students", title: "Students", icon: <Users className="h-4 w-4" /> },
-    { id: "finish", title: "Finish", icon: <CheckCircle className="h-4 w-4" /> },
+    { id: "basic", title: "Basic info", icon: User },
+    { id: "students", title: "Students", icon: Users },
+    { id: "finish", title: "Finish", icon: CheckCircle },
   ]
 
   const stepContent = [

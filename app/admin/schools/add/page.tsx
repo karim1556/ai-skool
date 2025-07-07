@@ -12,10 +12,10 @@ import { User, Lock, Share2, CheckCircle } from "lucide-react"
 
 export default function AddSchoolPage() {
   const steps = [
-    { id: "basic", title: "Basic info", icon: <User className="h-4 w-4" /> },
-    { id: "credentials", title: "Login credentials", icon: <Lock className="h-4 w-4" /> },
-    { id: "social", title: "Social information", icon: <Share2 className="h-4 w-4" /> },
-    { id: "finish", title: "Finish", icon: <CheckCircle className="h-4 w-4" /> },
+    { id: "basic", title: "Basic info", icon: User },
+    { id: "credentials", title: "Login credentials", icon: Lock },
+    { id: "social", title: "Social information", icon: Share2 },
+    { id: "finish", title: "Finish", icon: CheckCircle },
   ]
 
   const stepContent = [
