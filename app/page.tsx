@@ -231,7 +231,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 lg:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] rounded-lg flex items-center justify-center">
                 <span className="text-white text-sm font-bold">E</span>
               </div>
               <span className="text-xl font-bold">EduFlow LMS</span>
@@ -264,7 +264,7 @@ export default function HomePage() {
               <Link href="/register">
                 <Button
                   size="sm"
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                  className="bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] hover:from-[#1e40af] hover:to-[#f472b6]"
                 >
                   Get Started
                 </Button>
@@ -275,17 +275,17 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-12 lg:py-20 bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <section className="py-12 lg:py-20 bg-gradient-to-br from-[#1e3a8a]/5 via-white to-[#ec4899]/5">
         <div className="container mx-auto px-4 lg:px-6">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div className="space-y-6 lg:space-y-8">
               <div className="space-y-4">
-                <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                <Badge className="bg-[#ec4899]/10 text-[#ec4899] hover:bg-[#ec4899]/20 border-[#ec4899]/20">
                   🚀 Next Generation Learning Platform
                 </Badge>
                 <h1 className="text-3xl lg:text-5xl xl:text-6xl font-bold leading-tight">
                   Transform Your
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] bg-clip-text text-transparent">
                     {" "}
                     Learning Journey
                   </span>
@@ -300,13 +300,17 @@ export default function HomePage() {
                 <Link href="/login">
                   <Button
                     size="lg"
-                    className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                    className="w-full sm:w-auto bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] hover:from-[#1e40af] hover:to-[#f472b6]"
                   >
                     Start Learning Today
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto bg-transparent border-[#1e3a8a] text-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white"
+                >
                   <Play className="mr-2 h-4 w-4" />
                   Watch Demo
                 </Button>
@@ -315,9 +319,9 @@ export default function HomePage() {
               <div className="flex flex-wrap items-center gap-6 pt-4">
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-red-400 border-2 border-white"></div>
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 border-2 border-white"></div>
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-400 to-emerald-400 border-2 border-white"></div>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ec4899] to-[#f472b6] border-2 border-white"></div>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#1e3a8a] to-[#3b82f6] border-2 border-white"></div>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ec4899] to-[#1e3a8a] border-2 border-white"></div>
                   </div>
                   <span className="text-sm text-gray-600">10,000+ Active Learners</span>
                 </div>
@@ -333,7 +337,7 @@ export default function HomePage() {
             </div>
 
             <div className="relative">
-              <div className="relative bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl p-6 lg:p-8">
+              <div className="relative bg-gradient-to-br from-[#1e3a8a]/10 to-[#ec4899]/10 rounded-2xl p-6 lg:p-8">
                 <div className="bg-white rounded-xl shadow-xl p-4 lg:p-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -350,13 +354,13 @@ export default function HomePage() {
                         <span className="text-sm">Component Lifecycle</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 rounded-full border-2 border-blue-300"></div>
+                        <div className="w-5 h-5 rounded-full border-2 border-[#ec4899]/30"></div>
                         <span className="text-sm text-gray-600">State Management</span>
                       </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full"
+                        className="bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] h-2 rounded-full"
                         style={{ width: "85%" }}
                       ></div>
                     </div>
@@ -373,15 +377,15 @@ export default function HomePage() {
         <div className="container mx-auto px-4 lg:px-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
             <div className="text-center">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-6 h-6 lg:w-8 lg:h-8 text-blue-600" />
+              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-[#1e3a8a]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-6 h-6 lg:w-8 lg:h-8 text-[#1e3a8a]" />
               </div>
               <div className="text-2xl lg:text-3xl font-bold text-gray-900">10K+</div>
               <div className="text-sm lg:text-base text-gray-600">Active Students</div>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-6 h-6 lg:w-8 lg:h-8 text-purple-600" />
+              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-[#ec4899]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-6 h-6 lg:w-8 lg:h-8 text-[#ec4899]" />
               </div>
               <div className="text-2xl lg:text-3xl font-bold text-gray-900">500+</div>
               <div className="text-sm lg:text-base text-gray-600">Courses Available</div>
@@ -410,7 +414,7 @@ export default function HomePage() {
           <div className="text-center mb-12 lg:mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
               Everything You Need to
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] bg-clip-text text-transparent">
                 {" "}
                 Succeed
               </span>
@@ -422,9 +426,9 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            <Card className="hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-[#1e3a8a]/5 to-[#1e3a8a]/10">
               <CardHeader>
-                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-[#1e3a8a] rounded-lg flex items-center justify-center mb-4">
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
                 <CardTitle className="text-xl">Course Management</CardTitle>
@@ -434,9 +438,9 @@ export default function HomePage() {
               </CardHeader>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-purple-50 to-purple-100">
+            <Card className="hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-[#ec4899]/5 to-[#ec4899]/10">
               <CardHeader>
-                <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-[#ec4899] rounded-lg flex items-center justify-center mb-4">
                   <Users className="w-6 h-6 text-white" />
                 </div>
                 <CardTitle className="text-xl">Student Management</CardTitle>
@@ -470,9 +474,9 @@ export default function HomePage() {
               </CardHeader>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-pink-50 to-pink-100">
+            <Card className="hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-[#ec4899]/5 to-[#1e3a8a]/5">
               <CardHeader>
-                <div className="w-12 h-12 bg-pink-500 rounded-lg flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-[#ec4899] to-[#1e3a8a] rounded-lg flex items-center justify-center mb-4">
                   <CheckCircle className="w-6 h-6 text-white" />
                 </div>
                 <CardTitle className="text-xl">Progress Tracking</CardTitle>
@@ -505,7 +509,10 @@ export default function HomePage() {
               <h2 className="text-3xl lg:text-4xl font-bold mb-4">Popular Courses</h2>
               <p className="text-gray-600">Choose from our most popular and highly-rated courses</p>
             </div>
-            <Button variant="outline" className="hidden lg:flex bg-transparent">
+            <Button
+              variant="outline"
+              className="hidden lg:flex bg-transparent border-[#1e3a8a] text-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white"
+            >
               View All Courses →
             </Button>
           </div>
@@ -521,7 +528,7 @@ export default function HomePage() {
                     height={200}
                     className="w-full h-48 object-cover"
                   />
-                  <Badge className="absolute top-3 left-3 bg-blue-600">{course.category}</Badge>
+                  <Badge className="absolute top-3 left-3 bg-[#1e3a8a]">{course.category}</Badge>
                 </div>
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{course.title}</h3>
@@ -550,12 +557,12 @@ export default function HomePage() {
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-blue-600">${course.price}</span>
+                      <span className="text-lg font-bold text-[#ec4899]">${course.price}</span>
                       {course.originalPrice > course.price && (
                         <span className="text-sm text-gray-500 line-through">${course.originalPrice}</span>
                       )}
                     </div>
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                    <Button size="sm" className="bg-[#ec4899] hover:bg-[#f472b6]">
                       Enroll Now
                     </Button>
                   </div>
@@ -586,7 +593,7 @@ export default function HomePage() {
                     className="w-full h-48 object-cover"
                   />
                   <Badge className="absolute top-3 left-3 bg-orange-500">Coming Soon</Badge>
-                  <Badge className="absolute top-3 right-3 bg-gray-900">{course.category}</Badge>
+                  <Badge className="absolute top-3 right-3 bg-[#1e3a8a]">{course.category}</Badge>
                 </div>
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-gray-900 mb-2">{course.title}</h3>
@@ -601,7 +608,7 @@ export default function HomePage() {
                       {course.students} interested
                     </span>
                   </div>
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600">Notify Me</Button>
+                  <Button className="w-full bg-[#ec4899] hover:bg-[#f472b6]">Notify Me</Button>
                 </CardContent>
               </Card>
             ))}
@@ -639,7 +646,7 @@ export default function HomePage() {
 
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-blue-600">${bundle.bundlePrice}</span>
+                      <span className="text-2xl font-bold text-[#1e3a8a]">${bundle.bundlePrice}</span>
                       <span className="text-lg text-gray-500 line-through">${bundle.originalPrice}</span>
                     </div>
                     <span className="text-green-600 font-semibold">
@@ -647,7 +654,7 @@ export default function HomePage() {
                     </span>
                   </div>
 
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700">Get Bundle</Button>
+                  <Button className="w-full bg-[#1e3a8a] hover:bg-[#1e40af]">Get Bundle</Button>
                 </CardContent>
               </Card>
             ))}
@@ -678,7 +685,7 @@ export default function HomePage() {
                   </div>
 
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{instructor.name}</h3>
-                  <p className="text-blue-600 font-medium mb-1">{instructor.specialty}</p>
+                  <p className="text-[#ec4899] font-medium mb-1">{instructor.specialty}</p>
                   <p className="text-sm text-gray-600 mb-3">{instructor.experience} experience</p>
 
                   <div className="flex items-center justify-center gap-1 mb-4">
@@ -716,7 +723,7 @@ export default function HomePage() {
               </span>
               <button
                 onClick={() => setActiveTab(activeTab === "monthly" ? "yearly" : "monthly")}
-                className="relative w-12 h-6 bg-blue-600 rounded-full transition-colors"
+                className="relative w-12 h-6 bg-[#1e3a8a] rounded-full transition-colors"
               >
                 <div
                   className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
@@ -733,7 +740,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Starter Plan */}
             <Card className="relative overflow-hidden border-2 hover:shadow-lg transition-shadow">
-              <div className="bg-blue-600 text-white text-center py-2 text-sm font-medium">Most Popular</div>
+              <div className="bg-[#1e3a8a] text-white text-center py-2 text-sm font-medium">Most Popular</div>
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Award className="h-8 w-8 text-orange-500" />
@@ -760,16 +767,16 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">Get Started</Button>
+                <Button className="w-full bg-[#1e3a8a] hover:bg-[#1e40af]">Get Started</Button>
               </CardContent>
             </Card>
 
             {/* Pro Plan */}
-            <Card className="relative overflow-hidden border-2 border-blue-600 hover:shadow-lg transition-shadow">
-              <div className="bg-blue-600 text-white text-center py-2 text-sm font-medium">Recommended</div>
+            <Card className="relative overflow-hidden border-2 border-[#ec4899] hover:shadow-lg transition-shadow">
+              <div className="bg-[#ec4899] text-white text-center py-2 text-sm font-medium">Recommended</div>
               <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="h-8 w-8 text-blue-500" />
+                <div className="w-16 h-16 bg-[#ec4899]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Shield className="h-8 w-8 text-[#ec4899]" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Pro</h3>
                 <div className="mb-6">
@@ -798,16 +805,18 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">Start Pro Trial</Button>
+                <Button className="w-full bg-[#ec4899] hover:bg-[#f472b6]">Start Pro Trial</Button>
               </CardContent>
             </Card>
 
             {/* Enterprise Plan */}
             <Card className="relative overflow-hidden border-2 hover:shadow-lg transition-shadow">
-              <div className="bg-purple-600 text-white text-center py-2 text-sm font-medium">For Teams</div>
+              <div className="bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] text-white text-center py-2 text-sm font-medium">
+                For Teams
+              </div>
               <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Zap className="h-8 w-8 text-purple-500" />
+                <div className="w-16 h-16 bg-gradient-to-r from-[#1e3a8a]/10 to-[#ec4899]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Zap className="h-8 w-8 text-[#1e3a8a]" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Enterprise</h3>
                 <div className="mb-6">
@@ -836,7 +845,9 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <Button className="w-full bg-purple-600 hover:bg-purple-700">Contact Sales</Button>
+                <Button className="w-full bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] hover:from-[#1e40af] hover:to-[#f472b6]">
+                  Contact Sales
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -904,9 +915,9 @@ export default function HomePage() {
                 >
                   <span className="font-semibold text-gray-900">{faq.question}</span>
                   {openFaq === index ? (
-                    <Minus className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <Minus className="w-5 h-5 text-[#ec4899] flex-shrink-0" />
                   ) : (
-                    <Plus className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <Plus className="w-5 h-5 text-[#ec4899] flex-shrink-0" />
                   )}
                 </button>
                 {openFaq === index && (
@@ -933,23 +944,26 @@ export default function HomePage() {
               </p>
               <div className="grid grid-cols-2 gap-6 mb-8">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">50K+</div>
+                  <div className="text-3xl font-bold text-[#1e3a8a] mb-2">50K+</div>
                   <div className="text-gray-600">Active Students</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">1000+</div>
+                  <div className="text-3xl font-bold text-[#ec4899] mb-2">1000+</div>
                   <div className="text-gray-600">Expert Instructors</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">5000+</div>
+                  <div className="text-3xl font-bold text-[#1e3a8a] mb-2">5000+</div>
                   <div className="text-gray-600">Online Courses</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">98%</div>
+                  <div className="text-3xl font-bold text-[#ec4899] mb-2">98%</div>
                   <div className="text-gray-600">Success Rate</div>
                 </div>
               </div>
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] hover:from-[#1e40af] hover:to-[#f472b6]"
+              >
                 Learn More About Us
               </Button>
             </div>
@@ -967,19 +981,19 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-12 lg:py-20 bg-gradient-to-r from-blue-600 to-purple-600">
+      <section className="py-12 lg:py-20 bg-gradient-to-r from-[#1e3a8a] to-[#ec4899]">
         <div className="container mx-auto px-4 lg:px-6 text-center">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">
               Ready to Transform Your Learning Experience?
             </h2>
-            <p className="text-lg lg:text-xl text-blue-100 mb-8">
+            <p className="text-lg lg:text-xl text-white/90 mb-8">
               Join thousands of educators and students who are already using EduFlow LMS to achieve their learning
               goals.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register">
-                <Button size="lg" className="w-full sm:w-auto bg-white text-blue-600 hover:bg-gray-100">
+                <Button size="lg" className="w-full sm:w-auto bg-white text-[#1e3a8a] hover:bg-gray-100">
                   Start Free Trial
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -988,7 +1002,7 @@ export default function HomePage() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="w-full sm:w-auto border-white text-white hover:bg-white hover:text-blue-600 bg-transparent"
+                  className="w-full sm:w-auto border-white text-white hover:bg-white hover:text-[#1e3a8a] bg-transparent"
                 >
                   View Demo
                 </Button>
@@ -1004,7 +1018,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-r from-[#1e3a8a] to-[#ec4899] rounded-lg flex items-center justify-center">
                   <span className="text-white text-sm font-bold">E</span>
                 </div>
                 <span className="text-xl font-bold">EduFlow LMS</span>
