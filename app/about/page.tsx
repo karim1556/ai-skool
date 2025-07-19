@@ -22,16 +22,16 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">About Us :-</h2>
 
           <p className="text-gray-700 leading-relaxed mb-6">
-            Kodable Education is an innovation hub of STEAM education since 2010. Kodable Education provides One-stop
-            Educational Solutions from primary schools to secondary schools, vocational schools, K-12 and engineering
-            students. Kodable Education aims to build functional literacy in students and empowers them with the 21st
+            Ai Skool is an innovation hub of STEAM Skool since 2010. Ai Skool provides One-stop
+            Skoolal Solutions from primary schools to secondary schools, vocational schools, K-12 and engineering
+            students. Ai Skool aims to build functional literacy in students and empowers them with the 21st
             Century skills. The goal is to increase primary and high school students' motivation to excel in math and
-            science and better prepare them for college careers in Engineering, Pre-Med, Computer Science and Education
-            through hands-on learning experiences building and programming educational games and apps.
+            science and better prepare them for college careers in Engineering, Pre-Med, Computer Science and Skool
+            through hands-on learning experiences building and programming Skoolal games and apps.
           </p>
 
           <p className="text-gray-700 leading-relaxed mb-6">
-            Kodable Education features a fusion of mechanics, electronics and programming. It provides the core platform
+            Ai Skool features a fusion of mechanics, electronics and programming. It provides the core platform
             for schools, and enables the possibilities to include various platforms. We use interdisciplinary and
             experiential learning approach to teach Design and Creative Thinking, Visual Communication, Technology and
             Digital Skills.
@@ -46,22 +46,22 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Vision :-</h2>
 
           <p className="text-gray-700 leading-relaxed mb-8">
-            To be recognized globally for bringing innovative learning through artificial intelligence in education and
+            To be recognized globally for bringing innovative learning through artificial intelligence in Skool and
             contributing to the society by making learning accessible to all children for overall development.
           </p>
 
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission :-</h2>
 
           <p className="text-gray-700 leading-relaxed mb-8">
-            Kodable Education provides challenging learning environment that inspires young minds to apply and sharpen
+            Ai Skool provides challenging learning environment that inspires young minds to apply and sharpen
             their science, technology, engineering, and math skills with problem based learning.
           </p>
 
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Methodology :-</h2>
 
           <p className="text-gray-700 leading-relaxed mb-6">
-            At Kodable Education, we believe in learning by doing. Our methodology is built around hands-on experiences
-            that engage students in active learning. We combine traditional educational approaches with modern
+            At Ai Skool, we believe in learning by doing. Our methodology is built around hands-on experiences
+            that engage students in active learning. We combine traditional Skoolal approaches with modern
             technology to create an immersive learning environment.
           </p>
 
@@ -69,7 +69,7 @@ export default function AboutPage() {
             <div className="bg-white p-6 rounded-lg shadow-md">
               <h3 className="text-xl font-bold text-sky-600 mb-4">Interactive Learning</h3>
               <p className="text-gray-600">
-                Students engage with educational content through interactive games, simulations, and hands-on projects
+                Students engage with Skoolal content through interactive games, simulations, and hands-on projects
                 that make learning fun and memorable.
               </p>
             </div>
@@ -94,7 +94,7 @@ export default function AboutPage() {
               <h3 className="text-xl font-bold text-orange-600 mb-4">Personalized Learning</h3>
               <p className="text-gray-600">
                 Our adaptive learning platform adjusts to each student's pace and learning style, ensuring optimal
-                educational outcomes for every child.
+                Skoolal outcomes for every child.
               </p>
             </div>
           </div>

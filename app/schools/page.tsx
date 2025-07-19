@@ -11,17 +11,17 @@ import { useState, useMemo } from "react"
 const allSchools = [
   {
     id: 1,
-    name: "Kodable Academy",
+    name: "Ai Academy",
     location: "New York",
     type: "Primary School",
     size: "Medium (500-1500)",
     description:
-      "Located in the heart of the city, Kodable Academy has created a wonderful environment for children to develop and experience childhood. Every stakeholder is a learner and every day is an opportunity to learn and discover.",
+      "Located in the heart of the city, Ai Academy has created a wonderful environment for children to develop and experience childhood. Every stakeholder is a learner and every day is an opportunity to learn and discover.",
     logo: "/placeholder.svg?height=150&width=200",
     students: 850,
     phone: "+1 (555) 123-4567",
-    email: "info@kodableacademy.edu",
-    address: "123 Education St, New York, NY 10001",
+    email: "info@Aiacademy.edu",
+    address: "123 Skool St, New York, NY 10001",
   },
   {
     id: 2,
@@ -30,7 +30,7 @@ const allSchools = [
     type: "STEM Academy",
     size: "Large (> 1500)",
     description:
-      "At STEM Learning Center, we take a personalized approach to education. We recognize that every individual is unique, with their own set of skills, experiences, and learning aspirations. That's why we take the time to get to know our students on a personal level, so we can offer tailored guidance and support that meets their specific needs.",
+      "At STEM Learning Center, we take a personalized approach to Skool. We recognize that every individual is unique, with their own set of skills, experiences, and learning aspirations. That's why we take the time to get to know our students on a personal level, so we can offer tailored guidance and support that meets their specific needs.",
     logo: "/placeholder.svg?height=150&width=200",
     students: 1200,
     phone: "+1 (555) 987-6543",
@@ -44,7 +44,7 @@ const allSchools = [
     type: "Coding Bootcamp",
     size: "Small (< 500)",
     description:
-      "Future Coders Institute specializes in intensive coding education for students of all ages. Our immersive programs prepare students for the digital future with hands-on projects and real-world applications.",
+      "Future Coders Institute specializes in intensive coding Skool for students of all ages. Our immersive programs prepare students for the digital future with hands-on projects and real-world applications.",
     logo: "/placeholder.svg?height=150&width=200",
     students: 300,
     phone: "+1 (555) 456-7890",
@@ -58,7 +58,7 @@ const allSchools = [
     type: "Secondary School",
     size: "Medium (500-1500)",
     description:
-      "Digital Minds Academy focuses on preparing high school students for careers in technology and digital innovation. Our curriculum combines traditional academics with cutting-edge technology education.",
+      "Digital Minds Academy focuses on preparing high school students for careers in technology and digital innovation. Our curriculum combines traditional academics with cutting-edge technology Skool.",
     logo: "/placeholder.svg?height=150&width=200",
     students: 750,
     phone: "+1 (555) 321-0987",

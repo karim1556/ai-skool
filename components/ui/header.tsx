@@ -24,8 +24,8 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <div className="text-3xl font-black text-gray-900 tracking-tight">Kodable</div>
-          <div className="text-3xl font-light text-sky-500 tracking-tight">Education</div>
+          <div className="text-3xl font-black text-gray-900 tracking-tight">Ai</div>
+          <div className="text-3xl font-light text-sky-500 tracking-tight">Skool‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ </div>
         </Link>
 
         {/* Desktop Navigation */}
@@ -67,7 +67,7 @@ export function Header() {
                       >
                         <div className="text-sm font-medium leading-none">Schools</div>
                         <p className="line-clamp-2 text-sm leading-snug text-gray-600">
-                          Find partner schools and educational institutions
+                          Find partner schools and Skoolal institutions
                         </p>
                       </Link>
                     </div>
@@ -86,12 +86,12 @@ export function Header() {
                     <div className="grid gap-1">
                       <h3 className="font-medium leading-none mb-2 text-gray-900">Our Programs</h3>
                       <Link
-                        href="/why-kodable"
+                        href="/why-Ai"
                         className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
                       >
-                        <div className="text-sm font-medium leading-none">Why Kodable</div>
+                        <div className="text-sm font-medium leading-none">Why Ai</div>
                         <p className="line-clamp-2 text-sm leading-snug text-gray-600">
-                          Discover the benefits of our educational approach
+                          Discover the benefits of our Skoolal approach
                         </p>
                       </Link>
                       <Link
@@ -213,11 +213,11 @@ export function Header() {
                   </h3>
                   <div className="pl-7 space-y-2">
                     <Link
-                      href="/why-kodable"
+                      href="/why-Ai"
                       className="block text-gray-600 hover:text-gray-900 transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Why Kodable
+                      Why Ai
                     </Link>
                     <Link
                       href="/for-parents"

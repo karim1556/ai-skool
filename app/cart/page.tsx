@@ -15,8 +15,8 @@ import Image from "next/image"
 const initialCartItems = [
   {
     id: 1,
-    title: "Kodable Basics",
-    provider: "Kodable Education",
+    title: "Ai Basics",
+    provider: "Ai Skool",
     price: 2999,
     originalPrice: 3999,
     image: "/placeholder.svg?height=100&width=150",
@@ -25,7 +25,7 @@ const initialCartItems = [
   {
     id: 2,
     title: "STEM Fundamentals",
-    provider: "Kodable Education",
+    provider: "Ai Skool",
     price: 5999,
     originalPrice: 7999,
     image: "/placeholder.svg?height=100&width=150",
@@ -201,11 +201,11 @@ export default function ShoppingCartPage() {
             {/* Company Info */}
             <div className="md:col-span-1">
               <div className="flex items-center space-x-2 mb-4">
-                <div className="text-2xl font-black text-white">Kodable</div>
-                <div className="text-2xl font-light text-sky-400">Education</div>
+                <div className="text-2xl font-black text-white">Ai</div>
+                <div className="text-2xl font-light text-sky-400">Skool</div>
               </div>
               <p className="text-gray-300 text-sm leading-relaxed">
-                Kodable Education offers an engaging, affordable and enjoyable curriculum for schools where every child
+                Ai Skool offers an engaging, affordable and enjoyable curriculum for schools where every child
                 develops problem-solving skills and becomes a consumer to creator.
               </p>
             </div>
@@ -248,12 +248,12 @@ export default function ShoppingCartPage() {
               <ul className="space-y-2 text-sm">
                 <li>
                   <Link href="/courses/basics" className="text-gray-300 hover:text-white transition-colors">
-                    KODABLE BASICS
+                    Ai BASICS
                   </Link>
                 </li>
                 <li>
                   <Link href="/courses/creator" className="text-gray-300 hover:text-white transition-colors">
-                    KODABLE CREATOR
+                    Ai CREATOR
                   </Link>
                 </li>
                 <li>
@@ -313,7 +313,7 @@ export default function ShoppingCartPage() {
           <Separator className="my-8 bg-gray-700" />
 
           <div className="text-center text-gray-400 text-sm">
-            Copyright © Kodable Education 2024. All Rights Reserved.
+            Copyright © Ai Skool 2024. All Rights Reserved.
           </div>
         </div>
       </footer>

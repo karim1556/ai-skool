@@ -124,8 +124,8 @@ export default function AddCoordinatorPage() {
     // Qualification Step
     <div key="qualification" className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="education">Highest Education</Label>
-        <Input id="education" placeholder="Enter highest education" />
+        <Label htmlFor="Skool">Highest Skool</Label>
+        <Input id="Skool" placeholder="Enter highest Skool" />
       </div>
 
       <div className="space-y-2">

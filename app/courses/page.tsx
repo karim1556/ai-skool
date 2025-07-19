@@ -13,10 +13,10 @@ import { useRouter } from "next/navigation"
 const allCourses = [
   {
     id: 1,
-    title: "Kodable Basics",
-    provider: "Kodable Education",
+    title: "Ai Basics",
+    provider: "Ai Skool",
     description:
-      "An early education program designed for children aged 4 to 8. It introduces foundational concepts of coding, logic, and problem-solving through screen-free play and interactive activities.",
+      "An early Skool program designed for children aged 4 to 8. It introduces foundational concepts of coding, logic, and problem-solving through screen-free play and interactive activities.",
     image: "/placeholder.svg?height=200&width=300",
     price: 2999,
     originalPrice: 3999,
@@ -31,8 +31,8 @@ const allCourses = [
   },
   {
     id: 2,
-    title: "Kodable Creator",
-    provider: "Kodable Education",
+    title: "Ai Creator",
+    provider: "Ai Skool",
     description:
       "Advanced coding platform that empowers young learners to become creative problem-solvers by building their own games and interactive stories using visual programming.",
     image: "/placeholder.svg?height=200&width=300",
@@ -50,7 +50,7 @@ const allCourses = [
   {
     id: 3,
     title: "Bug World Adventures",
-    provider: "Kodable Education",
+    provider: "Ai Skool",
     description:
       "An engaging adventure game that teaches programming concepts through exploration and puzzle-solving in a colorful bug-themed world.",
     image: "/placeholder.svg?height=200&width=300",
@@ -68,9 +68,9 @@ const allCourses = [
   {
     id: 4,
     title: "STEM Fundamentals",
-    provider: "Kodable Education",
+    provider: "Ai Skool",
     description:
-      "Comprehensive STEM education program covering science, technology, engineering, and mathematics through hands-on projects and interactive learning.",
+      "Comprehensive STEM Skool program covering science, technology, engineering, and mathematics through hands-on projects and interactive learning.",
     image: "/placeholder.svg?height=200&width=300",
     price: 5999,
     originalPrice: 7999,
@@ -80,13 +80,13 @@ const allCourses = [
     level: "Advanced",
     rating: 5,
     reviews: 20,
-    category: "STEM Education",
+    category: "STEM Skool",
     isFree: false,
   },
   {
     id: 5,
     title: "Game Design Workshop",
-    provider: "Kodable Education",
+    provider: "Ai Skool",
     description:
       "Learn to design and create your own video games using real programming concepts in a fun and engaging environment.",
     image: "/placeholder.svg?height=200&width=300",
@@ -104,7 +104,7 @@ const allCourses = [
   {
     id: 6,
     title: "Robotics & AI",
-    provider: "Kodable Education",
+    provider: "Ai Skool",
     description:
       "Introduction to robotics and artificial intelligence concepts through practical projects and interactive simulations.",
     image: "/placeholder.svg?height=200&width=300",

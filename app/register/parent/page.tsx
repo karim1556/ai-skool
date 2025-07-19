@@ -373,7 +373,7 @@ export default function ParentRegistration() {
             <div className="text-center mb-6">
               <Users className="w-12 h-12 mx-auto text-pink-500 mb-2" />
               <h2 className="text-2xl font-bold text-gray-900">Children Information</h2>
-              <p className="text-gray-600">Tell us about your children who will be using Kodable</p>
+              <p className="text-gray-600">Tell us about your children who will be using Ai</p>
             </div>
 
             {formData.children.map((child, index) => (
@@ -586,8 +586,8 @@ export default function ParentRegistration() {
             <CardHeader>
               <CardTitle className="text-center">
                 <div className="flex items-center justify-center space-x-2 mb-2">
-                  <div className="text-2xl font-black text-gray-900">Kodable</div>
-                  <div className="text-2xl font-light text-sky-500">Education</div>
+                  <div className="text-2xl font-black text-gray-900">Ai</div>
+                  <div className="text-2xl font-light text-sky-500">Skool</div>
                 </div>
                 Parent Registration
               </CardTitle>

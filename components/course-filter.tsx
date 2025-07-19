@@ -50,7 +50,7 @@ export function CourseFilter({ onFilterChange }: CourseFilterProps) {
               "All category",
               "Coding Fundamentals",
               "Game Design",
-              "STEM Education",
+              "STEM Skool",
               "Robotics",
               "Mathematics",
               "Science",
