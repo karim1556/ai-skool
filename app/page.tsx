@@ -295,7 +295,7 @@ export default function HomePage() {
               <div className="absolute right-12 top-1/2 h-20 w-20 rounded-full bg-gradient-to-br from-purple-200 to-purple-300 opacity-60 blur-xl"></div>
               <div className="relative group">
                 <Image
-                  src="/images/skool.jpg"
+                  src="/images/skool1.png"
                   alt="Students learning online"
                   width={700}
                   height={500}
