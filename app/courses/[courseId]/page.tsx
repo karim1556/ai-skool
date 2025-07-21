@@ -41,9 +41,9 @@ const mockCourse = {
     "Prepare for advanced coding concepts in later stages",
   ],
   instructor: {
-    name: "Ms. Emily Chen",
+    name: "Ms. Saneesha Roy",
     title: "Lead Educator at Kodable Education",
-    bio: `Ms. Emily Chen is a passionate educator with over 10 years of experience teaching computer science to elementary school students. She believes in making learning fun and accessible for all children, fostering a love for STEM from an early age. Emily holds a Master's degree in Education Technology and has developed several award-winning educational programs.`,
+    bio: `Ms. Saneesha Roy is a passionate educator with over 10 years of experience teaching computer science to elementary school students. She believes in making learning fun and accessible for all children, fostering a love for STEM from an early age. Emily holds a Master's degree in Education Technology and has developed several award-winning educational programs.`,
     image: "/placeholder.svg?height=100&width=100",
     courses: 5,
     students: "10,000+",
@@ -113,21 +113,21 @@ const mockCourse = {
   reviews: [
     {
       id: 1,
-      user: "Alice Johnson",
+      user: "Arhan Gautam",
       rating: 5,
       date: "2024-08-15",
       comment: "My child absolutely loved this course! It made learning to code fun and engaging.",
     },
     {
       id: 2,
-      user: "Bob Williams",
+      user: "Karim Shaikh",
       rating: 4,
       date: "2024-08-10",
       comment: "Great introduction to coding for kids. The lessons are well-structured and easy to follow.",
     },
     {
       id: 3,
-      user: "Charlie Davis",
+      user: "Prisha Goregaon",
       rating: 5,
       date: "2024-08-05",
       comment: "Excellent course! My child is now excited about coding and wants to learn more.",
