@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getCurrentMockUser, signOutMock } from "@/lib/mock-auth"
 import { MockAdminDashboard } from "@/components/dashboard/mock-admin-dashboard"
-import { MockTrainerDashboard } from "@/components/dashboard/mock-trainer-dashboard"
-import { MockStudentDashboard } from "@/components/dashboard/mock-student-dashboard"
+import { TrainerDashboard } from "@/components/dashboard/trainer-dashboard"
+import { StudentDashboard } from "@/components/dashboard/student-dashboard"
 import { Button } from "@/components/ui/button"
 import { LogOut, ArrowLeft } from "lucide-react"
 
@@ -61,11 +61,11 @@ export default function DashboardPage() {
         return <MockAdminDashboard />
       case "trainer":
       case "instructor":
-        return <MockTrainerDashboard />
+        return <TrainerDashboard userId={user.id} />
       case "student":
       case "school_coordinator":
       case "camp_coordinator":
-        return <MockStudentDashboard />
+        return <StudentDashboard userId={user.id} />
       default:
         return <div>Unknown role</div>
     }

@@ -13,6 +13,7 @@ import {
   mockSchools,
   mockBatches,
   mockAssignments,
+  mockPrivileges,
 } from "@/lib/mock-data"
 
 export function EnhancedAdminDashboard() {
@@ -33,6 +34,40 @@ export function EnhancedAdminDashboard() {
 
   const [pendingUsers, setPendingUsers] = useState(mockData.pendingUsers)
   const [pendingBatches, setPendingBatches] = useState(mockBatches.filter((batch) => batch.status === "pending"))
+
+  // Add state for all users (trainers, coordinators, students)
+  const [allTrainers, setAllTrainers] = useState([...mockTrainers])
+  const [allCoordinators, setAllCoordinators] = useState([...mockCoordinators])
+  const [allStudents, setAllStudents] = useState([...mockStudents])
+
+  // Handler to toggle privilege for a user
+  const handleTogglePrivilege = (userType, userId, privilege) => {
+    const updateUserPrivileges = (users, setUsers) => {
+      setUsers(
+        users.map((user) => {
+          if (user.id === userId) {
+            const newPrivileges = user.privileges.includes(privilege)
+              ? user.privileges.filter((p) => p !== privilege)
+              : [...user.privileges, privilege]
+            // Persist to localStorage for trainers
+            if (userType === "trainer") {
+              if (typeof window !== "undefined") {
+                localStorage.setItem(
+                  `trainer-privileges-${user.email}`,
+                  JSON.stringify(newPrivileges)
+                )
+              }
+            }
+            return { ...user, privileges: newPrivileges }
+          }
+          return user
+        })
+      )
+    }
+    if (userType === "trainer") updateUserPrivileges(allTrainers, setAllTrainers)
+    if (userType === "coordinator") updateUserPrivileges(allCoordinators, setAllCoordinators)
+    if (userType === "student") updateUserPrivileges(allStudents, setAllStudents)
+  }
 
   useEffect(() => {
     // Calculate real stats from mock data
@@ -237,6 +272,66 @@ export function EnhancedAdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Privilege Management Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Privilege Management</CardTitle>
+          <CardDescription>Assign or revoke privileges for trainers and coordinators</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-8">
+            {/* Trainers */}
+            <div>
+              <h3 className="font-semibold text-lg mb-2">Trainers</h3>
+              {allTrainers.map((trainer) => (
+                <div key={trainer.id} className="mb-4 p-3 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{trainer.name}</span>
+                    <span className="text-xs text-muted-foreground">{trainer.email}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {mockPrivileges.map((priv) => (
+                      <label key={priv} className="flex items-center gap-1 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={trainer.privileges.includes(priv)}
+                          onChange={() => handleTogglePrivilege("trainer", trainer.id, priv)}
+                        />
+                        {priv.replace(/_/g, " ")}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Coordinators */}
+            <div>
+              <h3 className="font-semibold text-lg mb-2">Coordinators</h3>
+              {allCoordinators.map((coordinator) => (
+                <div key={coordinator.id} className="mb-4 p-3 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{coordinator.name}</span>
+                    <span className="text-xs text-muted-foreground">{coordinator.email}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {mockPrivileges.map((priv) => (
+                      <label key={priv} className="flex items-center gap-1 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={coordinator.privileges.includes(priv)}
+                          onChange={() => handleTogglePrivilege("coordinator", coordinator.id, priv)}
+                        />
+                        {priv.replace(/_/g, " ")}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Pending User Approvals */}

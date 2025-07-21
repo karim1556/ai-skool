@@ -1,3 +1,15 @@
+export const mockPrivileges = [
+  "manage_batches",
+  "view_reports",
+  "start_session",
+  "approve_assignments",
+  "manage_courses",
+  "view_students",
+  "grade_assignments",
+  "join_session",
+  "view_own_progress",
+]
+
 export const mockTrainers = [
   {
     id: 1,
@@ -11,6 +23,7 @@ export const mockTrainers = [
     status: "active",
     courses: 3,
     students: 45,
+    privileges: ["manage_batches", "start_session", "view_reports", "view_students"],
   },
   {
     id: 2,
@@ -24,6 +37,22 @@ export const mockTrainers = [
     status: "active",
     courses: 2,
     students: 32,
+    privileges: ["manage_batches", "start_session", "view_students"],
+  },
+  // Added John Smith for privilege management demo
+  {
+    id: 6,
+    photo: "/placeholder.svg?height=40&width=40",
+    name: "John Smith",
+    gender: "Male",
+    dob: "01-01-1980",
+    phone: "9999999999",
+    email: "trainer@eduflow.com",
+    institute: "Demo Institute",
+    status: "active",
+    courses: 0,
+    students: 0,
+    privileges: ["manage_batches", "manage_courses", "view_students"],
   },
   {
     id: 3,
@@ -37,6 +66,7 @@ export const mockTrainers = [
     status: "pending",
     courses: 1,
     students: 15,
+    privileges: ["view_students"],
   },
   {
     id: 4,
@@ -50,6 +80,7 @@ export const mockTrainers = [
     status: "active",
     courses: 2,
     students: 28,
+    privileges: ["manage_batches", "start_session", "approve_assignments"],
   },
   {
     id: 5,
@@ -61,6 +92,7 @@ export const mockTrainers = [
     email: "karim.shaikh@aiskool.com",
     institute: "humanitypublicschool",
     status: "active",
+    privileges: ["manage_batches", "view_reports"],
   },
 ]
 
@@ -75,6 +107,7 @@ export const mockCoordinators = [
     email: "humapatelai29@gmail.com",
     institute: "Vrindavan -aiskool",
     status: "active",
+    privileges: ["manage_batches", "view_reports", "view_students"],
   },
   {
     id: 2,
@@ -86,6 +119,7 @@ export const mockCoordinators = [
     email: "humanityschool@gmail.com",
     institute: "humanitypublicschool",
     status: "active",
+    privileges: ["manage_batches", "view_students"],
   },
 ]
 
@@ -98,6 +132,7 @@ export const mockStudents = [
     email: "john.doe@student.com",
     enrolledCourses: "Web Development, Python",
     school: "Vrindavan -aiskool",
+    privileges: ["join_session", "view_own_progress"],
   },
   {
     id: 2,
@@ -107,6 +142,7 @@ export const mockStudents = [
     email: "jane.smith@student.com",
     enrolledCourses: "Data Science",
     school: "humanitypublicschool",
+    privileges: ["join_session", "view_own_progress"],
   },
   {
     id: 3,
@@ -116,6 +152,7 @@ export const mockStudents = [
     email: "mike.johnson@student.com",
     enrolledCourses: "",
     school: "Vrindavan -aiskool",
+    privileges: [],
   },
 ]
 
