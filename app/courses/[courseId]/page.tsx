@@ -43,7 +43,7 @@ const mockCourse = {
   instructor: {
     name: "Ms. Saneesha Roy",
     title: "Lead Educator at Kodable Education",
-    bio: `Ms. Saneesha Roy is a passionate educator with over 10 years of experience teaching computer science to elementary school students. She believes in making learning fun and accessible for all children, fostering a love for STEM from an early age. Emily holds a Master's degree in Education Technology and has developed several award-winning educational programs.`,
+    bio: `Ms. Saneesha Roy is a passionate educator with over 10 years of experience teaching computer science to elementary school students. She believes in making learning fun and accessible for all children, fostering a love for STEM from an early age. Saneesha holds a Master's degree in Education Technology and has developed several award-winning educational programs.`,
     image: "/placeholder.svg?height=100&width=100",
     courses: 5,
     students: "10,000+",
