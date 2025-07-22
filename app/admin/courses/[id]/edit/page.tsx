@@ -1,20 +1,32 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { AdminLayout } from "@/components/layout/admin-layout"
-import { Button } from "@/components/ui/button"
+import { MultiStepForm } from "@/components/forms/multi-step-form"
 import { courseTabs } from "@/lib/course-tabs"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { ArrowLeft, CheckCircle, Plus, Edit, Trash2, ArrowUpDown } from "lucide-react"
 import { AddSectionModal } from "@/components/courses/add-section-modal"
 import { AddLessonModal } from "@/components/courses/add-lesson-modal"
 import { AddQuizModal } from "@/components/courses/add-quiz-modal"
 import { AddAssignmentModal } from "@/components/courses/add-assignment-modal"
 import { SortSectionsModal } from "@/components/courses/sort-sections-modal"
-import { ArrowLeft, Plus, ArrowUpDown, Edit, Trash2 } from "lucide-react"
-import { useRouter } from "next/navigation"
 
-export default function EditCoursePage({ params }: { params: { id: string } }) {
+export default function EditCoursePage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState("curriculum")
+  const params = useParams()
+  const { id } = params
+  const [courseData, setCourseData] = useState<any>(null)
+  const [sections, setSections] = useState<any[]>([])
+  const [lessons, setLessons] = useState<any>({})
+  const [quizzes, setQuizzes] = useState<any>({})
+  const [assignments, setAssignments] = useState<any>({})
 
   // Modal states
   const [showAddSection, setShowAddSection] = useState(false)
@@ -23,295 +35,363 @@ export default function EditCoursePage({ params }: { params: { id: string } }) {
   const [showAddAssignment, setShowAddAssignment] = useState(false)
   const [showSortSections, setShowSortSections] = useState(false)
 
-  // Course data state
-  const [sections, setSections] = useState([
-    "Getting Started With Mtiny",
-    "Learning The Coding Tools",
-    "Exploring Mtiny Features",
-  ])
+  useEffect(() => {
+    const fetchCourse = async () => {
+      if (id) {
+        const res = await fetch(`/api/courses/${id}`)
+        const data = await res.json()
+        setCourseData(data)
+      }
+    }
+    const fetchSections = async () => {
+      if (id) {
+        const res = await fetch(`/api/courses/${id}/sections`)
+        const data = await res.json()
+        setSections(data)
+      }
+    }
+    fetchCourse()
+    fetchSections()
+  }, [id])
 
-  const [lessons, setLessons] = useState([
-    { id: 1, title: "Introduction Of Robot", section: "Getting Started With Mtiny", type: "document" },
-    { id: 2, title: "Introduction Video", section: "Getting Started With Mtiny", type: "video" },
-    { id: 3, title: "Map Blocks", section: "Getting Started With Mtiny", type: "document" },
-    { id: 4, title: "Map Blocks Video", section: "Getting Started With Mtiny", type: "video" },
-  ])
+  useEffect(() => {
+    const fetchContent = async () => {
+      const newLessons: any = {}
+      const newQuizzes: any = {}
+      const newAssignments: any = {}
+      for (const section of sections) {
+        const [lessonsRes, quizzesRes, assignmentsRes] = await Promise.all([
+          fetch(`/api/sections/${section.id}/lessons`),
+          fetch(`/api/sections/${section.id}/quizzes`),
+          fetch(`/api/sections/${section.id}/assignments`),
+        ])
+        newLessons[section.id] = await lessonsRes.json()
+        newQuizzes[section.id] = await quizzesRes.json()
+        newAssignments[section.id] = await assignmentsRes.json()
+      }
+      setLessons(newLessons)
+      setQuizzes(newQuizzes)
+      setAssignments(newAssignments)
+    }
+    if (sections.length > 0) {
+      fetchContent()
+    }
+  }, [sections])
 
-  const [quizzes, setQuizzes] = useState([
-    { id: 1, title: "test1", section: "Getting Started With Mtiny" },
-    { id: 2, title: "Section 1 Quiz", section: "Getting Started With Mtiny" },
-  ])
-
-  const [assignments, setAssignments] = useState([])
-
-  // Handlers
-  const handleAddSection = (title: string) => {
-    setSections([...sections, title])
+  const handleInputChange = (field: string, value: any) => {
+    setCourseData({ ...courseData, [field]: value })
   }
 
-  const handleAddLesson = (lessonData: any) => {
-    setLessons([...lessons, lessonData])
+  const handleComplete = async () => {
+    if (!courseData) return
+
+    const formData = new FormData()
+    for (const key in courseData) {
+      formData.append(key, courseData[key])
+    }
+
+    const res = await fetch(`/api/courses/${id}`, {
+      method: "PUT",
+      body: formData,
+    })
+
+    if (res.ok) {
+      router.push("/admin/courses")
+    } else {
+      console.error("Error updating course")
+    }
   }
 
-  const handleAddQuiz = (quizData: any) => {
-    setQuizzes([...quizzes, quizData])
+  const handleAddSection = async (title: string) => {
+    const res = await fetch(`/api/courses/${id}/sections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    })
+    const newSection = await res.json()
+    setSections([...sections, newSection])
   }
 
-  const handleAddAssignment = (assignmentData: any) => {
-    setAssignments([...assignments, assignmentData])
+  const handleAddLesson = async (lessonData: any) => {
+    const res = await fetch(`/api/sections/${lessonData.section_id}/lessons`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lessonData),
+    })
+    const newLesson = await res.json()
+    setLessons((prev: any) => ({
+      ...prev,
+      [lessonData.section_id]: [...(prev[lessonData.section_id] || []), newLesson],
+    }))
   }
 
-  const handleSortSections = (sortedSections: string[]) => {
+  const handleAddQuiz = async (quizData: any) => {
+    const res = await fetch(`/api/sections/${quizData.section_id}/quizzes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(quizData),
+    })
+    const newQuiz = await res.json()
+    setQuizzes((prev: any) => ({
+      ...prev,
+      [quizData.section_id]: [...(prev[quizData.section_id] || []), newQuiz],
+    }))
+  }
+
+  const handleAddAssignment = async (assignmentData: any) => {
+    const res = await fetch(`/api/sections/${assignmentData.section_id}/assignments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(assignmentData),
+    })
+    const newAssignment = await res.json()
+    setAssignments((prev: any) => ({
+      ...prev,
+      [assignmentData.section_id]: [...(prev[assignmentData.section_id] || []), newAssignment],
+    }))
+  }
+
+  const handleSortSections = async (sortedSections: any[]) => {
     setSections(sortedSections)
+    await fetch(`/api/courses/${id}/sections/sort`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sections: sortedSections }),
+    })
   }
 
-  const renderCurriculumTab = () => (
-    <div className="space-y-6">
-      {/* Action Buttons */}
+  if (!courseData) {
+    return (
+      <AdminLayout>
+        <div>Loading...</div>
+      </AdminLayout>
+    )
+  }
+
+  const steps = [
+    <div key="curriculum" className="space-y-6">
       <div className="flex flex-wrap gap-3">
-        <Button
-          variant="outline"
-          onClick={() => setShowAddSection(true)}
-          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add section
+        <Button variant="outline" onClick={() => setShowAddSection(true)}>
+          <Plus className="h-4 w-4 mr-2" /> Add section
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => setShowAddLesson(true)}
-          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add lesson
+        <Button variant="outline" onClick={() => setShowAddLesson(true)}>
+          <Plus className="h-4 w-4 mr-2" /> Add lesson
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => setShowAddQuiz(true)}
-          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add quiz
+        <Button variant="outline" onClick={() => setShowAddQuiz(true)}>
+          <Plus className="h-4 w-4 mr-2" /> Add quiz
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => setShowAddAssignment(true)}
-          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add assignment
+        <Button variant="outline" onClick={() => setShowAddAssignment(true)}>
+          <Plus className="h-4 w-4 mr-2" /> Add assignment
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => setShowSortSections(true)}
-          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-        >
-          <ArrowUpDown className="h-4 w-4 mr-2" />
-          Sort sections
+        <Button variant="outline" onClick={() => setShowSortSections(true)}>
+          <ArrowUpDown className="h-4 w-4 mr-2" /> Sort sections
         </Button>
       </div>
-
-      {/* Course Content */}
       <div className="space-y-4">
         {sections.map((section, sectionIndex) => (
-          <div key={sectionIndex} className="bg-gray-50 rounded-lg p-4">
+          <div key={section.id} className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-lg">
-                Section {sectionIndex + 1}: {section}
+                Section {sectionIndex + 1}: {section.title}
               </h3>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm">
-                  <ArrowUpDown className="h-4 w-4 mr-1" />
-                  Sort lesson
-                </Button>
-                <Button variant="outline" size="sm">
                   <Edit className="h-4 w-4 mr-1" />
-                  Edit section
+                  Edit
                 </Button>
                 <Button variant="outline" size="sm">
                   <Trash2 className="h-4 w-4 mr-1" />
-                  Delete section
+                  Delete
                 </Button>
               </div>
             </div>
-
             <div className="space-y-2">
-              {/* Quizzes for this section */}
-              {quizzes
-                .filter((quiz) => quiz.section === section)
-                .map((quiz) => (
-                  <div
-                    key={`quiz-${quiz.id}`}
-                    className="flex items-center justify-between p-3 bg-white rounded border"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-blue-600">🧩</span>
-                      <span>
-                        Quiz {quiz.id} : {quiz.title}
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-              {/* Lessons for this section */}
-              {lessons
-                .filter((lesson) => lesson.section === section)
-                .map((lesson) => (
-                  <div
-                    key={`lesson-${lesson.id}`}
-                    className="flex items-center justify-between p-3 bg-white rounded border"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-600">{lesson.type === "video" ? "📹" : "📄"}</span>
-                      <span>
-                        Lesson {lesson.id} : {lesson.title}
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-              {/* Assignments for this section */}
-              {assignments
-                .filter((assignment: any) => assignment.section === section)
-                .map((assignment: any) => (
-                  <div
-                    key={`assignment-${assignment.id}`}
-                    className="flex items-center justify-between p-3 bg-white rounded border"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-purple-600">📝</span>
-                      <span>Assignment : {assignment.title}</span>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              {quizzes[section.id]?.map((quiz: any) => (
+                <div key={`quiz-${quiz.id}`} className="flex items-center justify-between p-3 bg-white rounded border">
+                  <span>Quiz: {quiz.title}</span>
+                </div>
+              ))}
+              {lessons[section.id]?.map((lesson: any) => (
+                <div
+                  key={`lesson-${lesson.id}`}
+                  className="flex items-center justify-between p-3 bg-white rounded border"
+                >
+                  <span>Lesson: {lesson.title}</span>
+                </div>
+              ))}
+              {assignments[section.id]?.map((assignment: any) => (
+                <div
+                  key={`assignment-${assignment.id}`}
+                  className="flex items-center justify-between p-3 bg-white rounded border"
+                >
+                  <span>Assignment: {assignment.title}</span>
+                </div>
+              ))}
             </div>
           </div>
         ))}
       </div>
-    </div>
-  )
+    </div>,
+    <div key="basic" className="space-y-6">
+      <h2 className="text-2xl font-bold">Basic Information</h2>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div>
+          <Label htmlFor="title">Course Title *</Label>
+          <Input id="title" value={courseData.title} onChange={(e) => handleInputChange("title", e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor="provider">Provider</Label>
+          <Input
+            id="provider"
+            value={courseData.provider}
+            onChange={(e) => handleInputChange("provider", e.target.value)}
+          />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="description">Course Description *</Label>
+        <Textarea
+          id="description"
+          value={courseData.description}
+          onChange={(e) => handleInputChange("description", e.target.value)}
+        />
+      </div>
+    </div>,
+    <div key="requirements" className="space-y-6">
+      <h2 className="text-2xl font-bold">Requirements</h2>
+      <Textarea
+        id="requirements"
+        value={courseData.requirements}
+        onChange={(e) => handleInputChange("requirements", e.target.value)}
+        placeholder="List any prerequisites for this course"
+        rows={4}
+      />
+    </div>,
+    <div key="outcomes" className="space-y-6">
+      <h2 className="text-2xl font-bold">Outcomes</h2>
+      <Textarea
+        id="outcomes"
+        value={courseData.outcomes}
+        onChange={(e) => handleInputChange("outcomes", e.target.value)}
+        placeholder="Describe what students will achieve after completing this course"
+        rows={4}
+      />
+    </div>,
+    <div key="pricing" className="space-y-6">
+      <h2 className="text-2xl font-bold">Course Pricing</h2>
+      <RadioGroup
+        value={courseData.is_free ? "free" : "paid"}
+        onValueChange={(value) => handleInputChange("is_free", value === "free")}
+      >
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="free" id="free" />
+          <Label htmlFor="free">Free Course</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="paid" id="paid" />
+          <Label htmlFor="paid">Paid Course</Label>
+        </div>
+      </RadioGroup>
+      {!courseData.is_free && (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            <Label htmlFor="price">Price</Label>
+            <Input
+              id="price"
+              type="number"
+              value={courseData.price}
+              onChange={(e) => handleInputChange("price", Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="original_price">Original Price</Label>
+            <Input
+              id="original_price"
+              type="number"
+              value={courseData.original_price}
+              onChange={(e) => handleInputChange("original_price", Number(e.target.value))}
+            />
+          </div>
+        </div>
+      )}
+    </div>,
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "curriculum":
-        return renderCurriculumTab()
-      case "basic":
-        return <div className="p-8 text-center text-gray-500">Basic course information form would go here</div>
-      case "requirements":
-        return <div className="p-8 text-center text-gray-500">Course requirements form would go here</div>
-      case "outcomes":
-        return <div className="p-8 text-center text-gray-500">Learning outcomes form would go here</div>
-      case "pricing":
-        return <div className="p-8 text-center text-gray-500">Pricing settings would go here</div>
-      case "media":
-        return <div className="p-8 text-center text-gray-500">Media upload form would go here</div>
-      case "seo":
-        return <div className="p-8 text-center text-gray-500">SEO settings would go here</div>
-      case "finish":
-        return <div className="p-8 text-center text-gray-500">Course completion settings would go here</div>
-      default:
-        return renderCurriculumTab()
-    }
-  }
+    <div key="media" className="space-y-6">
+      <h2 className="text-2xl font-bold">Course Media</h2>
+      <div>
+        <Label htmlFor="thumbnail">Course thumbnail</Label>
+        <Input
+          id="thumbnail"
+          type="file"
+          accept="image/*"
+          onChange={(e) => handleInputChange("image", e.target.files?.[0] || null)}
+        />
+        {courseData.image && typeof courseData.image === 'string' && <img src={courseData.image} alt="Course thumbnail" className="mt-4 w-48 h-auto" />}
+      </div>
+    </div>,
+    <div key="seo" className="space-y-6">
+      <h2 className="text-2xl font-bold">SEO Settings</h2>
+      <div>
+        <Label htmlFor="meta_keywords">Meta keywords</Label>
+        <Input
+          id="meta_keywords"
+          value={courseData.meta_keywords}
+          onChange={(e) => handleInputChange("meta_keywords", e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="meta_description">Meta description</Label>
+        <Textarea
+          id="meta_description"
+          value={courseData.meta_description}
+          onChange={(e) => handleInputChange("meta_description", e.target.value)}
+          rows={4}
+        />
+      </div>
+    </div>,
+    <div key="finish" className="space-y-6 text-center">
+      <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
+      <h2 className="text-2xl font-bold">Thank you !</h2>
+      <p className="text-gray-600">You are just one click away</p>
+    </div>,
+  ]
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to course list
-            </Button>
-            <h1 className="text-2xl font-bold">Update: A-Tiny</h1>
-          </div>
-          <Button variant="outline">View on frontend →</Button>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to course list
+          </Button>
+          <h1 className="text-3xl font-bold">Edit course</h1>
         </div>
 
-        {/* Course Manager */}
-        <div className="bg-white rounded-lg border">
-          <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold">COURSE MANAGER</h2>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b">
-            {courseTabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-2 px-6 py-3 border-b-2 transition-colors
-                    ${
-                      activeTab === tab.id
-                        ? "border-blue-600 bg-blue-50 text-blue-600"
-                        : "border-transparent hover:bg-gray-50"
-                    }
-                  `}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Tab Content */}
-          <div className="p-6">{renderTabContent()}</div>
+        <div className="bg-white rounded-lg border p-6">
+          <MultiStepForm steps={courseTabs.map(t => ({id: t.id, title: t.label, icon: t.icon}))} onComplete={handleComplete}>
+            {steps}
+          </MultiStepForm>
         </div>
       </div>
-
-      {/* Modals */}
       <AddSectionModal isOpen={showAddSection} onClose={() => setShowAddSection(false)} onAdd={handleAddSection} />
-
       <AddLessonModal
         isOpen={showAddLesson}
         onClose={() => setShowAddLesson(false)}
         onAdd={handleAddLesson}
         sections={sections}
       />
-
       <AddQuizModal
         isOpen={showAddQuiz}
         onClose={() => setShowAddQuiz(false)}
         onAdd={handleAddQuiz}
         sections={sections}
       />
-
       <AddAssignmentModal
         isOpen={showAddAssignment}
         onClose={() => setShowAddAssignment(false)}
         onAdd={handleAddAssignment}
         sections={sections}
       />
-
       <SortSectionsModal
         isOpen={showSortSections}
         onClose={() => setShowSortSections(false)}

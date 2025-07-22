@@ -14,7 +14,7 @@ interface AddAssignmentModalProps {
   isOpen: boolean
   onClose: () => void
   onAdd: (assignmentData: any) => void
-  sections: string[]
+  sections: { id: number; title: string }[]
 }
 
 const assignmentCriteria = ["Creativity", "Technical Skills", "Problem Solving", "Code Quality", "Documentation"]
@@ -22,14 +22,14 @@ const assignmentCriteria = ["Creativity", "Technical Skills", "Problem Solving",
 export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssignmentModalProps) {
   const [assignmentData, setAssignmentData] = useState({
     title: "",
-    section: "",
+    section_id: "",
     question: "",
     file: null as File | null,
     criteria: [] as string[],
   })
 
   const handleSubmit = () => {
-    if (assignmentData.title && assignmentData.section && assignmentData.question) {
+    if (assignmentData.title && assignmentData.section_id && assignmentData.question) {
       onAdd({
         ...assignmentData,
         id: Date.now(),
@@ -41,7 +41,7 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
   const handleClose = () => {
     setAssignmentData({
       title: "",
-      section: "",
+      section_id: "",
       question: "",
       file: null,
       criteria: [],
@@ -82,16 +82,16 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
           <div>
             <Label htmlFor="section">Section</Label>
             <Select
-              value={assignmentData.section}
-              onValueChange={(value) => setAssignmentData({ ...assignmentData, section: value })}
+              value={assignmentData.section_id}
+              onValueChange={(value) => setAssignmentData({ ...assignmentData, section_id: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select section" />
               </SelectTrigger>
               <SelectContent>
-                {sections.map((section, index) => (
-                  <SelectItem key={index} value={section}>
-                    {section}
+                {sections.map((section) => (
+                  <SelectItem key={section.id} value={String(section.id)}>
+                    {section.title}
                   </SelectItem>
                 ))}
               </SelectContent>

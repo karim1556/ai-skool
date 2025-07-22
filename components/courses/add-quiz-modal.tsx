@@ -12,20 +12,20 @@ interface AddQuizModalProps {
   isOpen: boolean
   onClose: () => void
   onAdd: (quizData: any) => void
-  sections: string[]
+  sections: { id: number; title: string }[]
 }
 
 export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalProps) {
   const [quizData, setQuizData] = useState({
     title: "",
-    section: "",
+    section_id: "",
     instruction: "",
     maxAttempts: "3",
     timeLimit: "01:00",
   })
 
   const handleSubmit = () => {
-    if (quizData.title && quizData.section) {
+    if (quizData.title && quizData.section_id) {
       onAdd({
         ...quizData,
         id: Date.now(),
@@ -37,7 +37,7 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
   const handleClose = () => {
     setQuizData({
       title: "",
-      section: "",
+      section_id: "",
       instruction: "",
       maxAttempts: "3",
       timeLimit: "01:00",
@@ -65,14 +65,17 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
 
           <div>
             <Label htmlFor="section">Section</Label>
-            <Select value={quizData.section} onValueChange={(value) => setQuizData({ ...quizData, section: value })}>
+            <Select
+              value={quizData.section_id}
+              onValueChange={(value) => setQuizData({ ...quizData, section_id: value })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select section" />
               </SelectTrigger>
               <SelectContent>
-                {sections.map((section, index) => (
-                  <SelectItem key={index} value={section}>
-                    {section}
+                {sections.map((section) => (
+                  <SelectItem key={section.id} value={String(section.id)}>
+                    {section.title}
                   </SelectItem>
                 ))}
               </SelectContent>

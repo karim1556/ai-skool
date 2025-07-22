@@ -15,7 +15,7 @@ interface AddLessonModalProps {
   isOpen: boolean
   onClose: () => void
   onAdd: (lessonData: any) => void
-  sections: string[]
+  sections: { id: number; title: string }[]
 }
 
 const lessonTypes = [
@@ -33,7 +33,7 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections }: AddLessonMo
   const [selectedType, setSelectedType] = useState("youtube")
   const [lessonData, setLessonData] = useState({
     title: "",
-    section: "",
+    section_id: "",
     url: "",
     file: null as File | null,
     description: "",
@@ -59,7 +59,7 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections }: AddLessonMo
     setSelectedType("youtube")
     setLessonData({
       title: "",
-      section: "",
+      section_id: "",
       url: "",
       file: null,
       description: "",
@@ -92,16 +92,16 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections }: AddLessonMo
         <div>
           <Label htmlFor="section">Section</Label>
           <Select
-            value={lessonData.section}
-            onValueChange={(value) => setLessonData({ ...lessonData, section: value })}
+            value={lessonData.section_id}
+            onValueChange={(value) => setLessonData({ ...lessonData, section_id: value })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select section" />
             </SelectTrigger>
             <SelectContent>
-              {sections.map((section, index) => (
-                <SelectItem key={index} value={section}>
-                  {section}
+              {sections.map((section) => (
+                <SelectItem key={section.id} value={String(section.id)}>
+                  {section.title}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -6,123 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Grid, List, RefreshCw, Clock, Star, BookOpen, ShoppingCart } from "lucide-react"
 import Image from "next/image"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
-const allCourses = [
-  {
-    id: 1,
-    title: "Kodable Basics",
-    provider: "Kodable Education",
-    description:
-      "An early education program designed for children aged 4 to 8. It introduces foundational concepts of coding, logic, and problem-solving through screen-free play and interactive activities.",
-    image: "/placeholder.svg?height=200&width=300",
-    price: 2999,
-    originalPrice: 3999,
-    lessons: 15,
-    duration: "8:30:45",
-    language: "English",
-    level: "Beginner",
-    rating: 5,
-    reviews: 12,
-    category: "Coding Fundamentals",
-    isFree: false,
-  },
-  {
-    id: 2,
-    title: "Kodable Creator",
-    provider: "Kodable Education",
-    description:
-      "Advanced coding platform that empowers young learners to become creative problem-solvers by building their own games and interactive stories using visual programming.",
-    image: "/placeholder.svg?height=200&width=300",
-    price: 4999,
-    originalPrice: 6999,
-    lessons: 20,
-    duration: "12:15:30",
-    language: "English",
-    level: "Intermediate",
-    rating: 5,
-    reviews: 8,
-    category: "Game Design",
-    isFree: false,
-  },
-  {
-    id: 3,
-    title: "Bug World Adventures",
-    provider: "Kodable Education",
-    description:
-      "An engaging adventure game that teaches programming concepts through exploration and puzzle-solving in a colorful bug-themed world.",
-    image: "/placeholder.svg?height=200&width=300",
-    price: 0,
-    originalPrice: 2999,
-    lessons: 12,
-    duration: "6:45:20",
-    language: "English",
-    level: "Beginner",
-    rating: 4,
-    reviews: 15,
-    category: "Game Design",
-    isFree: true,
-  },
-  {
-    id: 4,
-    title: "STEM Fundamentals",
-    provider: "Kodable Education",
-    description:
-      "Comprehensive STEM education program covering science, technology, engineering, and mathematics through hands-on projects and interactive learning.",
-    image: "/placeholder.svg?height=200&width=300",
-    price: 5999,
-    originalPrice: 7999,
-    lessons: 25,
-    duration: "15:30:00",
-    language: "English",
-    level: "Advanced",
-    rating: 5,
-    reviews: 20,
-    category: "STEM Education",
-    isFree: false,
-  },
-  {
-    id: 5,
-    title: "Game Design Workshop",
-    provider: "Kodable Education",
-    description:
-      "Learn to design and create your own video games using real programming concepts in a fun and engaging environment.",
-    image: "/placeholder.svg?height=200&width=300",
-    price: 3999,
-    originalPrice: 4999,
-    lessons: 18,
-    duration: "10:20:15",
-    language: "Spanish",
-    level: "Intermediate",
-    rating: 4,
-    reviews: 10,
-    category: "Game Design",
-    isFree: false,
-  },
-  {
-    id: 6,
-    title: "Robotics & AI",
-    provider: "Kodable Education",
-    description:
-      "Introduction to robotics and artificial intelligence concepts through practical projects and interactive simulations.",
-    image: "/placeholder.svg?height=200&width=300",
-    price: 6999,
-    originalPrice: 8999,
-    lessons: 22,
-    duration: "14:45:30",
-    language: "English",
-    level: "Advanced",
-    rating: 5,
-    reviews: 18,
-    category: "Robotics",
-    isFree: false,
-  },
-]
-
 export default function CoursesPage() {
   const router = useRouter()
+  const [allCourses, setAllCourses] = useState<any[]>([])
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [filters, setFilters] = useState({
     category: "All category",
@@ -133,17 +23,26 @@ export default function CoursesPage() {
   })
   const [cartItems, setCartItems] = useState<number[]>([])
 
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const res = await fetch("/api/courses")
+      const data = await res.json()
+      setAllCourses(data)
+    }
+    fetchCourses()
+  }, [])
+
   const filteredCourses = useMemo(() => {
     return allCourses.filter((course) => {
       if (filters.category !== "All category" && course.category !== filters.category) return false
-      if (filters.price === "Free" && !course.isFree) return false
-      if (filters.price === "Paid" && course.isFree) return false
+      if (filters.price === "Free" && !course.is_free) return false
+      if (filters.price === "Paid" && course.is_free) return false
       if (filters.level !== "All" && course.level !== filters.level) return false
       if (filters.language !== "All" && course.language !== filters.language) return false
       if (filters.rating !== "All" && course.rating < Number.parseInt(filters.rating)) return false
       return true
     })
-  }, [filters])
+  }, [filters, allCourses])
 
   const handleEnrollNow = (e: React.MouseEvent, courseId: number) => {
     e.preventDefault()
@@ -263,7 +162,7 @@ export default function CoursesPage() {
                               </div>
                               <Badge variant="secondary">{course.language}</Badge>
                               <Badge variant="outline">{course.level}</Badge>
-                              {course.isFree && <Badge className="bg-green-100 text-green-800">Free</Badge>}
+                              {course.is_free && <Badge className="bg-green-100 text-green-800">Free</Badge>}
                             </div>
 
                             <div className="flex items-center gap-1">
@@ -280,14 +179,14 @@ export default function CoursesPage() {
 
                             <div className="flex items-center justify-between mt-auto">
                               <div className="flex items-center gap-2">
-                                {course.isFree ? (
+                                {course.is_free ? (
                                   <span className="text-2xl font-bold text-green-600">Free</span>
                                 ) : (
                                   <>
                                     <span className="text-2xl font-bold text-pink-600">₹{course.price}</span>
-                                    {course.originalPrice && (
+                                    {course.original_price && (
                                       <span className="text-sm text-gray-500 line-through">
-                                        ₹{course.originalPrice}
+                                        ₹{course.original_price}
                                       </span>
                                     )}
                                   </>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { CourseStats } from "@/components/courses/course-stats"
 import { CourseFilters } from "@/components/courses/course-filters"
@@ -11,57 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-// Mock data
-const mockCourses = [
-  {
-    id: 1,
-    title: "A-Tiny",
-    instructor: "Aiskool Mumbai",
-    category: "Beginner",
-    sections: 3,
-    lessons: 17,
-    enrolled: 14,
-    status: "Active",
-    price: "Free",
-  },
-  {
-    id: 2,
-    title: "PROTON-BLOCKS",
-    instructor: "Aiskool Mumbai",
-    category: "Beginner",
-    sections: 4,
-    lessons: 14,
-    enrolled: 21,
-    status: "Active",
-    price: "Free",
-  },
-  {
-    id: 3,
-    title: "SCRATCH-JUNIOR",
-    instructor: "Aiskool Mumbai",
-    category: "Beginner",
-    sections: 4,
-    lessons: 20,
-    enrolled: 13,
-    status: "Active",
-    price: "Free",
-  },
-  {
-    id: 4,
-    title: "PROTON BLOCK PLUS",
-    instructor: "Aiskool Mumbai",
-    category: "Beginner",
-    sections: 0,
-    lessons: 0,
-    enrolled: 4,
-    status: "Active",
-    price: "₹5600",
-  },
-]
-
 export default function CoursesPage() {
   const router = useRouter()
-  const [courses, setCourses] = useState(mockCourses)
+  const [courses, setCourses] = useState<any[]>([])
   const [filters, setFilters] = useState({
     category: "all",
     status: "all",
@@ -69,13 +21,22 @@ export default function CoursesPage() {
     price: "all",
   })
 
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const res = await fetch("/api/courses")
+      const data = await res.json()
+      setCourses(data)
+    }
+    fetchCourses()
+  }, [])
+
   // Calculate stats
   const stats = useMemo(
     () => ({
-      active: courses.filter((c) => c.status.toLowerCase() === "active").length,
-      pending: courses.filter((c) => c.status.toLowerCase() === "pending").length,
-      free: courses.filter((c) => c.price === "Free").length,
-      paid: courses.filter((c) => c.price !== "Free").length,
+      active: courses.filter((c) => c.status === "Active").length,
+      pending: courses.filter((c) => c.status === "Pending").length,
+      free: courses.filter((c) => c.is_free).length,
+      paid: courses.filter((c) => !c.is_free).length,
     }),
     [courses],
   )
@@ -84,12 +45,9 @@ export default function CoursesPage() {
   const filteredCourses = useMemo(() => {
     return courses.filter((course) => {
       if (filters.category !== "all" && course.category.toLowerCase() !== filters.category) return false
-      if (filters.status !== "all" && course.status.toLowerCase() !== filters.status) return false
-      if (filters.instructor !== "all" && course.instructor.toLowerCase().replace(/\s+/g, "-") !== filters.instructor)
-        return false
       if (filters.price !== "all") {
-        if (filters.price === "free" && course.price !== "Free") return false
-        if (filters.price === "paid" && course.price === "Free") return false
+        if (filters.price === "free" && !course.is_free) return false
+        if (filters.price === "paid" && course.is_free) return false
       }
       return true
     })
@@ -100,11 +58,10 @@ export default function CoursesPage() {
   }
 
   const handleApplyFilters = () => {
-    // Filters are applied automatically via useMemo
     console.log("Filters applied:", filters)
   }
 
-  const handleAction = (action: string, course: any) => {
+  const handleAction = async (action: string, course: any) => {
     switch (action) {
       case "view":
         window.open(`/courses/${course.id}`, "_blank")
@@ -115,10 +72,8 @@ export default function CoursesPage() {
       case "sections":
         router.push(`/admin/courses/${course.id}/edit`)
         break
-      case "pending":
-        setCourses(courses.map((c) => (c.id === course.id ? { ...c, status: "Pending" } : c)))
-        break
       case "delete":
+        await fetch(`/api/courses/${course.id}`, { method: "DELETE" })
         setCourses(courses.filter((c) => c.id !== course.id))
         break
     }
@@ -139,7 +94,7 @@ export default function CoursesPage() {
 
         <CourseFilters filters={filters} onFilterChange={handleFilterChange} onApplyFilters={handleApplyFilters} />
 
-        <DataTable data={filteredCourses} searchFields={["title", "instructor"]} title="Course Management">
+        <DataTable data={filteredCourses} searchFields={["title", "provider"]} title="Course Management">
           {(paginatedData) => (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -150,7 +105,6 @@ export default function CoursesPage() {
                     <th className="text-left p-4 font-medium">Category</th>
                     <th className="text-left p-4 font-medium">Lesson and section</th>
                     <th className="text-left p-4 font-medium">Enrolled student</th>
-                    <th className="text-left p-4 font-medium">Status</th>
                     <th className="text-left p-4 font-medium">Price</th>
                     <th className="text-left p-4 font-medium">Actions</th>
                   </tr>
@@ -162,7 +116,7 @@ export default function CoursesPage() {
                       <td className="p-4">
                         <div>
                           <div className="font-medium text-blue-600">{course.title}</div>
-                          <div className="text-sm text-gray-500">Instructor: {course.instructor}</div>
+                          <div className="text-sm text-gray-500">Provider: {course.provider}</div>
                         </div>
                       </td>
                       <td className="p-4">
@@ -170,24 +124,20 @@ export default function CoursesPage() {
                       </td>
                       <td className="p-4">
                         <div className="text-sm">
-                          <div>Total section: {course.sections}</div>
+                          <div>Total section: N/A</div>
                           <div>Total lesson: {course.lessons}</div>
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="text-sm">Total enrolment: {course.enrolled}</div>
+                        <div className="text-sm">Total enrolment: {course.reviews}</div>
                       </td>
-                      <td className="p-4">
-                        <Badge variant={course.status === "Active" ? "default" : "secondary"}>{course.status}</Badge>
-                      </td>
-                      <td className="p-4 font-medium">{course.price}</td>
+                      <td className="p-4 font-medium">{course.is_free ? "Free" : `₹${course.price}`}</td>
                       <td className="p-4">
                         <ActionDropdown
                           actions={[
                             { label: "View course on frontend", value: "view" },
                             { label: "Edit this course", value: "edit" },
                             { label: "Section and lesson", value: "sections" },
-                            { label: "Mark as pending", value: "pending" },
                             { label: "Delete", value: "delete", variant: "destructive" },
                           ]}
                           onAction={(action) => handleAction(action, course)}

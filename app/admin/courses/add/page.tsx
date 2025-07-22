@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { MultiStepForm } from "@/components/forms/multi-step-form"
 import { courseTabs } from "@/lib/course-tabs"
@@ -11,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, CheckCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 export default function AddCoursePage() {
   const router = useRouter()
@@ -19,114 +19,122 @@ export default function AddCoursePage() {
     title: "",
     description: "",
     category: "",
-    requirements: "",
-    outcomes: "",
-    pricing: "free",
-    price: "",
-    mediaProvider: "youtube",
-    mediaUrl: "",
-    thumbnail: null as File | null,
-    metaKeywords: "",
-    metaDescription: "",
+    level: "",
+    language: "",
+    provider: "",
+    duration: "",
+    price: 0,
+    original_price: 0,
+    lessons: 0,
+    rating: 0,
+    reviews: 0,
+    is_free: true,
+    image: null as File | null,
   })
 
   const handleInputChange = (field: string, value: any) => {
     setCourseData({ ...courseData, [field]: value })
   }
 
-  const handleComplete = (data: any) => {
-    console.log("Course created:", { ...courseData, ...data })
-    // Here you would typically save to database
-    router.push("/admin/courses")
+  const handleComplete = async () => {
+    const { image, ...courseDetails } = courseData
+    const res = await fetch("/api/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(courseDetails),
+    })
+
+    if (res.ok) {
+      router.push("/admin/courses")
+    } else {
+      console.error("Error creating course")
+    }
   }
 
   const steps = [
-    // Curriculum Tab
-    <div key="curriculum" className="space-y-6">
-      <h2 className="text-2xl font-bold">Course Curriculum</h2>
-      <p className="text-gray-600">Set up your course structure with sections and lessons.</p>
-      <div className="bg-blue-50 p-6 rounded-lg">
-        <p className="text-blue-800">
-          You can add sections, lessons, quizzes, and assignments after creating the basic course information.
-        </p>
-      </div>
-    </div>,
-
-    // Basic Tab
     <div key="basic" className="space-y-6">
       <h2 className="text-2xl font-bold">Basic Information</h2>
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <Label htmlFor="title">Course Title *</Label>
+          <Input id="title" value={courseData.title} onChange={(e) => handleInputChange("title", e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor="provider">Provider</Label>
           <Input
-            id="title"
-            value={courseData.title}
-            onChange={(e) => handleInputChange("title", e.target.value)}
-            placeholder="Enter course title"
-            required
+            id="provider"
+            value={courseData.provider}
+            onChange={(e) => handleInputChange("provider", e.target.value)}
+          />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="description">Course Description *</Label>
+        <Textarea
+          id="description"
+          value={courseData.description}
+          onChange={(e) => handleInputChange("description", e.target.value)}
+        />
+      </div>
+    </div>,
+    <div key="details" className="space-y-6">
+      <h2 className="text-2xl font-bold">Course Details</h2>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div>
+          <Label htmlFor="category">Category</Label>
+          <Input
+            id="category"
+            value={courseData.category}
+            onChange={(e) => handleInputChange("category", e.target.value)}
           />
         </div>
         <div>
-          <Label htmlFor="description">Course Description *</Label>
-          <Textarea
-            id="description"
-            value={courseData.description}
-            onChange={(e) => handleInputChange("description", e.target.value)}
-            placeholder="Enter course description"
-            rows={4}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="category">Category *</Label>
-          <Select value={courseData.category} onValueChange={(value) => handleInputChange("category", value)}>
+          <Label htmlFor="level">Level</Label>
+          <Select value={courseData.level} onValueChange={(value) => handleInputChange("level", value)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select category" />
+              <SelectValue placeholder="Select level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="beginner">Beginner</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
+              <SelectItem value="Beginner">Beginner</SelectItem>
+              <SelectItem value="Intermediate">Intermediate</SelectItem>
+              <SelectItem value="Advanced">Advanced</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        <div>
+          <Label htmlFor="language">Language</Label>
+          <Input
+            id="language"
+            value={courseData.language}
+            onChange={(e) => handleInputChange("language", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="duration">Duration</Label>
+          <Input
+            id="duration"
+            value={courseData.duration}
+            onChange={(e) => handleInputChange("duration", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="lessons">Total Lessons</Label>
+          <Input
+            id="lessons"
+            type="number"
+            value={courseData.lessons}
+            onChange={(e) => handleInputChange("lessons", Number(e.target.value))}
+          />
+        </div>
       </div>
     </div>,
 
-    // Requirements Tab
-    <div key="requirements" className="space-y-6">
-      <h2 className="text-2xl font-bold">Course Requirements</h2>
-      <div>
-        <Label htmlFor="requirements">Prerequisites</Label>
-        <Textarea
-          id="requirements"
-          value={courseData.requirements}
-          onChange={(e) => handleInputChange("requirements", e.target.value)}
-          placeholder="List any prerequisites for this course"
-          rows={4}
-        />
-      </div>
-    </div>,
-
-    // Outcomes Tab
-    <div key="outcomes" className="space-y-6">
-      <h2 className="text-2xl font-bold">Learning Outcomes</h2>
-      <div>
-        <Label htmlFor="outcomes">What will students learn?</Label>
-        <Textarea
-          id="outcomes"
-          value={courseData.outcomes}
-          onChange={(e) => handleInputChange("outcomes", e.target.value)}
-          placeholder="Describe what students will achieve after completing this course"
-          rows={4}
-        />
-      </div>
-    </div>,
-
-    // Pricing Tab
     <div key="pricing" className="space-y-6">
       <h2 className="text-2xl font-bold">Course Pricing</h2>
-      <RadioGroup value={courseData.pricing} onValueChange={(value) => handleInputChange("pricing", value)}>
+      <RadioGroup
+        value={courseData.is_free ? "free" : "paid"}
+        onValueChange={(value) => handleInputChange("is_free", value === "free")}
+      >
         <div className="flex items-center space-x-2">
           <RadioGroupItem value="free" id="free" />
           <Label htmlFor="free">Free Course</Label>
@@ -136,88 +144,47 @@ export default function AddCoursePage() {
           <Label htmlFor="paid">Paid Course</Label>
         </div>
       </RadioGroup>
-      {courseData.pricing === "paid" && (
-        <div>
-          <Label htmlFor="price">Price</Label>
-          <Input
-            id="price"
-            type="number"
-            value={courseData.price}
-            onChange={(e) => handleInputChange("price", e.target.value)}
-            placeholder="Enter price"
-          />
+      {!courseData.is_free && (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            <Label htmlFor="price">Price</Label>
+            <Input
+              id="price"
+              type="number"
+              value={courseData.price}
+              onChange={(e) => handleInputChange("price", Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="original_price">Original Price</Label>
+            <Input
+              id="original_price"
+              type="number"
+              value={courseData.original_price}
+              onChange={(e) => handleInputChange("original_price", Number(e.target.value))}
+            />
+          </div>
         </div>
       )}
     </div>,
 
-    // Media Tab
     <div key="media" className="space-y-6">
       <h2 className="text-2xl font-bold">Course Media</h2>
-      <div>
-        <Label>Course overview provider</Label>
-        <Select value={courseData.mediaProvider} onValueChange={(value) => handleInputChange("mediaProvider", value)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="youtube">YouTube</SelectItem>
-            <SelectItem value="vimeo">Vimeo</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label htmlFor="mediaUrl">Course overview url</Label>
-        <Input
-          id="mediaUrl"
-          value={courseData.mediaUrl}
-          onChange={(e) => handleInputChange("mediaUrl", e.target.value)}
-          placeholder="E.g: https://www.youtube.com/watch?v=aBtfYglw2w"
-        />
-      </div>
       <div>
         <Label htmlFor="thumbnail">Course thumbnail</Label>
         <Input
           id="thumbnail"
           type="file"
           accept="image/*"
-          onChange={(e) => handleInputChange("thumbnail", e.target.files?.[0] || null)}
-        />
-        <div className="mt-2 w-32 h-20 bg-gray-200 rounded flex items-center justify-center text-gray-500 text-sm">
-          600x400 (6:4)
-        </div>
-      </div>
-    </div>,
-
-    // SEO Tab
-    <div key="seo" className="space-y-6">
-      <h2 className="text-2xl font-bold">SEO Settings</h2>
-      <div>
-        <Label htmlFor="metaKeywords">Meta keywords</Label>
-        <Input
-          id="metaKeywords"
-          value={courseData.metaKeywords}
-          onChange={(e) => handleInputChange("metaKeywords", e.target.value)}
-          placeholder="Write a keyword and then press enter button"
-        />
-      </div>
-      <div>
-        <Label htmlFor="metaDescription">Meta description</Label>
-        <Textarea
-          id="metaDescription"
-          value={courseData.metaDescription}
-          onChange={(e) => handleInputChange("metaDescription", e.target.value)}
-          placeholder="Enter meta description"
-          rows={4}
+          onChange={(e) => handleInputChange("image", e.target.files?.[0] || null)}
         />
       </div>
     </div>,
 
-    // Finish Tab
     <div key="finish" className="space-y-6 text-center">
       <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
       <h2 className="text-2xl font-bold">Thank you !</h2>
       <p className="text-gray-600">You are just one click away</p>
-      <Button className="bg-blue-600 hover:bg-blue-700">Submit</Button>
     </div>,
   ]
 
@@ -233,9 +200,7 @@ export default function AddCoursePage() {
         </div>
 
         <div className="bg-white rounded-lg border p-6">
-          <h2 className="text-lg font-semibold mb-6">COURSE ADDING FORM</h2>
-
-          <MultiStepForm steps={courseTabs} onComplete={handleComplete}>
+          <MultiStepForm steps={courseTabs.map(t => ({id: t.id, title: t.label, icon: t.icon}))} onComplete={handleComplete}>
             {steps}
           </MultiStepForm>
         </div>
