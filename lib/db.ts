@@ -6,14 +6,19 @@ let db: Database | null = null;
 
 export async function getDb() {
   if (!db) {
-    const sqlite3Db = new sqlite3.Database("./lms.db", (err) => {
+    // Use in-memory database for Vercel deployment
+    // This will work for read operations during runtime but won't persist data between function invocations
+    const isProduction = process.env.NODE_ENV === 'production';
+    const dbPath = isProduction ? ':memory:' : './lms.db';
+    
+    const sqlite3Db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
         console.error("Error opening database", err);
       }
     });
 
     db = await open({
-      filename: "./lms.db",
+      filename: dbPath,
       driver: sqlite3.Database,
     });
 
@@ -54,6 +59,9 @@ export async function getDb() {
         title TEXT NOT NULL,
         type TEXT,
         sort_order INTEGER,
+        content TEXT,
+        duration INTEGER,
+        is_preview BOOLEAN DEFAULT 0,
         FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
       );
 
@@ -61,6 +69,9 @@ export async function getDb() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         section_id INTEGER NOT NULL,
         title TEXT NOT NULL,
+        description TEXT,
+        time_limit INTEGER,
+        passing_score INTEGER,
         FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
       );
 
@@ -68,13 +79,36 @@ export async function getDb() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         section_id INTEGER NOT NULL,
         title TEXT NOT NULL,
+        description TEXT,
+        due_date TEXT,
+        max_score INTEGER,
         FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
       );
-    `);
 
-    // Insert mock data if table is empty
-    const count = await db.get("SELECT COUNT(*) as count FROM courses");
-    if (count.count === 0) {
+      CREATE TABLE IF NOT EXISTS enrollments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        course_id INTEGER NOT NULL,
+        enrollment_date TEXT,
+        completion_status TEXT,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+      );
+    `);
+    
+    // If using in-memory database in production, we need to ensure data is loaded each time
+    if (isProduction) {
+      console.log("Running in production mode with in-memory database");
+      // Additional initialization for in-memory database can be added here
+    }
+
+    // Always insert mock data when using in-memory database in production
+    // or insert if table is empty in development
+    const shouldInsertData = isProduction || (await db.get("SELECT COUNT(*) as count FROM courses")).count === 0;
+    
+    if (shouldInsertData) {
+      console.log("Inserting sample data into database");
+      
+      // Insert sample course
       const result = await db.run(
         `INSERT INTO courses (
           title, provider, description, image, price, original_price, lessons,
@@ -102,11 +136,24 @@ export async function getDb() {
           "A beginner-friendly introduction to coding for kids.",
         ]
       );
+      
       const courseId = result.lastID;
       if(courseId) {
-        await db.run(`INSERT INTO sections (course_id, title, sort_order) VALUES (?, ?, ?)`, [courseId, "Getting Started", 1]);
+        // Insert sample section
+        const sectionResult = await db.run(
+          `INSERT INTO sections (course_id, title, sort_order) VALUES (?, ?, ?)`, 
+          [courseId, "Getting Started", 1]
+        );
+        
+        // Insert sample lesson in the section
+        if (sectionResult.lastID) {
+          await db.run(
+            `INSERT INTO lessons (section_id, title, type, sort_order, content, duration, is_preview) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [sectionResult.lastID, "Introduction to the Course", "video", 1, "Welcome to the course content", 300, 1]
+          );
+        }
       }
     }
   }
   return db;
-} 
+}

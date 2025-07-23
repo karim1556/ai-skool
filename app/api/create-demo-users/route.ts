@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 
+export const dynamic = 'force-dynamic';
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -114,9 +116,11 @@ export async function POST() {
     for (const userData of demoUsers) {
       try {
         // Check if user already exists
-        const { data: existingUser } = await supabase.auth.admin.getUserByEmail(userData.email)
+        const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers()
+        
+        const existingUser = existingUsers?.users?.find(user => user.email === userData.email)
 
-        if (existingUser.user) {
+        if (existingUser) {
           results.push({ email: userData.email, status: "already_exists" })
           continue
         }
