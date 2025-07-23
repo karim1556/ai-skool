@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const db = await getDb();
   const { sections } = await req.json();
@@ -17,4 +19,4 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   await Promise.all(promises);
 
   return NextResponse.json({ message: "Sections sorted" });
-} 
+}

@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest, { params }: { params: { sectionId: string } }) {
   const db = await getDb();
   const lessons = await db.all("SELECT * FROM lessons WHERE section_id = ? ORDER BY sort_order", [params.sectionId]);
@@ -17,4 +19,4 @@ export async function POST(req: NextRequest, { params }: { params: { sectionId: 
     type,
   ]);
   return NextResponse.json({ id: result.lastID, title, type });
-} 
+}

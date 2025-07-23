@@ -23,26 +23,37 @@ export default function CoursesPage() {
 
   useEffect(() => {
     const fetchCourses = async () => {
-      const res = await fetch("/api/courses")
-      const data = await res.json()
-      setCourses(data)
+      try {
+        const res = await fetch("/api/courses")
+        const data = await res.json()
+        setCourses(Array.isArray(data) ? data : [])
+      } catch (error) {
+        console.error("Error fetching courses:", error)
+        setCourses([])
+      }
     }
     fetchCourses()
   }, [])
 
   // Calculate stats
   const stats = useMemo(
-    () => ({
-      active: courses.filter((c) => c.status === "Active").length,
-      pending: courses.filter((c) => c.status === "Pending").length,
-      free: courses.filter((c) => c.is_free).length,
-      paid: courses.filter((c) => !c.is_free).length,
-    }),
+    () => {
+      if (!Array.isArray(courses)) return { active: 0, pending: 0, free: 0, paid: 0 }
+      
+      return {
+        active: courses.filter((c) => c.status === "Active").length,
+        pending: courses.filter((c) => c.status === "Pending").length,
+        free: courses.filter((c) => c.is_free).length,
+        paid: courses.filter((c) => !c.is_free).length,
+      }
+    },
     [courses],
   )
 
   // Filter courses based on selected filters
   const filteredCourses = useMemo(() => {
+    if (!Array.isArray(courses)) return []
+    
     return courses.filter((course) => {
       if (filters.category !== "all" && course.category.toLowerCase() !== filters.category) return false
       if (filters.price !== "all") {

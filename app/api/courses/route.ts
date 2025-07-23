@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const db = await getDb();
   const courses = await db.all("SELECT * FROM courses");
@@ -39,4 +41,4 @@ export async function POST(req: NextRequest) {
     ]
   );
   return NextResponse.json({ id: result.lastID });
-} 
+}

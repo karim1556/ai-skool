@@ -4,6 +4,8 @@ import { getDb } from "@/lib/db";
 import fs from "fs/promises";
 import path from "path";
 
+export const dynamic = 'force-dynamic';
+
 export const config = {
   api: {
     bodyParser: false,
@@ -70,4 +72,4 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const db = await getDb();
   await db.run("DELETE FROM courses WHERE id = ?", [params.id]);
   return NextResponse.json({ message: "Course deleted" });
-} 
+}
