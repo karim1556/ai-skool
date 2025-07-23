@@ -2,6 +2,18 @@
 import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 
+// Enable verbose mode for better debugging
+sqlite3.verbose();
+
+// Import better-sqlite3 for potential fallback
+let betterSqlite3: any;
+try {
+  betterSqlite3 = require('better-sqlite3');
+  console.log('better-sqlite3 loaded successfully');
+} catch (error) {
+  console.log('better-sqlite3 not available, will use sqlite3');
+}
+
 let db: Database | null = null;
 
 export async function getDb() {
@@ -11,16 +23,64 @@ export async function getDb() {
     const isProduction = process.env.NODE_ENV === 'production';
     const dbPath = isProduction ? ':memory:' : './lms.db';
     
-    const sqlite3Db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        console.error("Error opening database", err);
-      }
-    });
+    try {
+      // For production (Vercel), we'll use a more robust approach to handle SQLite in serverless
+      if (isProduction) {
+        console.log('Running in production mode with in-memory SQLite database');
+        
+        // Try to use better-sqlite3 first if available (may work better in serverless)
+        if (betterSqlite3) {
+          try {
+            console.log('Attempting to use better-sqlite3 for in-memory database');
+            const betterDb = new betterSqlite3(':memory:');
+            
+            // We need to wrap better-sqlite3 to match the sqlite interface
+            db = {
+              exec: (sql: string) => Promise.resolve(betterDb.exec(sql)),
+              all: (sql: string, params: any[] = []) => Promise.resolve(betterDb.prepare(sql).all(...params)),
+              get: (sql: string, params: any[] = []) => Promise.resolve(betterDb.prepare(sql).get(...params)),
+              run: (sql: string, params: any[] = []) => Promise.resolve(betterDb.prepare(sql).run(...params)),
+              close: () => Promise.resolve(betterDb.close())
+            } as unknown as Database;
+            
+            console.log('Successfully initialized better-sqlite3 in-memory database');
+          } catch (betterError) {
+            console.error('Failed to initialize better-sqlite3:', betterError);
+            console.log('Falling back to regular sqlite3...');
+            // Fall back to regular sqlite3
+            db = await open({
+              filename: ':memory:',
+              driver: sqlite3.Database,
+            });
+            console.log('In-memory SQLite database opened successfully with sqlite3');
+          }
+        } else {
+          // Use regular sqlite3 if better-sqlite3 is not available
+          db = await open({
+            filename: ':memory:',
+            driver: sqlite3.Database,
+          });
+          console.log('In-memory SQLite database opened successfully with sqlite3');
+        }
+      } else {
+        // Development mode - use file-based database with regular sqlite3
+        const sqlite3Db = new sqlite3.Database(dbPath, (err) => {
+          if (err) {
+            console.error("Error opening database", err);
+          }
+        });
 
-    db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database,
-    });
+        db = await open({
+          filename: dbPath,
+          driver: sqlite3.Database,
+        });
+        
+        console.log(`SQLite database opened successfully at ${dbPath}`);
+      }
+    } catch (error) {
+      console.error("Failed to initialize SQLite database:", error);
+      throw error;
+    }
 
     await db.exec(`
       CREATE TABLE IF NOT EXISTS courses (
