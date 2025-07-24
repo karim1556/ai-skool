@@ -1,8 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import path from 'path';
-import fs from 'fs/promises';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +22,20 @@ export async function POST(req: NextRequest) {
     // Handle image upload
     const imageFile = formData.get("image") as File | null;
     if (imageFile && imageFile.size > 0) {
-      const uploadDir = path.join(process.cwd(), "public/uploads");
-      await fs.mkdir(uploadDir, { recursive: true });
-      const newImagePath = path.join(uploadDir, imageFile.name);
-      await fs.writeFile(newImagePath, Buffer.from(await imageFile.arrayBuffer()));
-      imagePath = `/uploads/${imageFile.name}`;
+      const fileName = `${Date.now()}-${imageFile.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('course-thumbnails')
+        .upload(fileName, imageFile);
+
+      if (uploadError) {
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('course-thumbnails')
+        .getPublicUrl(fileName);
+
+      imagePath = urlData.publicUrl;
     }
 
     // Process other form fields

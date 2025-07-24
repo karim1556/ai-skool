@@ -1,8 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import fs from "fs/promises";
-import path from "path";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = 'force-dynamic';
 
@@ -45,12 +44,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Handle image upload or existing image path
     const imageValue = formData.get("image");
     if (imageValue instanceof File && imageValue.size > 0) {
-      // New file is uploaded
-      const uploadDir = path.join(process.cwd(), "public/uploads");
-      await fs.mkdir(uploadDir, { recursive: true });
-      const imagePath = path.join(uploadDir, imageValue.name);
-      await fs.writeFile(imagePath, Buffer.from(await imageValue.arrayBuffer()));
-      updates.image = `/uploads/${imageValue.name}`;
+      // New file is uploaded, upload to Supabase
+      const fileName = `${Date.now()}-${imageValue.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('course-thumbnails')
+        .upload(fileName, imageValue);
+
+      if (uploadError) {
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('course-thumbnails')
+        .getPublicUrl(fileName);
+
+      updates.image = urlData.publicUrl;
     } else if (typeof imageValue === 'string') {
       // Existing image path is passed
       updates.image = imageValue;
