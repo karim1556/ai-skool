@@ -9,7 +9,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const { sections } = await req.json();
 
   const promises = sections.map((section: { id: number; sort_order: number }, index: number) => {
-    return db.run("UPDATE sections SET sort_order = ? WHERE id = ? AND course_id = ?", [
+    return db.run("UPDATE sections SET sort_order = $1 WHERE id = $2 AND course_id = $3", [
       index,
       section.id,
       params.id,

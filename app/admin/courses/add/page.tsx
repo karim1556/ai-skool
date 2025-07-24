@@ -26,9 +26,13 @@ export default function AddCoursePage() {
     price: 0,
     original_price: 0,
     lessons: 0,
-    rating: 0,
     reviews: 0,
+    rating: 0,
+    students: 0,
     is_free: true,
+    requirements: "",
+    meta_keywords: "",
+    meta_description: "",
     image: null as File | null,
   })
 
@@ -37,19 +41,33 @@ export default function AddCoursePage() {
   }
 
   const handleComplete = async () => {
-    const { image, ...courseDetails } = courseData
-    const res = await fetch("/api/courses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(courseDetails),
-    })
+    const formData = new FormData();
+    Object.entries(courseData).forEach(([key, value]) => {
+      if (value === null || value === undefined) return;
+
+      if (key === 'image' && value instanceof File) {
+        formData.append(key, value);
+      } else if (Array.isArray(value)) {
+        formData.append(key, value.join(','));
+      } else if (value instanceof File) {
+        // Do not append if it's a file but not the image key (or handle as needed)
+      } else {
+        formData.append(key, String(value));
+      }
+    });
+
+    const res = await fetch('/api/courses', {
+      method: 'POST',
+      body: formData,
+    });
 
     if (res.ok) {
-      router.push("/admin/courses")
+      router.push('/admin/courses');
     } else {
-      console.error("Error creating course")
+      const errorData = await res.json();
+      console.error('Error creating course:', errorData.details || 'Unknown error');
     }
-  }
+  };
 
   const steps = [
     <div key="basic" className="space-y-6">
@@ -126,6 +144,49 @@ export default function AddCoursePage() {
             onChange={(e) => handleInputChange("lessons", Number(e.target.value))}
           />
         </div>
+        <div>
+          <Label htmlFor="students">Number of Students</Label>
+          <Input
+            id="students"
+            type="number"
+            value={courseData.students}
+            onChange={(e) => handleInputChange("students", Number(e.target.value))}
+          />
+        </div>
+        <div>
+          <Label htmlFor="reviews">Number of Reviews</Label>
+          <Input
+            id="reviews"
+            type="number"
+            value={courseData.reviews}
+            onChange={(e) => handleInputChange("reviews", Number(e.target.value))}
+          />
+        </div>
+        <div>
+          <Label htmlFor="rating">Rating (0-5)</Label>
+          <Input
+            id="rating"
+            type="number"
+            step="0.1"
+            min="0"
+            max="5"
+            value={courseData.rating}
+            onChange={(e) => handleInputChange("rating", Number(e.target.value))}
+          />
+        </div>
+      </div>
+    </div>,
+
+    <div key="requirements" className="space-y-6">
+      <h2 className="text-2xl font-bold">Course Requirements & Outcomes</h2>
+      <div>
+        <Label htmlFor="requirements">Course Requirements</Label>
+        <Textarea
+          id="requirements"
+          value={courseData.requirements}
+          onChange={(e) => handleInputChange("requirements", e.target.value)}
+          placeholder="What prerequisites are needed for this course?"
+        />
       </div>
     </div>,
 
@@ -177,6 +238,35 @@ export default function AddCoursePage() {
           type="file"
           accept="image/*"
           onChange={(e) => handleInputChange("image", e.target.files?.[0] || null)}
+        />
+        {courseData.image && (
+          <img 
+            src={URL.createObjectURL(courseData.image)} 
+            alt="Course thumbnail preview" 
+            className="mt-4 w-48 h-auto" 
+          />
+        )}
+      </div>
+    </div>,
+
+    <div key="seo" className="space-y-6">
+      <h2 className="text-2xl font-bold">SEO & Marketing</h2>
+      <div>
+        <Label htmlFor="meta_description">Meta Description</Label>
+        <Textarea
+          id="meta_description"
+          value={courseData.meta_description}
+          onChange={(e) => handleInputChange("meta_description", e.target.value)}
+          placeholder="Brief description for search engines (150-160 characters)"
+        />
+      </div>
+      <div>
+        <Label htmlFor="meta_keywords">Meta Keywords</Label>
+        <Input
+          id="meta_keywords"
+          value={courseData.meta_keywords}
+          onChange={(e) => handleInputChange("meta_keywords", e.target.value)}
+          placeholder="Comma-separated keywords for SEO"
         />
       </div>
     </div>,

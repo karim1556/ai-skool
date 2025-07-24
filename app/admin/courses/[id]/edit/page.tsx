@@ -38,16 +38,51 @@ export default function EditCoursePage() {
   useEffect(() => {
     const fetchCourse = async () => {
       if (id) {
-        const res = await fetch(`/api/courses/${id}`)
-        const data = await res.json()
-        setCourseData(data)
+        try {
+          const res = await fetch(`/api/courses/${id}`)
+          if (res.ok) {
+            const data = await res.json()
+            // Ensure all string fields are not null
+            const cleanData = {
+              ...data,
+              title: data.title || '',
+              description: data.description || '',
+              provider: data.provider || '',
+              category: data.category || '',
+              level: data.level || '',
+              language: data.language || '',
+              duration: data.duration || '',
+              requirements: data.requirements || '',
+              meta_keywords: data.meta_keywords || '',
+              meta_description: data.meta_description || '',
+              image: data.image || '',
+              price: data.price || 0,
+              original_price: data.original_price || 0,
+              lessons: data.lessons || 0,
+              rating: data.rating || 0,
+              reviews: data.reviews || 0,
+              students: data.students || 0,
+              is_free: data.is_free || false
+            }
+            setCourseData(cleanData)
+          }
+        } catch (error) {
+          console.error('Error fetching course:', error)
+        }
       }
     }
     const fetchSections = async () => {
       if (id) {
-        const res = await fetch(`/api/courses/${id}/sections`)
-        const data = await res.json()
-        setSections(data)
+        try {
+          const res = await fetch(`/api/courses/${id}/sections`)
+          if (res.ok) {
+            const data = await res.json()
+            setSections(data || [])
+          }
+        } catch (error) {
+          console.error('Error fetching sections:', error)
+          setSections([])
+        }
       }
     }
     fetchCourse()
@@ -60,14 +95,21 @@ export default function EditCoursePage() {
       const newQuizzes: any = {}
       const newAssignments: any = {}
       for (const section of sections) {
-        const [lessonsRes, quizzesRes, assignmentsRes] = await Promise.all([
-          fetch(`/api/sections/${section.id}/lessons`),
-          fetch(`/api/sections/${section.id}/quizzes`),
-          fetch(`/api/sections/${section.id}/assignments`),
-        ])
-        newLessons[section.id] = await lessonsRes.json()
-        newQuizzes[section.id] = await quizzesRes.json()
-        newAssignments[section.id] = await assignmentsRes.json()
+        try {
+          const [lessonsRes, quizzesRes, assignmentsRes] = await Promise.all([
+            fetch(`/api/sections/${section.id}/lessons`),
+            fetch(`/api/sections/${section.id}/quizzes`),
+            fetch(`/api/sections/${section.id}/assignments`),
+          ])
+          newLessons[section.id] = lessonsRes.ok ? await lessonsRes.json() : []
+          newQuizzes[section.id] = quizzesRes.ok ? await quizzesRes.json() : []
+          newAssignments[section.id] = assignmentsRes.ok ? await assignmentsRes.json() : []
+        } catch (error) {
+          console.error(`Error fetching content for section ${section.id}:`, error)
+          newLessons[section.id] = []
+          newQuizzes[section.id] = []
+          newAssignments[section.id] = []
+        }
       }
       setLessons(newLessons)
       setQuizzes(newQuizzes)
@@ -85,20 +127,38 @@ export default function EditCoursePage() {
   const handleComplete = async () => {
     if (!courseData) return
 
-    const formData = new FormData()
-    for (const key in courseData) {
-      formData.append(key, courseData[key])
-    }
+    try {
+      const formData = new FormData()
+      Object.entries(courseData).forEach(([key, value]) => {
+        if (value === null || value === undefined) return;
 
-    const res = await fetch(`/api/courses/${id}`, {
-      method: "PUT",
-      body: formData,
-    })
+        if (key === 'image') {
+          if (value instanceof File) {
+            formData.append(key, value);
+          } else if (typeof value === 'string') {
+            // Keep existing image path if no new file is selected
+            formData.append(key, value);
+          }
+        } else if (Array.isArray(value)) {
+          formData.append(key, value.join(','));
+        } else {
+          formData.append(key, String(value));
+        }
+      });
 
-    if (res.ok) {
-      router.push("/admin/courses")
-    } else {
-      console.error("Error updating course")
+      const res = await fetch(`/api/courses/${id}`, {
+        method: "PUT",
+        body: formData,
+      })
+
+      if (res.ok) {
+        router.push("/admin/courses")
+      } else {
+        const errorText = await res.text()
+        console.error("Error updating course:", res.status, errorText)
+      }
+    } catch (error) {
+      console.error("Error in handleComplete:", error)
     }
   }
 
@@ -237,13 +297,13 @@ export default function EditCoursePage() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <Label htmlFor="title">Course Title *</Label>
-          <Input id="title" value={courseData.title} onChange={(e) => handleInputChange("title", e.target.value)} />
+          <Input id="title" value={courseData.title || ''} onChange={(e) => handleInputChange("title", e.target.value)} />
         </div>
         <div>
           <Label htmlFor="provider">Provider</Label>
           <Input
             id="provider"
-            value={courseData.provider}
+            value={courseData.provider || ''}
             onChange={(e) => handleInputChange("provider", e.target.value)}
           />
         </div>
@@ -252,30 +312,139 @@ export default function EditCoursePage() {
         <Label htmlFor="description">Course Description *</Label>
         <Textarea
           id="description"
-          value={courseData.description}
+          value={courseData.description || ''}
           onChange={(e) => handleInputChange("description", e.target.value)}
         />
       </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div>
+          <Label htmlFor="category">Category</Label>
+          <Input
+            id="category"
+            value={courseData.category || ''}
+            onChange={(e) => handleInputChange("category", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="language">Language</Label>
+          <Select value={courseData.language || 'English'} onValueChange={(value) => handleInputChange("language", value)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="English">English</SelectItem>
+              <SelectItem value="Spanish">Spanish</SelectItem>
+              <SelectItem value="French">French</SelectItem>
+              <SelectItem value="German">German</SelectItem>
+              <SelectItem value="Chinese">Chinese</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div>
+          <Label htmlFor="level">Level</Label>
+          <Select value={courseData.level || 'Beginner'} onValueChange={(value) => handleInputChange("level", value)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Beginner">Beginner</SelectItem>
+              <SelectItem value="Intermediate">Intermediate</SelectItem>
+              <SelectItem value="Advanced">Advanced</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="duration">Duration</Label>
+          <Input
+            id="duration"
+            value={courseData.duration || ''}
+            onChange={(e) => handleInputChange("duration", e.target.value)}
+            placeholder="e.g., 10 hours"
+          />
+        </div>
+        <div>
+          <Label htmlFor="duration_hours">Duration (Hours)</Label>
+          <Input
+            id="duration_hours"
+            type="number"
+            value={courseData.duration_hours || 0}
+            onChange={(e) => handleInputChange("duration_hours", Number(e.target.value))}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div>
+          <Label htmlFor="lessons">Total Lessons</Label>
+          <Input
+            id="lessons"
+            type="number"
+            value={courseData.lessons || 0}
+            onChange={(e) => handleInputChange("lessons", Number(e.target.value))}
+          />
+        </div>
+        <div>
+          <Label htmlFor="students">Number of Students</Label>
+          <Input
+            id="students"
+            type="number"
+            value={courseData.students || 0}
+            onChange={(e) => handleInputChange("students", Number(e.target.value))}
+          />
+        </div>
+        <div>
+          <Label htmlFor="reviews">Number of Reviews</Label>
+          <Input
+            id="reviews"
+            type="number"
+            value={courseData.reviews || 0}
+            onChange={(e) => handleInputChange("reviews", Number(e.target.value))}
+          />
+        </div>
+        <div>
+          <Label htmlFor="rating">Rating (0-5)</Label>
+          <Input
+            id="rating"
+            type="number"
+            step="0.1"
+            min="0"
+            max="5"
+            value={courseData.rating || 0}
+            onChange={(e) => handleInputChange("rating", Number(e.target.value))}
+          />
+        </div>
+      </div>
     </div>,
     <div key="requirements" className="space-y-6">
-      <h2 className="text-2xl font-bold">Requirements</h2>
-      <Textarea
-        id="requirements"
-        value={courseData.requirements}
-        onChange={(e) => handleInputChange("requirements", e.target.value)}
-        placeholder="List any prerequisites for this course"
-        rows={4}
-      />
-    </div>,
-    <div key="outcomes" className="space-y-6">
-      <h2 className="text-2xl font-bold">Outcomes</h2>
-      <Textarea
-        id="outcomes"
-        value={courseData.outcomes}
-        onChange={(e) => handleInputChange("outcomes", e.target.value)}
-        placeholder="Describe what students will achieve after completing this course"
-        rows={4}
-      />
+      <h2 className="text-2xl font-bold">Course Requirements & Outcomes</h2>
+      <div>
+        <Label htmlFor="requirements">Course Requirements</Label>
+        <Textarea
+          id="requirements"
+          value={courseData.requirements || ''}
+          onChange={(e) => handleInputChange("requirements", e.target.value)}
+          placeholder="What prerequisites are needed for this course?"
+        />
+      </div>
+      <div>
+        <Label htmlFor="objectives">Course Objectives</Label>
+        <Textarea
+          id="objectives"
+          value={Array.isArray(courseData.objectives) ? courseData.objectives.join('\n') : (courseData.objectives || '')}
+          onChange={(e) => handleInputChange("objectives", e.target.value.split('\n').filter(line => line.trim()))}
+          placeholder="List the main objectives of this course (one per line)"
+        />
+      </div>
+      <div>
+        <Label htmlFor="outcomes">Learning Outcomes</Label>
+        <Textarea
+          id="outcomes"
+          value={Array.isArray(courseData.outcomes) ? courseData.outcomes.join('\n') : (courseData.outcomes || '')}
+          onChange={(e) => handleInputChange("outcomes", e.target.value.split('\n').filter(line => line.trim()))}
+          placeholder="What will students learn? (one per line)"
+        />
+      </div>
     </div>,
     <div key="pricing" className="space-y-6">
       <h2 className="text-2xl font-bold">Course Pricing</h2>
@@ -299,7 +468,7 @@ export default function EditCoursePage() {
             <Input
               id="price"
               type="number"
-              value={courseData.price}
+              value={courseData.price || 0}
               onChange={(e) => handleInputChange("price", Number(e.target.value))}
             />
           </div>
@@ -308,7 +477,7 @@ export default function EditCoursePage() {
             <Input
               id="original_price"
               type="number"
-              value={courseData.original_price}
+              value={courseData.original_price || 0}
               onChange={(e) => handleInputChange("original_price", Number(e.target.value))}
             />
           </div>
@@ -326,26 +495,33 @@ export default function EditCoursePage() {
           accept="image/*"
           onChange={(e) => handleInputChange("image", e.target.files?.[0] || null)}
         />
-        {courseData.image && typeof courseData.image === 'string' && <img src={courseData.image} alt="Course thumbnail" className="mt-4 w-48 h-auto" />}
+        {courseData.image && (
+          <img 
+            src={typeof courseData.image === 'string' ? courseData.image : URL.createObjectURL(courseData.image)} 
+            alt="Course thumbnail" 
+            className="mt-4 w-48 h-auto" 
+          />
+        )}
       </div>
     </div>,
     <div key="seo" className="space-y-6">
-      <h2 className="text-2xl font-bold">SEO Settings</h2>
+      <h2 className="text-2xl font-bold">SEO & Marketing</h2>
       <div>
-        <Label htmlFor="meta_keywords">Meta keywords</Label>
-        <Input
-          id="meta_keywords"
-          value={courseData.meta_keywords}
-          onChange={(e) => handleInputChange("meta_keywords", e.target.value)}
+        <Label htmlFor="meta_description">Meta Description</Label>
+        <Textarea
+          id="meta_description"
+          value={courseData.meta_description || ''}
+          onChange={(e) => handleInputChange("meta_description", e.target.value)}
+          placeholder="Brief description for search engines (150-160 characters)"
         />
       </div>
       <div>
-        <Label htmlFor="meta_description">Meta description</Label>
-        <Textarea
-          id="meta_description"
-          value={courseData.meta_description}
-          onChange={(e) => handleInputChange("meta_description", e.target.value)}
-          rows={4}
+        <Label htmlFor="meta_keywords">Meta Keywords</Label>
+        <Input
+          id="meta_keywords"
+          value={courseData.meta_keywords || ''}
+          onChange={(e) => handleInputChange("meta_keywords", e.target.value)}
+          placeholder="Comma-separated keywords for SEO"
         />
       </div>
     </div>,

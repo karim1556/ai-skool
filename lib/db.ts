@@ -1,219 +1,151 @@
 
-import sqlite3 from "sqlite3";
-import { open, Database } from "sqlite";
+import { sql } from '@vercel/postgres';
+import { Pool } from 'pg';
 
-// Enable verbose mode for better debugging
-sqlite3.verbose();
+// Database connection pool
+let pool: Pool | null = null;
 
-// Import better-sqlite3 for potential fallback
-let betterSqlite3: any;
-try {
-  betterSqlite3 = require('better-sqlite3');
-  console.log('better-sqlite3 loaded successfully');
-} catch (error) {
-  console.log('better-sqlite3 not available, will use sqlite3');
+// Database interface to maintain compatibility with existing code
+interface DatabaseInterface {
+  get(query: string, params?: any[]): Promise<any>;
+  all(query: string, params?: any[]): Promise<any[]>;
+  run(query: string, params?: any[]): Promise<{ changes: number; lastInsertRowid?: number }>;
+  exec(query: string): Promise<void>;
+  close(): Promise<void>;
 }
 
-let db: Database | null = null;
+class PostgresDatabase implements DatabaseInterface {
+  private pool: Pool;
 
-export async function getDb() {
-  if (!db) {
-    // Use in-memory database for Vercel deployment
-    // This will work for read operations during runtime but won't persist data between function invocations
-    const isProduction = process.env.NODE_ENV === 'production';
-    const dbPath = isProduction ? ':memory:' : './lms.db';
-    
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
+
+  async get(query: string, params: any[] = []): Promise<any> {
+    const client = await this.pool.connect();
     try {
-      // For production (Vercel), we'll use a more robust approach to handle SQLite in serverless
-      if (isProduction) {
-        console.log('Running in production mode with in-memory SQLite database');
-        
-        // Try to use better-sqlite3 first if available (may work better in serverless)
-        if (betterSqlite3) {
-          try {
-            console.log('Attempting to use better-sqlite3 for in-memory database');
-            const betterDb = new betterSqlite3(':memory:');
-            
-            // We need to wrap better-sqlite3 to match the sqlite interface
-            db = {
-              exec: (sql: string) => Promise.resolve(betterDb.exec(sql)),
-              all: (sql: string, params: any[] = []) => Promise.resolve(betterDb.prepare(sql).all(...params)),
-              get: (sql: string, params: any[] = []) => Promise.resolve(betterDb.prepare(sql).get(...params)),
-              run: (sql: string, params: any[] = []) => Promise.resolve(betterDb.prepare(sql).run(...params)),
-              close: () => Promise.resolve(betterDb.close())
-            } as unknown as Database;
-            
-            console.log('Successfully initialized better-sqlite3 in-memory database');
-          } catch (betterError) {
-            console.error('Failed to initialize better-sqlite3:', betterError);
-            console.log('Falling back to regular sqlite3...');
-            // Fall back to regular sqlite3
-            db = await open({
-              filename: ':memory:',
-              driver: sqlite3.Database,
-            });
-            console.log('In-memory SQLite database opened successfully with sqlite3');
-          }
-        } else {
-          // Use regular sqlite3 if better-sqlite3 is not available
-          db = await open({
-            filename: ':memory:',
-            driver: sqlite3.Database,
-          });
-          console.log('In-memory SQLite database opened successfully with sqlite3');
-        }
-      } else {
-        // Development mode - use file-based database with regular sqlite3
-        const sqlite3Db = new sqlite3.Database(dbPath, (err) => {
-          if (err) {
-            console.error("Error opening database", err);
-          }
-        });
-
-        db = await open({
-          filename: dbPath,
-          driver: sqlite3.Database,
-        });
-        
-        console.log(`SQLite database opened successfully at ${dbPath}`);
-      }
-    } catch (error) {
-      console.error("Failed to initialize SQLite database:", error);
-      throw error;
-    }
-
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS courses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        provider TEXT,
-        description TEXT,
-        image TEXT,
-        price REAL,
-        original_price REAL,
-        lessons INTEGER,
-        duration TEXT,
-        language TEXT,
-        level TEXT,
-        rating REAL,
-        reviews INTEGER,
-        category TEXT,
-        is_free BOOLEAN,
-        requirements TEXT,
-        outcomes TEXT,
-        meta_keywords TEXT,
-        meta_description TEXT
-      );
-
-      CREATE TABLE IF NOT EXISTS sections (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        course_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        sort_order INTEGER,
-        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS lessons (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        section_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        type TEXT,
-        sort_order INTEGER,
-        content TEXT,
-        duration INTEGER,
-        is_preview BOOLEAN DEFAULT 0,
-        FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS quizzes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        section_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT,
-        time_limit INTEGER,
-        passing_score INTEGER,
-        FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS assignments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        section_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT,
-        due_date TEXT,
-        max_score INTEGER,
-        FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS enrollments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        course_id INTEGER NOT NULL,
-        enrollment_date TEXT,
-        completion_status TEXT,
-        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
-      );
-    `);
-    
-    // If using in-memory database in production, we need to ensure data is loaded each time
-    if (isProduction) {
-      console.log("Running in production mode with in-memory database");
-      // Additional initialization for in-memory database can be added here
-    }
-
-    // Always insert mock data when using in-memory database in production
-    // or insert if table is empty in development
-    const shouldInsertData = isProduction || (await db.get("SELECT COUNT(*) as count FROM courses")).count === 0;
-    
-    if (shouldInsertData) {
-      console.log("Inserting sample data into database");
-      
-      // Insert sample course
-      const result = await db.run(
-        `INSERT INTO courses (
-          title, provider, description, image, price, original_price, lessons,
-          duration, language, level, rating, reviews, category, is_free,
-          requirements, outcomes, meta_keywords, meta_description
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          "Kodable Basics",
-          "Kodable Education",
-          "An early education program designed for children aged 4 to 8. It introduces foundational concepts of coding, logic, and problem-solving through screen-free play and interactive activities.",
-          "/placeholder.svg?height=200&width=300",
-          2999,
-          3999,
-          15,
-          "8:30:45",
-          "English",
-          "Beginner",
-          5,
-          12,
-          "Coding Fundamentals",
-          false,
-          "No prior coding experience needed.",
-          "Students will learn the basics of programming and create their own simple games.",
-          "coding, kids, beginner, programming",
-          "A beginner-friendly introduction to coding for kids.",
-        ]
-      );
-      
-      const courseId = result.lastID;
-      if(courseId) {
-        // Insert sample section
-        const sectionResult = await db.run(
-          `INSERT INTO sections (course_id, title, sort_order) VALUES (?, ?, ?)`, 
-          [courseId, "Getting Started", 1]
-        );
-        
-        // Insert sample lesson in the section
-        if (sectionResult.lastID) {
-          await db.run(
-            `INSERT INTO lessons (section_id, title, type, sort_order, content, duration, is_preview) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [sectionResult.lastID, "Introduction to the Course", "video", 1, "Welcome to the course content", 300, 1]
-          );
-        }
-      }
+      const result = await client.query(query, params);
+      return result.rows[0] || null;
+    } finally {
+      client.release();
     }
   }
+
+  async all(query: string, params: any[] = []): Promise<any[]> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(query, params);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  async run(query: string, params: any[] = []): Promise<{ changes: number; lastInsertRowid?: number }> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(query, params);
+      return {
+        changes: result.rowCount || 0,
+        lastInsertRowid: result.rows[0]?.id || undefined
+      };
+    } finally {
+      client.release();
+    }
+  }
+
+  async exec(query: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query(query);
+    } finally {
+      client.release();
+    }
+  }
+
+  async close(): Promise<void> {
+    await this.pool.end();
+  }
+}
+
+let db: DatabaseInterface | null = null;
+
+export async function getDb(): Promise<DatabaseInterface> {
+  if (!db) {
+    try {
+      // Use Vercel Postgres in production, local PostgreSQL in development
+      if (process.env.NODE_ENV === 'production') {
+        console.log('Connecting to Vercel Postgres...');
+        
+        // For Vercel Postgres, we'll use the sql template function
+        // Create a wrapper that implements our interface
+        db = {
+          async get(query: string, params: any[] = []) {
+            const result = await sql.query(query, params);
+            return result.rows[0] || null;
+          },
+          async all(query: string, params: any[] = []) {
+            const result = await sql.query(query, params);
+            return result.rows;
+          },
+          async run(query: string, params: any[] = []) {
+            const result = await sql.query(query, params);
+            return {
+              changes: result.rowCount || 0,
+              lastInsertRowid: result.rows[0]?.id || undefined
+            };
+          },
+          async exec(query: string) {
+            await sql.query(query);
+          },
+          async close() {
+            // Vercel Postgres handles connection pooling automatically
+          }
+        };
+      } else {
+        console.log('Connecting to local PostgreSQL...');
+        
+        // For local development, use pg Pool
+        if (!pool) {
+          pool = new Pool({
+            connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/lms_dev',
+            ssl: false
+          });
+        }
+        
+        db = new PostgresDatabase(pool);
+      }
+      
+      console.log('Database connection established successfully');
+    } catch (error) {
+      console.error('Failed to connect to database:', error);
+      throw error;
+    }
+  }
+  
   return db;
+}
+
+
+// Initialize database schema if needed
+export async function initializeDatabase() {
+  const database = await getDb();
+  
+  try {
+    // Check if tables exist by querying information_schema
+    const tablesExist = await database.get(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = 'courses'
+    `);
+    
+    if (!tablesExist || tablesExist.count === 0) {
+      console.log('Database schema needs to be initialized via migration scripts');
+      // Schema should be created via the SQL scripts in the scripts/ directory
+      // or through Vercel Postgres dashboard
+    }
+  } catch (error) {
+    console.error('Error checking database schema:', error);
+  }
 }

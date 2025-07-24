@@ -14,62 +14,73 @@ export const config = {
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const db = await getDb();
-  const course = await db.get("SELECT * FROM courses WHERE id = ?", [params.id]);
+  const course = await db.get("SELECT * FROM courses WHERE id = $1", [params.id]);
   return NextResponse.json(course);
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const db = await getDb();
-  const formData = await req.formData();
   
-  const course: any = {};
-  formData.forEach((value, key) => {
-    course[key] = value;
-  });
+  try {
+    const formData = await req.formData();
+    const updates: { [key: string]: any } = {};
+    const imageFile = formData.get("image") as File | null;
 
-  const imageFile = formData.get("image") as File;
-  if (imageFile && imageFile.size > 0) {
-    const uploadDir = path.join(process.cwd(), "public/uploads");
-    await fs.mkdir(uploadDir, { recursive: true });
-    const imagePath = path.join(uploadDir, imageFile.name);
-    await fs.writeFile(imagePath, Buffer.from(await imageFile.arrayBuffer()));
-    course.image = `/uploads/${imageFile.name}`;
+    // Dynamically build updates object from form data
+    formData.forEach((value, key) => {
+      // The 'image' field is handled separately below to distinguish between a File and a string path
+      if (key === 'image') return;
+
+      if (key === 'objectives' || key === 'outcomes') {
+        updates[key] = (value as string).split(',').map(item => item.trim());
+      } else if (['price', 'original_price', 'lessons', 'rating', 'reviews', 'students', 'duration_hours'].includes(key)) {
+        updates[key] = parseFloat(value as string) || 0;
+      } else if (key === 'is_free') {
+        updates[key] = value === 'true';
+      } else {
+        updates[key] = value;
+      }
+    });
+
+    // Handle image upload or existing image path
+    const imageValue = formData.get("image");
+    if (imageValue instanceof File && imageValue.size > 0) {
+      // New file is uploaded
+      const uploadDir = path.join(process.cwd(), "public/uploads");
+      await fs.mkdir(uploadDir, { recursive: true });
+      const imagePath = path.join(uploadDir, imageValue.name);
+      await fs.writeFile(imagePath, Buffer.from(await imageValue.arrayBuffer()));
+      updates.image = `/uploads/${imageValue.name}`;
+    } else if (typeof imageValue === 'string') {
+      // Existing image path is passed
+      updates.image = imageValue;
+    }
+
+    const fields = Object.keys(updates);
+    if (fields.length === 0) {
+      return NextResponse.json({ message: "No fields to update" });
+    }
+
+    const setClauses = fields.map((field, i) => `${field} = $${i + 1}`).join(', ');
+    const values = fields.map(field => updates[field]);
+    
+    const query = `UPDATE courses SET ${setClauses} WHERE id = $${fields.length + 1}`;
+    values.push(params.id);
+
+    await db.run(query, values);
+    
+    return NextResponse.json({ message: "Course updated successfully" });
+  } catch (error) {
+    console.error('Error updating course:', error);
+    return NextResponse.json(
+      { error: 'Failed to update course', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
-
-  await db.run(
-    `UPDATE courses SET
-      title = ?, provider = ?, description = ?, image = ?, price = ?,
-      original_price = ?, lessons = ?, duration = ?, language = ?,
-      level = ?, rating = ?, reviews = ?, category = ?, is_free = ?,
-      requirements = ?, outcomes = ?, meta_keywords = ?, meta_description = ?
-    WHERE id = ?`,
-    [
-      course.title,
-      course.provider,
-      course.description,
-      course.image,
-      course.price,
-      course.original_price,
-      course.lessons,
-      course.duration,
-      course.language,
-      course.level,
-      course.rating,
-      course.reviews,
-      course.category,
-      course.is_free === 'true',
-      course.requirements,
-      course.outcomes,
-      course.meta_keywords,
-      course.meta_description,
-      params.id,
-    ]
-  );
-  return NextResponse.json({ message: "Course updated" });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const db = await getDb();
-  await db.run("DELETE FROM courses WHERE id = ?", [params.id]);
+  await db.run("DELETE FROM courses WHERE id = $1", [params.id]);
   return NextResponse.json({ message: "Course deleted" });
 }
