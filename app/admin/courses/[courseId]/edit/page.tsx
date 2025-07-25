@@ -21,7 +21,7 @@ import { SortSectionsModal } from "@/components/courses/sort-sections-modal"
 export default function EditCoursePage() {
   const router = useRouter()
   const params = useParams()
-  const { id } = params
+  const courseId = params.courseId as string
   const [courseData, setCourseData] = useState<any>(null)
   const [sections, setSections] = useState<any[]>([])
   const [lessons, setLessons] = useState<any>({})
@@ -37,9 +37,9 @@ export default function EditCoursePage() {
 
   useEffect(() => {
     const fetchCourse = async () => {
-      if (id) {
+      if (courseId) {
         try {
-          const res = await fetch(`/api/courses/${id}`)
+          const res = await fetch(`/api/courses/${courseId}`)
           if (res.ok) {
             const data = await res.json()
             // Ensure all string fields are not null
@@ -72,9 +72,9 @@ export default function EditCoursePage() {
       }
     }
     const fetchSections = async () => {
-      if (id) {
+      if (courseId) {
         try {
-          const res = await fetch(`/api/courses/${id}/sections`)
+          const res = await fetch(`/api/courses/${courseId}/sections`)
           if (res.ok) {
             const data = await res.json()
             setSections(data || [])
@@ -85,9 +85,11 @@ export default function EditCoursePage() {
         }
       }
     }
-    fetchCourse()
-    fetchSections()
-  }, [id])
+    if (courseId) {
+      fetchCourse()
+      fetchSections()
+    }
+  }, [courseId])
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -146,7 +148,7 @@ export default function EditCoursePage() {
         }
       });
 
-      const res = await fetch(`/api/courses/${id}`, {
+      const res = await fetch(`/api/courses/${courseId}`, {
         method: "PUT",
         body: formData,
       })
@@ -163,7 +165,7 @@ export default function EditCoursePage() {
   }
 
   const handleAddSection = async (title: string) => {
-    const res = await fetch(`/api/courses/${id}/sections`, {
+    const res = await fetch(`/api/courses/${courseId}/sections`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -213,7 +215,7 @@ export default function EditCoursePage() {
 
   const handleSortSections = async (sortedSections: any[]) => {
     setSections(sortedSections)
-    await fetch(`/api/courses/${id}/sections/sort`, {
+    await fetch(`/api/courses/${courseId}/sections/sort`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sections: sortedSections }),

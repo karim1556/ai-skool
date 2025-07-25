@@ -11,13 +11,13 @@ export const config = {
   },
 };
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { courseId: string } }) {
   const db = await getDb();
-  const course = await db.get("SELECT * FROM courses WHERE id = $1", [params.id]);
+  const course = await db.get("SELECT * FROM courses WHERE id = $1", [params.courseId]);
   return NextResponse.json(course);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: { courseId: string } }) {
   const db = await getDb();
   
   try {
@@ -73,7 +73,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const values = fields.map(field => updates[field]);
     
     const query = `UPDATE courses SET ${setClauses} WHERE id = $${fields.length + 1}`;
-    values.push(params.id);
+    values.push(params.courseId);
 
     await db.run(query, values);
     
@@ -87,8 +87,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { courseId: string } }) {
   const db = await getDb();
-  await db.run("DELETE FROM courses WHERE id = $1", [params.id]);
+  await db.run("DELETE FROM courses WHERE id = $1", [params.courseId]);
   return NextResponse.json({ message: "Course deleted" });
 }

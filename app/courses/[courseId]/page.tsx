@@ -22,121 +22,95 @@ import {
   Download,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-// Mock course data - in a real app, this would be fetched dynamically
-const mockCourse = {
-  id: 1,
-  title: "Kodable Basics: Introduction to Coding for Kids",
-  tagline: "Unlock the world of coding for your child with fun, interactive lessons!",
-  description: `This comprehensive course is designed for young learners aged 4-8, introducing them to the foundational concepts of computer science and programming through engaging games and activities. No prior coding experience is required!
-
-  Kodable Basics uses a unique, visual programming interface that makes complex ideas simple and fun. Children will learn about sequences, loops, conditionals, and debugging as they guide adorable Fuzz characters through exciting mazes and challenges. The curriculum is aligned with CSTA K-12 Computer Science Standards and provides a solid foundation for future STEM learning.`,
-  whatYouWillLearn: [
-    "Understand basic coding concepts like sequences, loops, and conditionals",
-    "Develop problem-solving and critical thinking skills",
-    "Learn to debug simple programs",
-    "Create their first interactive stories and games",
-    "Build a strong foundation for future STEM learning",
-    "Foster creativity and logical reasoning through play",
-    "Prepare for advanced coding concepts in later stages",
-  ],
+// Define a type for the course object for type safety
+interface Course {
+  id: string;
+  title: string;
+  tagline: string;
+  description: string;
+  whatYouWillLearn: string[];
   instructor: {
-    name: "Ms. Emily Chen",
-    title: "Lead Educator at Kodable Education",
-    bio: `Ms. Emily Chen is a passionate educator with over 10 years of experience teaching computer science to elementary school students. She believes in making learning fun and accessible for all children, fostering a love for STEM from an early age. Emily holds a Master's degree in Education Technology and has developed several award-winning educational programs.`,
-    image: "/placeholder.svg?height=100&width=100",
-    courses: 5,
-    students: "10,000+",
-    rating: 4.8,
-    reviews: 2500,
-  },
-  rating: 4.7,
-  reviewsCount: 1500,
-  studentsEnrolled: "25,000+",
-  price: 2999,
-  originalPrice: 3999,
-  discount: "25% off",
-  lessonsCount: 15,
-  duration: "8 hours 30 minutes",
-  language: "English",
-  level: "Beginner",
-  lastUpdated: "July 2024",
-  videoPreview: "/placeholder.svg?height=400&width=600", // Used as poster for video
-  videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", // Example video URL
-  curriculum: [
-    {
-      title: "Module 1: Introduction to Fuzztopia (3 Lessons)",
-      lessons: [
-        { title: "Welcome to Kodable!", duration: "05:00" },
-        { title: "Meet the Fuzzes", duration: "07:30" },
-        { title: "What is Coding?", duration: "10:00" },
-      ],
-    },
-    {
-      title: "Module 2: Sequencing and Commands (5 Lessons)",
-      lessons: [
-        { title: "Move the Fuzz", duration: "12:00" },
-        { title: "Directional Commands", duration: "15:00" },
-        { title: "Debugging Basics", duration: "08:00" },
-        { title: "First Program Challenge", duration: "10:00" },
-        { title: "Review: Sequencing", duration: "07:00" },
-      ],
-    },
-    {
-      title: "Module 3: Loops and Repetition (4 Lessons)",
-      lessons: [
-        { title: "Repeating Actions", duration: "18:00" },
-        { title: "Nested Loops", duration: "20:00" },
-        { title: "Looping Challenges", duration: "15:00" },
-        { title: "Project: Fuzz Dance Party", duration: "25:00" },
-      ],
-    },
-    {
-      title: "Module 4: Conditionals and Logic (3 Lessons)",
-      lessons: [
-        { title: "If-Then Statements", duration: "15:00" },
-        { title: "Else Statements", duration: "18:00" },
-        { title: "Decision Making Game", duration: "20:00" },
-      ],
-    },
-  ],
-  attachments: [
-    { name: "Kodable Basics Course Syllabus.pdf", url: "/placeholder.pdf" },
-    { name: "Fuzztopia Character Guide.pdf", url: "/placeholder.pdf" },
-    { name: "Lesson Plan Template.docx", url: "/placeholder.docx" },
-  ],
-  externalLinks: [
-    { name: "Kodable Official Website", url: "https://www.kodable.com" },
-    { name: "CSTA K-12 CS Standards", url: "https://www.csteachers.org/page/standards" },
-    { name: "Hour of Code Activities", url: "https://hourofcode.com/us/learn" },
-  ],
-  reviews: [
-    {
-      id: 1,
-      user: "Karim Shaikh",
-      rating: 5,
-      date: "2024-08-15",
-      comment: "My child absolutely loved this course! It made learning to code fun and engaging.",
-    },
-    {
-      id: 2,
-      user: "Bob Williams",
-      rating: 4,
-      date: "2024-08-10",
-      comment: "Great introduction to coding for kids. The lessons are well-structured and easy to follow.",
-    },
-    {
-      id: 3,
-      user: "Charlie Davis",
-      rating: 5,
-      date: "2024-08-05",
-      comment: "Excellent course! My child is now excited about coding and wants to learn more.",
-    },
-  ],
+    name: string;
+    title: string;
+    bio: string;
+    image: string;
+    courses: number;
+    students: string;
+    rating: number;
+    reviews: number;
+  };
+  rating: number;
+  reviewsCount: number;
+  studentsEnrolled: string;
+  price: number;
+  originalPrice: number;
+  discount: string;
+  lessonsCount: number;
+  duration: string;
+  language: string;
+  level: string;
+  lastUpdated: string;
+  videoPreview: string;
+  videoUrl: string;
+  curriculum: {
+    title: string;
+    lessons: { title: string; duration: string }[];
+  }[];
+  attachments: { name: string; url: string }[];
+  externalLinks: { name: string; url: string }[];
+  reviews: {
+    id: string;
+    user: string;
+    rating: number;
+    date: string;
+    comment: string;
+  }[];
 }
 
 export default function CourseDetailPage() {
-  const course = mockCourse ?? {} // Using mock data for demonstration
+  const params = useParams();
+  const courseId = params.courseId;
+
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!courseId) return;
+
+    const fetchCourseDetails = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/courses/${courseId}/details`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch course details');
+        }
+        const data = await response.json();
+        setCourse(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourseDetails();
+  }, [courseId]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading course...</div>;
+  }
+
+  if (error) {
+    return <div className="flex justify-center items-center h-screen text-red-500">Error: {error}</div>;
+  }
+
+  if (!course) {
+    return <div className="flex justify-center items-center h-screen">Course not found.</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -289,6 +263,7 @@ export default function CourseDetailPage() {
           )}
 
           {/* Instructor */}
+          {course.instructor && (
           <Card className="p-6 shadow-sm">
             <CardContent className="p-0">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Instructor</h2>
@@ -326,6 +301,7 @@ export default function CourseDetailPage() {
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* Student Feedback */}
           <Card className="p-6 shadow-sm">
