@@ -119,7 +119,7 @@ async function getCourse(courseId: string): Promise<Course | null> {
       WHERE r.course_id = $1 ORDER BY r.created_at DESC
     `, [courseId]).catch(() => []);
 
-    // 5. Assemble the final course object
+    // 5. Assemble and sanitize the final course object
     return {
       ...courseResult,
       instructor: instructor || null,
@@ -127,7 +127,11 @@ async function getCourse(courseId: string): Promise<Course | null> {
       reviews: reviews,
       attachments: courseResult.attachments || [],
       external_links: courseResult.external_links || [],
-      enrolled_students_count: courseResult.students || 0,
+      // Ensure numeric types are correct
+      rating: Number(courseResult.rating) || 0,
+      price: Number(courseResult.price) || 0,
+      original_price: Number(courseResult.original_price) || 0,
+      enrolled_students_count: Number(courseResult.students) || 0,
       reviews_count: reviews.length,
       last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
     } as Course;
