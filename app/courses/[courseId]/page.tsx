@@ -1,172 +1,161 @@
-"use client"
-
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import Image from "next/image"
+import { notFound } from "next/navigation";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Star,
-  Clock,
-  BookOpen,
-  Users,
-  Calendar,
-  Globe,
-  BarChart2,
-  ShoppingCart,
   PlayCircle,
-  Check,
-  MessageSquare,
-  FileText,
-  LinkIcon,
   Download,
-} from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+  Users,
+  BookOpen,
+  MessageSquare,
+  Clock,
+  BarChart2,
+  Link as LinkIcon,
+  ShoppingCart,
+  FileText,
+  Check,
+  Globe,
+  Calendar,
+} from "lucide-react";
 
-// Define a type for the course object for type safety
+// Define the types based on your API response
+interface Instructor {
+  name: string;
+  image: string;
+  title: string;
+  bio: string;
+  courses_count: number;
+  students_count: number;
+  average_rating: number;
+  reviews_count: number;
+}
+
+interface CurriculumSection {
+  title: string;
+  lessons: { title: string; duration: string }[];
+}
+
+interface Attachment {
+  title: string;
+  url: string;
+}
+
+interface ExternalLink {
+  title: string;
+  url: string;
+}
+
+interface Review {
+  id: string;
+  user: string;
+  user_image: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
 interface Course {
   id: string;
   title: string;
   tagline: string;
   description: string;
-  whatYouWillLearn: string[];
-  instructor: {
-    name: string;
-    title: string;
-    bio: string;
-    image: string;
-    courses: number;
-    students: string;
-    rating: number;
-    reviews: number;
-  };
+  objectives: string[];
   rating: number;
-  reviewsCount: number;
-  studentsEnrolled: string;
+  reviews_count: number;
+  enrolled_students_count: number;
   price: number;
-  originalPrice: number;
-  discount: string;
-  lessonsCount: number;
+  original_price?: number;
   duration: string;
-  language: string;
   level: string;
-  lastUpdated: string;
-  videoPreview: string;
-  videoUrl: string;
-  curriculum: {
-    title: string;
-    lessons: { title: string; duration: string }[];
-  }[];
-  attachments: { name: string; url: string }[];
-  externalLinks: { name: string; url: string }[];
-  reviews: {
-    id: string;
-    user: string;
-    rating: number;
-    date: string;
-    comment: string;
-  }[];
+  last_updated: string;
+  demo_video_url: string;
+  video_preview_image: string;
+  instructor: Instructor;
+  curriculum: CurriculumSection[];
+  attachments: Attachment[];
+  external_links: ExternalLink[];
+  reviews: Review[];
 }
 
-export default function CourseDetailPage() {
-  const params = useParams();
-  const courseId = params.courseId;
-
-  const [course, setCourse] = useState<Course | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!courseId) return;
-
-    const fetchCourseDetails = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/courses/${courseId}/details`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch course details');
-        }
-        const data = await response.json();
-        setCourse(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCourseDetails();
-  }, [courseId]);
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading course...</div>;
+async function getCourse(courseId: string): Promise<Course | null> {
+  try {
+    const res = await fetch(`${process.env.BASE_URL}/api/courses/${courseId}/details`, { cache: 'no-store' });
+    if (!res.ok) {
+      return null;
+    }
+    return res.json();
+  } catch (error) {
+    console.error("Failed to fetch course:", error);
+    return null;
   }
+}
 
-  if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500">Error: {error}</div>;
-  }
+export default async function CoursePage({ params }: { params: { courseId: string } }) {
+  const course = await getCourse(params.courseId);
 
   if (!course) {
-    return <div className="flex justify-center items-center h-screen">Course not found.</div>;
+    notFound();
   }
+
+  // Calculate derived values
+  const lessonsCount = course.curriculum?.reduce((acc: number, section: CurriculumSection) => acc + (section.lessons?.length || 0), 0) || 0;
+  const discount = course.original_price && course.price ? Math.round(((course.original_price - course.price) / course.price) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gray-900 text-white py-12 md:py-20">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="lg:grid lg:grid-cols-3 lg:gap-8">
-            <div className="lg:col-span-2 space-y-4">
-              <h1 className="text-4xl md:text-5xl font-black leading-tight">{course.title}</h1>
-              <p className="text-xl text-gray-300">{course.tagline}</p>
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center">
-                  <span className="font-bold text-yellow-400 mr-1">{course.rating}</span>
+      <div className="bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          <div className="space-y-4">
+            <h1 className="text-4xl font-extrabold tracking-tight">{course.title}</h1>
+            <p className="text-xl text-gray-300">{course.tagline}</p>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1">
+                <span className="font-bold text-yellow-400">{course.rating.toFixed(1)}</span>
+                <div className="flex">
                   {Array.from({ length: 5 }, (_, i) => (
                     <Star
                       key={i}
-                      className={`h-4 w-4 ${
-                        i < Math.floor(course.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-500"
-                      }`}
+                      className={`h-5 w-5 ${i < Math.round(course.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-600"}`}
                     />
                   ))}
-                  <span className="ml-2 text-gray-400">({course.reviewsCount} ratings)</span>
-                </div>
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-1 text-gray-400" />
-                  <span className="text-gray-400">{course.studentsEnrolled} students</span>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-4 text-sm text-gray-300">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>Last updated: {course.lastUpdated}</span>
+              <span className="text-gray-400">({course.reviews_count} ratings)</span>
+              <span className="text-gray-400">{course.enrolled_students_count} students</span>
+            </div>
+            <div className="flex items-center space-x-6 text-sm text-gray-300">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Last updated {new Date(course.last_updated).toLocaleDateString()}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Globe className="h-4 w-4" />
-                  <span>Language: {course.language}</span>
-                </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <BarChart2 className="h-4 w-4" />
-                  <span>Level: {course.level}</span>
+                  <span>{course.level} Level</span>
                 </div>
-              </div>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  <span>Language: English</span>
+                </div>
+
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 lg:py-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content Area */}
-        <div className="lg:col-span-2 space-y-10">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
           {/* What you'll learn */}
           <Card className="p-6 shadow-sm">
             <CardContent className="p-0">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">What you'll learn</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {course.whatYouWillLearn?.map((item, index) => (
+                {course.objectives?.map((item: string, index: number) => (
                   <div key={index} className="flex items-start space-x-2">
                     <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
                     <p className="text-gray-700">{item}</p>
@@ -179,17 +168,15 @@ export default function CourseDetailPage() {
           {/* Course Content */}
           <Card className="p-6 shadow-sm">
             <CardContent className="p-0">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Course Content</h2>
-              <Accordion type="multiple" className="w-full">
-                {course.curriculum?.map((module, moduleIndex) => (
-                  <AccordionItem key={moduleIndex} value={`item-${moduleIndex}`}>
-                    <AccordionTrigger className="text-lg font-semibold text-gray-800 hover:no-underline">
-                      {module.title}
-                    </AccordionTrigger>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Course content</h2>
+              <Accordion type="single" collapsible className="w-full">
+                {course.curriculum?.map((section: CurriculumSection, index: number) => (
+                  <AccordionItem key={index} value={`item-${index}`}>
+                    <AccordionTrigger className="font-semibold text-lg">{section.title}</AccordionTrigger>
                     <AccordionContent>
                       <ul className="space-y-2 pl-4">
-                        {module.lessons.map((lesson, lessonIndex) => (
-                          <li key={lessonIndex} className="flex items-center justify-between text-gray-600 text-sm">
+                        {section.lessons.map((lesson, lessonIndex) => (
+                          <li key={lessonIndex} className="flex items-center justify-between text-gray-600">
                             <div className="flex items-center space-x-2">
                               <PlayCircle className="h-4 w-4 text-gray-500" />
                               <span>{lesson.title}</span>
@@ -209,21 +196,21 @@ export default function CourseDetailPage() {
           <Card className="p-6 shadow-sm">
             <CardContent className="p-0">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Description</h2>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-line">{course.description}</p>
+              <p className="text-gray-700 leading-relaxed">{course.description}</p>
             </CardContent>
           </Card>
 
-          {/* Course Resources (Attachments) */}
+          {/* Attachments */}
           {course.attachments && course.attachments.length > 0 && (
             <Card className="p-6 shadow-sm">
               <CardContent className="p-0">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Course Resources</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Attachments</h2>
                 <ul className="space-y-3">
-                  {course.attachments?.map((attachment, index) => (
+                  {course.attachments.map((attachment: Attachment, index: number) => (
                     <li key={index} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <FileText className="h-5 w-5 text-gray-600" />
-                        <span className="text-gray-700 font-medium">{attachment.name}</span>
+                        <span className="text-gray-700 font-medium">{attachment.title}</span>
                       </div>
                       <Button variant="outline" size="sm" asChild>
                         <a href={attachment.url} download>
@@ -239,16 +226,16 @@ export default function CourseDetailPage() {
           )}
 
           {/* Useful Links */}
-          {course.externalLinks && course.externalLinks.length > 0 && (
+          {course.external_links && course.external_links.length > 0 && (
             <Card className="p-6 shadow-sm">
               <CardContent className="p-0">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Useful Links</h2>
                 <ul className="space-y-3">
-                  {course.externalLinks?.map((link, index) => (
+                  {course.external_links.map((link: ExternalLink, index: number) => (
                     <li key={index} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <LinkIcon className="h-5 w-5 text-gray-600" />
-                        <span className="text-gray-700 font-medium">{link.name}</span>
+                        <span className="text-gray-700 font-medium">{link.title}</span>
                       </div>
                       <Button variant="outline" size="sm" asChild>
                         <a href={link.url} target="_blank" rel="noopener noreferrer">
@@ -264,43 +251,43 @@ export default function CourseDetailPage() {
 
           {/* Instructor */}
           {course.instructor && (
-          <Card className="p-6 shadow-sm">
-            <CardContent className="p-0">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Instructor</h2>
-              <div className="flex items-center space-x-4 mb-4">
-                <Image
-                  src={course.instructor.image || "/placeholder.svg"}
-                  alt={course.instructor.name}
-                  width={80}
-                  height={80}
-                  className="rounded-full object-cover"
-                />
-                <div>
-                  <h3 className="text-xl font-bold text-blue-600">{course.instructor.name}</h3>
-                  <p className="text-gray-600 text-sm">{course.instructor.title}</p>
+            <Card className="p-6 shadow-sm">
+              <CardContent className="p-0">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Instructor</h2>
+                <div className="flex items-center space-x-4 mb-4">
+                  <Image
+                    src={course.instructor.image || "/placeholder.svg"}
+                    alt={course.instructor.name}
+                    width={80}
+                    height={80}
+                    className="rounded-full object-cover"
+                  />
+                  <div>
+                    <h3 className="text-xl font-bold text-blue-600">{course.instructor.name}</h3>
+                    <p className="text-gray-600 text-sm">{course.instructor.title}</p>
+                  </div>
                 </div>
-              </div>
-              <p className="text-gray-700 leading-relaxed mb-4">{course.instructor.bio}</p>
-              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <BookOpen className="h-4 w-4" />
-                  <span>{course.instructor.courses} Courses</span>
+                <p className="text-gray-700 leading-relaxed mb-4">{course.instructor.bio}</p>
+                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <BookOpen className="h-4 w-4" />
+                    <span>{course.instructor.courses_count || 0} Courses</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    <span>{course.instructor.students_count || 0} Students</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <span>{course.instructor.average_rating || 0} Instructor Rating</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="h-4 w-4" />
+                    <span>{course.instructor.reviews_count || 0} Reviews</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  <span>{course.instructor.students} Students</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span>{course.instructor.rating} Instructor Rating</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>{course.instructor.reviews} Reviews</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           )}
 
           {/* Student Feedback */}
@@ -308,15 +295,16 @@ export default function CourseDetailPage() {
             <CardContent className="p-0">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Student Feedback</h2>
               <div className="space-y-6">
-                {course.reviews?.map((review) => (
+                {course.reviews?.map((review: Review) => (
                   <div key={review.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={review.user_image} alt={review.user} />
                           <AvatarFallback>
                             {review.user
                               .split(" ")
-                              .map((n) => n[0])
+                              .map((n: string) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
@@ -326,15 +314,13 @@ export default function CourseDetailPage() {
                             {Array.from({ length: 5 }, (_, i) => (
                               <Star
                                 key={i}
-                                className={`h-3 w-3 ${
-                                  i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                                }`}
+                                className={`h-3 w-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
                               />
                             ))}
                           </div>
                         </div>
                       </div>
-                      <span className="text-sm text-gray-500">{review.date}</span>
+                      <span className="text-sm text-gray-500">{new Date(review.created_at).toLocaleDateString()}</span>
                     </div>
                     <p className="text-gray-700 text-sm leading-relaxed">{review.comment}</p>
                   </div>
@@ -352,10 +338,10 @@ export default function CourseDetailPage() {
                 {/* Video Player */}
                 <video
                   controls
-                  poster={course.videoPreview || "/placeholder.svg"}
+                  poster={course.video_preview_image || "/placeholder.svg"}
                   className="w-full h-auto object-cover rounded-t-lg"
                 >
-                  <source src={course.videoUrl} type="video/mp4" />
+                  <source src={course.demo_video_url} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
               </div>
@@ -363,13 +349,13 @@ export default function CourseDetailPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-pink-600">₹{course.price}</span>
-                    {course.originalPrice && (
-                      <span className="text-lg text-gray-500 line-through">₹{course.originalPrice}</span>
+                    {course.original_price && (
+                      <span className="text-lg text-gray-500 line-through">₹{course.original_price}</span>
                     )}
                   </div>
-                  {course.discount && (
+                  {discount > 0 && (
                     <Badge className="bg-green-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
-                      {course.discount}
+                      {discount}% OFF
                     </Badge>
                   )}
                 </div>
@@ -380,7 +366,7 @@ export default function CourseDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4" />
-                    <span>{course.lessonsCount} lessons</span>
+                    <span>{lessonsCount} lessons</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <BarChart2 className="h-4 w-4" />
@@ -403,5 +389,5 @@ export default function CourseDetailPage() {
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}

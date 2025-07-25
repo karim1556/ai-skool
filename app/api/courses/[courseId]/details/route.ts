@@ -84,3 +84,65 @@ export async function GET(request: Request, { params }: { params: { courseId: st
     return NextResponse.json({ error: 'Failed to fetch course details' }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request, { params }: { params: { courseId: string } }) {
+  const { courseId } = params;
+  if (!courseId) {
+    return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
+  }
+
+  const db = await getDb();
+
+  try {
+    const { 
+      objectives = [], 
+      demo_video_url = '', 
+      attachments = [], 
+      externalLinks = [] 
+    } = await request.json();
+
+    // Begin transaction
+    await db.exec('BEGIN');
+
+    // 1. Update the main courses table
+    await db.run(
+      'UPDATE courses SET objectives = $1, demo_video_url = $2 WHERE id = $3',
+      [objectives, demo_video_url, courseId]
+    );
+
+    // 2. Handle attachments (delete and re-insert)
+    await db.run('DELETE FROM attachments WHERE course_id = $1', [courseId]);
+    if (attachments.length > 0) {
+      for (const att of attachments) {
+        await db.run('INSERT INTO attachments (course_id, title, url) VALUES ($1, $2, $3)', [
+          courseId, 
+          att.title, 
+          att.url
+        ]);
+      }
+    }
+
+    // 3. Handle external links (delete and re-insert)
+    await db.run('DELETE FROM external_links WHERE course_id = $1', [courseId]);
+    if (externalLinks.length > 0) {
+      for (const link of externalLinks) {
+        await db.run('INSERT INTO external_links (course_id, title, url) VALUES ($1, $2, $3)', [
+          courseId, 
+          link.title, 
+          link.url
+        ]);
+      }
+    }
+
+    // Commit transaction
+    await db.exec('COMMIT');
+
+    return NextResponse.json({ message: 'Course details updated successfully' });
+
+  } catch (error) {
+    // Rollback transaction on error
+    await db.exec('ROLLBACK');
+    console.error('Error updating course details:', error);
+    return NextResponse.json({ error: 'Failed to update course details' }, { status: 500 });
+  }
+}

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { ArrowLeft, CheckCircle } from "lucide-react"
+import { ArrowLeft, CheckCircle, PlusCircle, Trash2 } from "lucide-react"
 
 export default function AddCoursePage() {
   const router = useRouter()
@@ -34,25 +34,73 @@ export default function AddCoursePage() {
     meta_keywords: "",
     meta_description: "",
     image: null as File | null,
+    objectives: [""],
+    demo_video_url: "",
+    demo_video_file: null as File | null,
+    attachments: [] as { title: string; file: File | null }[],
+    external_links: [] as { title: string; url: string }[],
   })
 
   const handleInputChange = (field: string, value: any) => {
-    setCourseData({ ...courseData, [field]: value })
+    setCourseData(prev => ({ ...prev, [field]: value }))
   }
+
+  const handleListChange = (listName: 'objectives' | 'attachments' | 'external_links', index: number, field: string, value: any) => {
+    setCourseData(prev => {
+      const newList = [...(prev[listName] as any[])];
+      if (field) {
+        newList[index] = { ...newList[index], [field]: value };
+      } else {
+        newList[index] = value;
+      }
+      return { ...prev, [listName]: newList };
+    });
+  };
+
+  const addListItem = (listName: 'objectives' | 'attachments' | 'external_links') => {
+    setCourseData(prev => {
+      const newItem = listName === 'objectives' ? "" : { title: '', file: null, url: '' };
+      return { ...prev, [listName]: [...(prev[listName] as any[]), newItem] };
+    });
+  };
+
+  const removeListItem = (listName: 'objectives' | 'attachments' | 'external_links', index: number) => {
+    setCourseData(prev => ({
+      ...prev,
+      [listName]: (prev[listName] as any[]).filter((_, i) => i !== index),
+    }));
+  };
 
   const handleComplete = async () => {
     const formData = new FormData();
+
     Object.entries(courseData).forEach(([key, value]) => {
       if (value === null || value === undefined) return;
 
-      if (key === 'image' && value instanceof File) {
-        formData.append(key, value);
-      } else if (Array.isArray(value)) {
-        formData.append(key, value.join(','));
-      } else if (value instanceof File) {
-        // Do not append if it's a file but not the image key (or handle as needed)
-      } else {
-        formData.append(key, String(value));
+      switch (key) {
+        case 'image':
+        case 'demo_video_file':
+          if (value instanceof File) {
+            formData.append(key, value);
+          }
+          break;
+        case 'attachments':
+          // Handled separately below
+          break;
+        case 'objectives':
+        case 'external_links':
+          formData.append(key, JSON.stringify(value));
+          break;
+        default:
+          formData.append(key, String(value));
+      }
+    });
+
+    // Handle attachments files and titles
+    courseData.attachments.forEach(att => {
+      if (att.file && att.title) {
+        formData.append('attachment_files', att.file);
+        formData.append('attachment_titles', att.title);
       }
     });
 
@@ -188,6 +236,25 @@ export default function AddCoursePage() {
           placeholder="What prerequisites are needed for this course?"
         />
       </div>
+      <div>
+        <Label>What You'll Learn (Objectives)</Label>
+        {courseData.objectives.map((objective, index) => (
+          <div key={index} className="flex items-center gap-2 mb-2">
+            <Input
+              value={objective}
+              onChange={(e) => handleListChange('objectives', index, '', e.target.value)}
+              placeholder={`Objective ${index + 1}`}
+            />
+            <Button variant="ghost" size="icon" onClick={() => removeListItem('objectives', index)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => addListItem('objectives')}>
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Add Objective
+        </Button>
+      </div>
     </div>,
 
     <div key="pricing" className="space-y-6">
@@ -246,6 +313,77 @@ export default function AddCoursePage() {
             className="mt-4 w-48 h-auto" 
           />
         )}
+      </div>
+      <div>
+        <Label htmlFor="demo_video_url">Demo Video URL</Label>
+        <Input
+          id="demo_video_url"
+          value={courseData.demo_video_url}
+          onChange={(e) => handleInputChange("demo_video_url", e.target.value)}
+          placeholder="https://example.com/video.mp4"
+          disabled={!!courseData.demo_video_file}
+        />
+      </div>
+      <div>
+        <Label htmlFor="demo_video_file">Or Upload Demo Video</Label>
+        <Input
+          id="demo_video_file"
+          type="file"
+          accept="video/*"
+          onChange={(e) => handleInputChange("demo_video_file", e.target.files?.[0] || null)}
+          disabled={!!courseData.demo_video_url}
+        />
+      </div>
+      <div>
+        <Label>Attachments</Label>
+        {courseData.attachments.map((attachment, index) => (
+          <div key={index} className="grid grid-cols-3 gap-2 mb-2 items-center">
+            <Input
+              value={attachment.title}
+              onChange={(e) => handleListChange('attachments', index, 'title', e.target.value)}
+              placeholder="File Title"
+              className="col-span-1"
+            />
+            <Input
+              type="file"
+              onChange={(e) => handleListChange('attachments', index, 'file', e.target.files?.[0] || null)}
+              className="col-span-1"
+            />
+            <Button variant="ghost" size="icon" onClick={() => removeListItem('attachments', index)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => addListItem('attachments')}>
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Add Attachment
+        </Button>
+      </div>
+      <div>
+        <Label>External Links</Label>
+        {courseData.external_links.map((link, index) => (
+          <div key={index} className="grid grid-cols-3 gap-2 mb-2 items-center">
+            <Input
+              value={link.title}
+              onChange={(e) => handleListChange('external_links', index, 'title', e.target.value)}
+              placeholder="Link Title"
+              className="col-span-1"
+            />
+            <Input
+              value={link.url}
+              onChange={(e) => handleListChange('external_links', index, 'url', e.target.value)}
+              placeholder="https://example.com"
+              className="col-span-1"
+            />
+            <Button variant="ghost" size="icon" onClick={() => removeListItem('external_links', index)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => addListItem('external_links')}>
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Add Link
+        </Button>
       </div>
     </div>,
 

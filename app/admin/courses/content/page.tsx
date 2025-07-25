@@ -6,6 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CourseContentManager } from "@/components/courses/course-content-manager"
+import { CourseDetailsEditor } from "@/components/courses/course-details-editor"
+import { CourseReviewsManager } from "@/components/courses/course-reviews-manager"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // Define types for the data we'll be fetching
 interface BasicCourse {
@@ -13,10 +16,21 @@ interface BasicCourse {
   title: string;
 }
 
+interface Review {
+  id: string;
+  user: string;
+  user_image: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
 interface CourseDetails {
   id: string;
   title: string;
-  curriculum: any[]; // Using 'any' for now, will be typed in the component
+  curriculum: any[];
+  objectives: string[];
+  reviews: Review[];
   // Add other properties as needed from your details API
 }
 
@@ -117,7 +131,22 @@ export default function ManageCourseContentPage() {
         {error && <p className="text-center mt-6 text-red-500">Error: {error}</p>}
 
         {selectedCourse && !loading && !error && (
-          <CourseContentManager course={selectedCourse} instructors={instructors} />
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="curriculum">Curriculum & Instructor</TabsTrigger>
+              <TabsTrigger value="reviews">Reviews</TabsTrigger>
+            </TabsList>
+            <TabsContent value="details">
+              <CourseDetailsEditor course={selectedCourse} />
+            </TabsContent>
+            <TabsContent value="curriculum">
+              <CourseContentManager course={selectedCourse} instructors={instructors} />
+            </TabsContent>
+            <TabsContent value="reviews">
+              <CourseReviewsManager reviews={selectedCourse.reviews || []} />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </AdminLayout>
