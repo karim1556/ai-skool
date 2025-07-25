@@ -56,11 +56,8 @@ export async function GET(request: Request, { params }: { params: { courseId: st
     `;
     const reviews = await db.all(reviewsQuery, [courseId]).catch(() => []);
 
-    // 5. Fetch attachments
-    const attachments = await db.all('SELECT * FROM attachments WHERE course_id = $1', [courseId]).catch(() => []);
-
-    // 6. Fetch external links
-    const externalLinks = await db.all('SELECT * FROM external_links WHERE course_id = $1', [courseId]).catch(() => []);
+    // Attachments and external links are now stored as JSONB in the courses table.
+    // They are already part of the courseResult object.
 
     // 7. Assemble the final course object
     const courseDetails = {
@@ -68,8 +65,9 @@ export async function GET(request: Request, { params }: { params: { courseId: st
       instructor: instructor || null,
       curriculum: curriculum,
       reviews: reviews,
-      attachments: attachments,
-      externalLinks: externalLinks,
+      // Use the JSONB data directly from the course object, providing empty arrays as fallbacks.
+      attachments: courseResult.attachments || [], 
+      external_links: courseResult.external_links || [],
       // Mocking some data that is not in the schema yet for UI compatibility
       reviewsCount: reviews.length,
       tagline: courseResult.tagline || 'Unlock your potential with this amazing course!',

@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
         course.meta_keywords || '',
         course.meta_description || '',
         demoVideoUrl,
-        JSON.stringify(attachmentsData), // Storing attachments info as JSON
+        JSON.stringify(attachmentsData || []),
         JSON.stringify(course.external_links || [])
       ]
     );

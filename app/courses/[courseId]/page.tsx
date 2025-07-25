@@ -21,6 +21,7 @@ import {
   Globe,
   Calendar,
 } from "lucide-react";
+import { getDb } from "@/lib/db";
 
 // Define the types based on your API response
 interface Instructor {
@@ -82,14 +83,57 @@ interface Course {
 }
 
 async function getCourse(courseId: string): Promise<Course | null> {
+  const db = await getDb();
+
   try {
-    const res = await fetch(`${process.env.BASE_URL}/api/courses/${courseId}/details`, { cache: 'no-store' });
-    if (!res.ok) {
+    // 1. Fetch the main course data
+    const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
+    if (!courseResult) {
       return null;
     }
-    return res.json();
+
+    // 2. Fetch instructor
+    const instructor = await db.get(`
+      SELECT p.* FROM profiles p
+      JOIN course_instructors ci ON p.id = ci.instructor_id
+      WHERE ci.course_id = $1 LIMIT 1
+    `, [courseId]).catch(() => null);
+
+    // 3. Fetch curriculum
+    const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC', [courseId]).catch(() => []);
+    const allLessons = await db.all(`
+      SELECT l.* FROM lessons l
+      JOIN sections s ON l.section_id = s.id
+      WHERE s.course_id = $1 ORDER BY s."order" ASC, l."order" ASC
+    `, [courseId]).catch(() => []);
+    
+    const curriculum = sections.map(section => ({
+      ...section,
+      lessons: allLessons.filter(lesson => lesson.section_id === section.id)
+    }));
+
+    // 4. Fetch reviews
+    const reviews = await db.all(`
+      SELECT r.*, p.full_name as user, p.image as user_image FROM reviews r
+      JOIN profiles p ON r.user_id = p.id
+      WHERE r.course_id = $1 ORDER BY r.created_at DESC
+    `, [courseId]).catch(() => []);
+
+    // 5. Assemble the final course object
+    return {
+      ...courseResult,
+      instructor: instructor || null,
+      curriculum: curriculum,
+      reviews: reviews,
+      attachments: courseResult.attachments || [],
+      external_links: courseResult.external_links || [],
+      enrolled_students_count: courseResult.students || 0,
+      reviews_count: reviews.length,
+      last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
+    } as Course;
+
   } catch (error) {
-    console.error("Failed to fetch course:", error);
+    console.error("Failed to fetch course directly:", error);
     return null;
   }
 }
