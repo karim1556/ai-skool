@@ -13,6 +13,11 @@ export async function GET(req: NextRequest, { params }: { params: { sectionId: s
 export async function POST(req: NextRequest, { params }: { params: { sectionId: string } }) {
   const db = await getDb();
   const { title } = await req.json();
-  const result = await db.run("INSERT INTO quizzes (section_id, title) VALUES ($1, $2) RETURNING id", [params.sectionId, title]);
-  return NextResponse.json({ id: result.lastInsertRowid, title });
+  const newQuiz = await db.get("INSERT INTO quizzes (section_id, title) VALUES ($1, $2) RETURNING *", [params.sectionId, title]);
+
+  if (!newQuiz) {
+    return NextResponse.json({ error: 'Failed to create the quiz' }, { status: 500 });
+  }
+
+  return NextResponse.json(newQuiz, { status: 201 });
 }

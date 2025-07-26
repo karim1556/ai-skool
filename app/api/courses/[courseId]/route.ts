@@ -75,7 +75,14 @@ export async function PUT(req: NextRequest, { params }: { params: { courseId: st
     }
 
     const setClauses = fields.map((field, i) => `${field} = $${i + 1}`).join(', ');
-    const values = fields.map(field => updates[field]);
+    const values = fields.map(field => {
+      const value = updates[field];
+      // For array fields that are stored as JSON/JSONB, stringify them.
+      if (Array.isArray(value)) {
+        return JSON.stringify(value);
+      }
+      return value;
+    });
     
     const query = `UPDATE courses SET ${setClauses} WHERE id = $${fields.length + 1}`;
     values.push(params.courseId);

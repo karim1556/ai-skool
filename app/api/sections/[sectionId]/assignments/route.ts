@@ -13,6 +13,11 @@ export async function GET(req: NextRequest, { params }: { params: { sectionId: s
 export async function POST(req: NextRequest, { params }: { params: { sectionId: string } }) {
   const db = await getDb();
   const { title } = await req.json();
-  const result = await db.run("INSERT INTO assignments (section_id, title) VALUES ($1, $2) RETURNING id", [params.sectionId, title]);
-  return NextResponse.json({ id: result.lastInsertRowid, title });
+  const newAssignment = await db.get("INSERT INTO assignments (section_id, title) VALUES ($1, $2) RETURNING *", [params.sectionId, title]);
+
+  if (!newAssignment) {
+    return NextResponse.json({ error: 'Failed to create the assignment' }, { status: 500 });
+  }
+
+  return NextResponse.json(newAssignment, { status: 201 });
 }

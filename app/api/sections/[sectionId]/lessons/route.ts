@@ -12,6 +12,7 @@ export async function POST(request: Request, { params }: { params: { sectionId: 
   try {
     const db = await getDb();
 
+    // Use a single transaction to get the max order and insert the new lesson
     // 1. Find the highest current order value for lessons in this section
     const lastLesson = await db.get(
       'SELECT "order" FROM lessons WHERE section_id = $1 ORDER BY "order" DESC LIMIT 1',
@@ -20,20 +21,14 @@ export async function POST(request: Request, { params }: { params: { sectionId: 
 
     const newOrder = lastLesson ? lastLesson.order + 1 : 0;
 
-    // 2. Insert the new lesson
-    await db.run(
-      'INSERT INTO lessons (section_id, title, duration, "order") VALUES ($1, $2, $3, $4)',
+    // 2. Insert the new lesson and return it in one step
+    const newLesson = await db.get(
+      'INSERT INTO lessons (section_id, title, duration, "order") VALUES ($1, $2, $3, $4) RETURNING *',
       [sectionId, title, duration, newOrder]
     );
 
-    // 3. Fetch and return the newly created lesson
-    const newLesson = await db.get(
-      'SELECT * FROM lessons WHERE section_id = $1 AND title = $2 AND "order" = $3',
-      [sectionId, title, newOrder]
-    );
-
     if (!newLesson) {
-      return NextResponse.json({ error: 'Failed to create or retrieve the lesson' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to create the lesson' }, { status: 500 });
     }
 
     return NextResponse.json(newLesson, { status: 201 });
