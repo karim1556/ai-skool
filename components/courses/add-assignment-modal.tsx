@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { createClient } from '@/utils/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -25,7 +25,7 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
   const [attachment, setAttachment] = useState<File | null>(null);
   const [selectedSection, setSelectedSection] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const supabase = createClient();
+  
 
   const handleSave = async () => {
     if (!title || !selectedSection) {
