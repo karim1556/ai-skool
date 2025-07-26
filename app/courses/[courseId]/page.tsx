@@ -102,14 +102,29 @@ async function getCourse(courseId: string): Promise<Course | null> {
     // 3. Fetch curriculum
     const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC', [courseId]).catch(() => []);
     const allLessons = await db.all(`
-      SELECT l.* FROM lessons l
+      SELECT l.*, s.id as section_id FROM lessons l
       JOIN sections s ON l.section_id = s.id
       WHERE s.course_id = $1 ORDER BY s."order" ASC, l."order" ASC
     `, [courseId]).catch(() => []);
     
+    // Group lessons by section_id
+    const lessonsBySection = allLessons.reduce((acc, lesson) => {
+      if (!acc[lesson.section_id]) {
+        acc[lesson.section_id] = [];
+      }
+      acc[lesson.section_id].push({
+        title: lesson.title,
+        duration: lesson.duration || '0 min',
+        type: lesson.type || 'lesson',
+        is_preview: lesson.is_preview || false
+      });
+      return acc;
+    }, {});
+
+    // Map sections with their lessons
     const curriculum = sections.map(section => ({
-      ...section,
-      lessons: allLessons.filter(lesson => lesson.section_id === section.id)
+      title: section.title,
+      lessons: lessonsBySection[section.id] || []
     }));
 
     // 4. Fetch reviews
