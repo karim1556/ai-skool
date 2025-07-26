@@ -66,41 +66,35 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections, courseTitle }
     }
 
     setIsLoading(true);
-    let finalContent = content;
 
     try {
-      if (attachment) {
-        const fileExt = attachment.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `lessons/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('course-files')
-          .upload(filePath, attachment);
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('course-files')
-          .getPublicUrl(filePath);
-        finalContent = urlData.publicUrl;
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('duration', duration);
+      formData.append('content', content || '');
+      formData.append('is_preview', String(isPreview));
+      formData.append('type', lessonType);
+      
+      // Only append file if it exists and is a file upload type
+      if (attachment && ['video_file', 'document', 'image'].includes(lessonType)) {
+        formData.append('file', attachment);
       }
 
       const response = await fetch(`/api/sections/${selectedSection}/lessons`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          duration,
-          type: lessonType,
-          content: finalContent,
-          is_preview: isPreview,
-        }),
+        body: formData,
+        // Don't set Content-Type header - let the browser set it with the correct boundary
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create lesson');
+        let errorMessage = 'Failed to create lesson';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
       const newLesson = await response.json();
@@ -109,7 +103,7 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections, courseTitle }
       handleClose();
 
     } catch (error) {
-      console.error(error);
+      console.error('Error in handleSave:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast.error(`Error: ${errorMessage}`);
     } finally {
