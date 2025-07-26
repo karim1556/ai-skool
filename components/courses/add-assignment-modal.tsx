@@ -33,44 +33,36 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
     }
 
     setIsLoading(true);
-    let attachmentUrl = '';
 
     try {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('duration', duration);
+      formData.append('max_score', maxScore);
+      formData.append('instructions', description); // Using description as instructions for now
+      
+      // Append the file if it exists
       if (attachment) {
-        const fileExt = attachment.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `assignments/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('course-files')
-          .upload(filePath, attachment);
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: urlData } = supabase.storage
-          .from('course-files')
-          .getPublicUrl(filePath);
-
-        attachmentUrl = urlData.publicUrl;
+        formData.append('file', attachment);
       }
 
       const response = await fetch(`/api/sections/${selectedSection}/assignments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description,
-          duration,
-          max_score: maxScore ? parseInt(maxScore, 10) : null,
-          attachment_url: attachmentUrl,
-        }),
+        // Don't set Content-Type header - the browser will set it with the correct boundary
+        body: formData,
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create assignment');
+        let errorMessage = 'Failed to create assignment';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If we can't parse JSON error, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const newAssignment = await response.json();
