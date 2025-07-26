@@ -17,11 +17,32 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
   const { sectionId } = params;
   try {
     const db = await getDb();
-    const lessons = await db.all('SELECT * FROM lessons WHERE section_id = $1 ORDER BY "order" ASC', [sectionId]);
+    // First check if the sort_order column exists
+    const columnCheck = await db.get(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'lessons' AND column_name = 'sort_order'"
+    );
+    
+    if (!columnCheck) {
+      // If sort_order doesn't exist, try to add it
+      try {
+        await db.exec('ALTER TABLE lessons ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0');
+      } catch (alterError) {
+        console.error('Failed to add sort_order column:', alterError);
+      }
+    }
+    
+    // Now try to fetch with sort_order
+    const lessons = await db.all(
+      'SELECT * FROM lessons WHERE section_id = $1 ORDER BY COALESCE(sort_order, 0) ASC', 
+      [sectionId]
+    );
     return NextResponse.json(lessons);
   } catch (error) {
     console.error('Failed to fetch lessons:', error);
-    return NextResponse.json({ error: 'Failed to fetch lessons' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to fetch lessons',
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined 
+    }, { status: 500 });
   }
 }
 
@@ -68,28 +89,37 @@ export async function POST(request: NextRequest, { params }: { params: { section
 
     const db = await getDb();
 
-    // Find the highest current sort_order value for lessons in this section
-    const lastLesson = await db.get(
-      'SELECT sort_order FROM lessons WHERE section_id = $1 ORDER BY sort_order DESC LIMIT 1',
-      [sectionId]
-    );
+    try {
+      // Ensure sort_order column exists
+      await db.exec('ALTER TABLE lessons ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0');
+      
+      // Find the highest current sort_order value for lessons in this section
+      const lastLesson = await db.get(
+        'SELECT sort_order FROM lessons WHERE section_id = $1 ORDER BY sort_order DESC LIMIT 1',
+        [sectionId]
+      );
 
-    const newOrder = lastLesson ? lastLesson.sort_order + 1 : 0;
+      const newOrder = lastLesson ? lastLesson.sort_order + 1 : 0;
 
-    // Insert the new lesson with file URL if available
-    const newLesson = await db.get(
-      `INSERT INTO lessons 
-       (section_id, title, duration, content, is_preview, sort_order, file_url, type) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-       RETURNING *`,
-      [sectionId, title, duration, content, is_preview, newOrder, fileUrl || null, type]
-    );
+      // Insert the new lesson with file URL if available
+      const newLesson = await db.get(
+        `INSERT INTO lessons 
+         (section_id, title, duration, content, is_preview, sort_order, file_url, type) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+         RETURNING *`,
+        [sectionId, title, duration, content, is_preview, newOrder, fileUrl || null, type]
+      );
 
-    if (!newLesson) {
-      return NextResponse.json({ error: 'Failed to create the lesson' }, { status: 500 });
+      if (!newLesson) {
+        throw new Error('Failed to create the lesson: No data returned from insert');
+      }
+
+      return NextResponse.json(newLesson, { status: 201 });
+      
+    } catch (dbError) {
+      console.error('Database error in lessons POST:', dbError);
+      throw dbError;
     }
-
-    return NextResponse.json(newLesson, { status: 201 });
 
   } catch (error) {
     console.error('Failed to create lesson:', error);

@@ -19,15 +19,37 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
   const { sectionId } = params;
   try {
     const db = await getDb();
+    
+    // Ensure the assignments table exists
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS assignments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        section_id UUID NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        duration TEXT DEFAULT '',
+        max_score NUMERIC,
+        attachment_url TEXT,
+        instructions TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
+      );
+    `);
+    
     const assignments = await db.all(
       'SELECT * FROM assignments WHERE section_id = $1 ORDER BY created_at DESC', 
       [sectionId]
     );
+    
     return NextResponse.json(assignments);
   } catch (error) {
     console.error('Failed to fetch assignments:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch assignments' }, 
+      { 
+        error: 'Failed to fetch assignments',
+        details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+      }, 
       { status: 500 }
     );
   }
@@ -90,28 +112,51 @@ export async function POST(request: NextRequest, { params }: { params: { section
     }
 
     const db = await getDb();
+    
+    try {
+      // Ensure the assignments table exists with all required columns
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS assignments (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          section_id UUID NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT DEFAULT '',
+          duration TEXT DEFAULT '',
+          max_score NUMERIC,
+          attachment_url TEXT,
+          instructions TEXT DEFAULT '',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
+        );
+      `);
 
-    const newAssignment = await db.get(
-      `INSERT INTO assignments 
-       (section_id, title, description, duration, max_score, attachment_url, instructions) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
-       RETURNING *`,
-      [
-        sectionId, 
-        title, 
-        description, 
-        duration, 
-        maxScoreNum,
-        attachmentUrl || null,
-        instructions
-      ]
-    );
+      const newAssignment = await db.get(
+        `INSERT INTO assignments 
+         (section_id, title, description, duration, max_score, attachment_url, instructions) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) 
+         RETURNING *`,
+        [
+          sectionId, 
+          title, 
+          description, 
+          duration, 
+          maxScoreNum,
+          attachmentUrl || null,
+          instructions
+        ]
+      );
 
-    if (!newAssignment) {
-      throw new Error('Failed to create the assignment');
+      if (!newAssignment) {
+        throw new Error('Failed to create the assignment: No data returned from insert');
+      }
+      
+      return NextResponse.json(newAssignment, { status: 201 });
+      
+    } catch (dbError) {
+      console.error('Database error in assignments POST:', dbError);
+      throw dbError;
     }
-
-    return NextResponse.json(newAssignment, { status: 201 });
 
   } catch (error) {
     console.error('Failed to create assignment:', error);
