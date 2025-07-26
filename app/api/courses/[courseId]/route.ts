@@ -25,13 +25,18 @@ export async function PUT(req: NextRequest, { params }: { params: { courseId: st
     const updates: { [key: string]: any } = {};
     const imageFile = formData.get("image") as File | null;
 
-    // Dynamically build updates object from form data
-    formData.forEach((value, key) => {
-      // The 'image' field is handled separately below to distinguish between a File and a string path
-      if (key === 'image') return;
-
-      if (key === 'objectives' || key === 'outcomes') {
-        updates[key] = (value as string).split(',').map(item => item.trim());
+    // Process form data to build the updates object
+    for (const [key, value] of formData.entries()) {
+      if (key.endsWith('[]')) {
+        // Handle array fields
+        const arrayKey = key.slice(0, -2);
+        if (!updates[arrayKey]) {
+          updates[arrayKey] = [];
+        }
+        updates[arrayKey].push(value);
+      } else if (key === 'image') {
+        // Image is handled separately below
+        continue;
       } else if (['price', 'original_price', 'lessons', 'rating', 'reviews', 'students', 'duration_hours'].includes(key)) {
         updates[key] = parseFloat(value as string) || 0;
       } else if (key === 'is_free') {
@@ -39,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: { courseId: st
       } else {
         updates[key] = value;
       }
-    });
+    }
 
     // Handle image upload or existing image path
     const imageValue = formData.get("image");

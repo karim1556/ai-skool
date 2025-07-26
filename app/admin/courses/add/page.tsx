@@ -110,7 +110,9 @@ export default function AddCoursePage() {
     });
 
     if (res.ok) {
-      router.push('/admin/courses');
+      const newCourse = await res.json();
+      // Redirect to the content editor for the new course
+      router.push(`/admin/courses/content?courseId=${newCourse.id}`);
     } else {
       const errorData = await res.json();
       console.error('Error creating course:', errorData.details || 'Unknown error');
@@ -411,8 +413,8 @@ export default function AddCoursePage() {
 
     <div key="finish" className="space-y-6 text-center">
       <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
-      <h2 className="text-2xl font-bold">Thank you !</h2>
-      <p className="text-gray-600">You are just one click away</p>
+      <h2 className="text-2xl font-bold">Course Created!</h2>
+      <p className="text-gray-600">Click 'Finish' to proceed to the curriculum editor and add content.</p>
     </div>,
   ]
 
