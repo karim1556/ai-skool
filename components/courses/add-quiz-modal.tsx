@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -17,12 +18,15 @@ interface AddQuizModalProps {
 
 export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalProps) {
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [timeLimit, setTimeLimit] = useState('');
+  const [passingScore, setPassingScore] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSave = async () => {
     if (!title || !selectedSection) {
-      toast.error('Please fill in all fields.');
+      toast.error('Please provide a title and select a section.');
       return;
     }
 
@@ -31,7 +35,12 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
       const response = await fetch(`/api/sections/${selectedSection}/quizzes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({
+          title,
+          description,
+          time_limit: timeLimit ? parseInt(timeLimit, 10) : null,
+          passing_score: passingScore ? parseInt(passingScore, 10) : null,
+        }),
       });
 
       if (!response.ok) {
@@ -45,6 +54,9 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
       onClose();
       // Reset form
       setTitle('');
+      setDescription('');
+      setTimeLimit('');
+      setPassingScore('');
       setSelectedSection('');
 
     } catch (error) {
@@ -80,11 +92,29 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="title" className="text-right">
               Title
             </Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="description" className="text-right">
+              Description
+            </Label>
+            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" placeholder="Quiz description..." />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="time_limit" className="text-right">
+              Time Limit (mins)
+            </Label>
+            <Input id="time_limit" type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className="col-span-3" placeholder="e.g., 60" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="passing_score" className="text-right">
+              Passing Score (%)
+            </Label>
+            <Input id="passing_score" type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} className="col-span-3" placeholder="e.g., 70" />
           </div>
         </div>
         <DialogFooter>

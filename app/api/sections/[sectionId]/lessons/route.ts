@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
 export async function POST(request: NextRequest, { params }: { params: { sectionId: string } }) {
   const { sectionId } = params;
   try {
-    const { title, duration } = await request.json();
+    const { title, duration, content, is_preview } = await request.json();
 
     if (!title || !duration) {
       return NextResponse.json({ error: 'Title and duration are required' }, { status: 400 });
@@ -36,8 +36,8 @@ export async function POST(request: NextRequest, { params }: { params: { section
 
     // 2. Insert the new lesson and return it in one step using the 'get' method which returns the first row
     const newLesson = await db.get(
-      'INSERT INTO lessons (section_id, title, duration, "order") VALUES ($1, $2, $3, $4) RETURNING *',
-      [sectionId, title, duration, newOrder]
+      'INSERT INTO lessons (section_id, title, duration, content, is_preview, "order") VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [sectionId, title, duration, content, is_preview, newOrder]
     );
 
     if (!newLesson) {

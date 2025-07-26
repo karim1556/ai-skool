@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS quizzes (
 
 -- Create assignments table
 CREATE TABLE IF NOT EXISTS assignments (
+    attachment_url TEXT,
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     section_id UUID REFERENCES sections(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
