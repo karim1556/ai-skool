@@ -86,11 +86,14 @@ async function getCourse(courseId: string): Promise<Course | null> {
   const db = await getDb();
 
   try {
+    console.log('Fetching course with ID:', courseId);
     // 1. Fetch the main course data
     const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
     if (!courseResult) {
+      console.log('No course found with ID:', courseId);
       return null;
     }
+    console.log('Found course:', courseResult.title);
 
     // 2. Fetch instructor
     const instructor = await db.get(`
@@ -100,12 +103,22 @@ async function getCourse(courseId: string): Promise<Course | null> {
     `, [courseId]).catch(() => null);
 
     // 3. Fetch curriculum
-    const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC', [courseId]).catch(() => []);
+    console.log('Fetching sections for course ID:', courseId);
+    const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC', [courseId]).catch((err) => {
+      console.error('Error fetching sections:', err);
+      return [];
+    });
+    console.log('Found sections:', sections.length, sections);
+    
     const allLessons = await db.all(`
       SELECT l.*, s.id as section_id FROM lessons l
       JOIN sections s ON l.section_id = s.id
       WHERE s.course_id = $1 ORDER BY s."order" ASC, l."order" ASC
-    `, [courseId]).catch(() => []);
+    `, [courseId]).catch((err) => {
+      console.error('Error fetching lessons:', err);
+      return [];
+    });
+    console.log('Found lessons:', allLessons.length, allLessons);
     
     // Group lessons by section_id
     const lessonsBySection = allLessons.reduce((acc, lesson) => {
@@ -126,6 +139,8 @@ async function getCourse(courseId: string): Promise<Course | null> {
       title: section.title,
       lessons: lessonsBySection[section.id] || []
     }));
+    
+    console.log('Mapped curriculum:', JSON.stringify(curriculum, null, 2));
 
     // 4. Fetch reviews
     const reviews = await db.all(`
