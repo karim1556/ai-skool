@@ -33,8 +33,9 @@ export async function POST(request: NextRequest, { params }: { params: { section
   try {
     const title = formData.get('title') as string;
     const duration = formData.get('duration') as string;
-    const content = formData.get('content') as string;
+    const content = formData.get('content') as string || '';
     const is_preview = formData.get('is_preview') === 'true';
+    const type = formData.get('type') as string || 'document';
     const file = formData.get('file') as File | null;
 
     if (!title || !duration) {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: { section
     // Handle file upload if present
     if (file) {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `lessons/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest, { params }: { params: { section
         .upload(filePath, file);
 
       if (uploadError) {
-        console.error('Error uploading file:', uploadError);
+        console.error('File upload error:', uploadError);
         return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
       }
 
@@ -67,18 +68,21 @@ export async function POST(request: NextRequest, { params }: { params: { section
 
     const db = await getDb();
 
-    // Find the highest current order value for lessons in this section
+    // Find the highest current sort_order value for lessons in this section
     const lastLesson = await db.get(
-      'SELECT "order" FROM lessons WHERE section_id = $1 ORDER BY "order" DESC LIMIT 1',
+      'SELECT sort_order FROM lessons WHERE section_id = $1 ORDER BY sort_order DESC LIMIT 1',
       [sectionId]
     );
 
-    const newOrder = lastLesson ? lastLesson.order + 1 : 0;
+    const newOrder = lastLesson ? lastLesson.sort_order + 1 : 0;
 
     // Insert the new lesson with file URL if available
     const newLesson = await db.get(
-      'INSERT INTO lessons (section_id, title, duration, content, is_preview, "order", file_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [sectionId, title, duration, content, is_preview, newOrder, fileUrl || null]
+      `INSERT INTO lessons 
+       (section_id, title, duration, content, is_preview, sort_order, file_url, type) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING *`,
+      [sectionId, title, duration, content, is_preview, newOrder, fileUrl || null, type]
     );
 
     if (!newLesson) {
@@ -89,6 +93,9 @@ export async function POST(request: NextRequest, { params }: { params: { section
 
   } catch (error) {
     console.error('Failed to create lesson:', error);
-    return NextResponse.json({ error: 'Failed to create lesson' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to create lesson' }, 
+      { status: 500 }
+    );
   }
 }
