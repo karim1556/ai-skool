@@ -1,157 +1,116 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface AddAssignmentModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onAdd: (assignmentData: any) => void
-  sections: { id: number; title: string }[]
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (newAssignment: any) => void;
+  sections: { id: string; title: string }[];
 }
 
-const assignmentCriteria = ["Creativity", "Technical Skills", "Problem Solving", "Code Quality", "Documentation"]
-
 export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssignmentModalProps) {
-  const [assignmentData, setAssignmentData] = useState({
-    title: "",
-    section_id: "",
-    question: "",
-    file: null as File | null,
-    criteria: [] as string[],
-  })
+  const [title, setTitle] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
-    if (assignmentData.title && assignmentData.section_id && assignmentData.question) {
-      onAdd({
-        ...assignmentData,
-        id: Date.now(),
-      })
-      handleClose()
+  const handleSave = async () => {
+    if (!title || !selectedSection) {
+      toast.error('Please provide a title and select a section.');
+      return;
     }
-  }
 
-  const handleClose = () => {
-    setAssignmentData({
-      title: "",
-      section_id: "",
-      question: "",
-      file: null,
-      criteria: [],
-    })
-    onClose()
-  }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/sections/${selectedSection}/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, instructions }),
+      });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    setAssignmentData({ ...assignmentData, file })
-  }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create assignment');
+      }
 
-  const handleCriteriaChange = (criterion: string) => {
-    const newCriteria = assignmentData.criteria.includes(criterion)
-      ? assignmentData.criteria.filter((c) => c !== criterion)
-      : [...assignmentData.criteria, criterion]
-    setAssignmentData({ ...assignmentData, criteria: newCriteria })
-  }
+      const newAssignment = await response.json();
+      toast.success('Assignment added successfully!');
+      onAdd(newAssignment);
+      onClose();
+      // Reset form
+      setTitle('');
+      setInstructions('');
+      setSelectedSection('');
+
+    } catch (error) {
+      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      toast.error(`Error: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add new assignment</DialogTitle>
+          <DialogTitle>Add New Assignment</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="assignment-title">Assignment title</Label>
-            <Input
-              id="assignment-title"
-              value={assignmentData.title}
-              onChange={(e) => setAssignmentData({ ...assignmentData, title: e.target.value })}
-              placeholder="Enter assignment title"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="section">Section</Label>
-            <Select
-              value={assignmentData.section_id}
-              onValueChange={(value) => setAssignmentData({ ...assignmentData, section_id: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select section" />
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="section" className="text-right">
+              Section
+            </Label>
+            <Select onValueChange={setSelectedSection} value={selectedSection}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select a section" />
               </SelectTrigger>
               <SelectContent>
                 {sections.map((section) => (
-                  <SelectItem key={section.id} value={String(section.id)}>
+                  <SelectItem key={section.id} value={section.id}>
                     {section.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          <div>
-            <Label htmlFor="question">Assignment Question</Label>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="title" className="text-right">
+              Title
+            </Label>
+            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="instructions" className="text-right">
+              Instructions
+            </Label>
             <Textarea
-              id="question"
-              value={assignmentData.question}
-              onChange={(e) => setAssignmentData({ ...assignmentData, question: e.target.value })}
-              placeholder="Enter assignment question"
-              rows={3}
+              id="instructions"
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              className="col-span-3"
+              placeholder="(Optional) Add instructions for the assignment"
             />
-          </div>
-
-          <div>
-            <Label htmlFor="file">Assignment Sheet</Label>
-            <p className="text-sm text-gray-600 mb-2">
-              Upload Assignment sheet here
-              <br />
-              Allowed file type :- 'doc', 'docx', 'pdf', 'txt', 'png', 'jpg', 'jpeg','csv'
-            </p>
-            <Input
-              id="file"
-              type="file"
-              onChange={handleFileChange}
-              accept=".doc,.docx,.pdf,.txt,.png,.jpg,.jpeg,.csv"
-            />
-          </div>
-
-          <div>
-            <Label>Assignment Criteria ( Select upto 5 criteria )</Label>
-            <div className="mt-2 space-y-2">
-              {assignmentCriteria.map((criterion) => (
-                <div key={criterion} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={criterion}
-                    checked={assignmentData.criteria.includes(criterion)}
-                    onChange={() => handleCriteriaChange(criterion)}
-                    disabled={assignmentData.criteria.length >= 5 && !assignmentData.criteria.includes(criterion)}
-                  />
-                  <Label htmlFor={criterion}>{criterion}</Label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose}>
-              Close
-            </Button>
-            <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
-              Submit
-            </Button>
           </div>
         </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

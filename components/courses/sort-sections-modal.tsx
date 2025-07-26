@@ -7,14 +7,21 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { GripVertical } from "lucide-react"
 
-interface SortSectionsModalProps {
-  isOpen: boolean
-  onClose: () => void
-  sections: string[]
-  onUpdateSorting: (sections: string[]) => void
+// Define the Section type to match the parent component's structure
+interface Section {
+  id: string;
+  title: string;
+  order: number;
 }
 
-export function SortSectionsModal({ isOpen, onClose, sections, onUpdateSorting }: SortSectionsModalProps) {
+interface SortSectionsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  sections: Section[];
+  onSort: (sections: Section[]) => void;
+}
+
+export function SortSectionsModal({ isOpen, onClose, sections, onSort }: SortSectionsModalProps) {
   const [sortedSections, setSortedSections] = useState([...sections])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
@@ -46,10 +53,10 @@ export function SortSectionsModal({ isOpen, onClose, sections, onUpdateSorting }
     setDraggedIndex(null)
   }
 
-  const handleUpdateSorting = () => {
-    onUpdateSorting(sortedSections)
-    onClose()
-  }
+  const handleSaveSorting = () => {
+    onSort(sortedSections.map((section, index) => ({ ...section, order: index })));
+    onClose();
+  };
 
   const handleClose = () => {
     setSortedSections([...sections])
@@ -66,15 +73,15 @@ export function SortSectionsModal({ isOpen, onClose, sections, onUpdateSorting }
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-medium text-gray-700">List of sections</h3>
-            <Button onClick={handleUpdateSorting} className="bg-blue-600 hover:bg-blue-700">
-              Update sorting
+            <Button onClick={handleSaveSorting} className="bg-blue-600 hover:bg-blue-700">
+              Save Sorting
             </Button>
           </div>
 
           <div className="bg-gray-50 p-4 rounded-lg space-y-2 max-h-96 overflow-y-auto">
             {sortedSections.map((section, index) => (
               <div
-                key={`${section}-${index}`}
+                key={section.id}
                 draggable
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragOver={handleDragOver}
@@ -85,7 +92,7 @@ export function SortSectionsModal({ isOpen, onClose, sections, onUpdateSorting }
                 `}
               >
                 <GripVertical className="h-4 w-4 text-gray-400" />
-                <span className="font-medium">{section}</span>
+                <span className="font-medium">{section.title}</span>
               </div>
             ))}
           </div>

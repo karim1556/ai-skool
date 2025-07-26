@@ -1,130 +1,101 @@
 "use client"
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface AddQuizModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onAdd: (quizData: any) => void
-  sections: { id: number; title: string }[]
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (newQuiz: any) => void;
+  sections: { id: string; title: string }[];
 }
 
 export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalProps) {
-  const [quizData, setQuizData] = useState({
-    title: "",
-    section_id: "",
-    instruction: "",
-    maxAttempts: "3",
-    timeLimit: "01:00",
-  })
+  const [title, setTitle] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
-    if (quizData.title && quizData.section_id) {
-      onAdd({
-        ...quizData,
-        id: Date.now(),
-      })
-      handleClose()
+  const handleSave = async () => {
+    if (!title || !selectedSection) {
+      toast.error('Please fill in all fields.');
+      return;
     }
-  }
 
-  const handleClose = () => {
-    setQuizData({
-      title: "",
-      section_id: "",
-      instruction: "",
-      maxAttempts: "3",
-      timeLimit: "01:00",
-    })
-    onClose()
-  }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/sections/${selectedSection}/quizzes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create quiz');
+      }
+
+      const newQuiz = await response.json();
+      toast.success('Quiz added successfully!');
+      onAdd(newQuiz);
+      onClose();
+      // Reset form
+      setTitle('');
+      setSelectedSection('');
+
+    } catch (error) {
+      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      toast.error(`Error: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add new quiz</DialogTitle>
+          <DialogTitle>Add New Quiz</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="quiz-title">Quiz title</Label>
-            <Input
-              id="quiz-title"
-              value={quizData.title}
-              onChange={(e) => setQuizData({ ...quizData, title: e.target.value })}
-              placeholder="Enter quiz title"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="section">Section</Label>
-            <Select
-              value={quizData.section_id}
-              onValueChange={(value) => setQuizData({ ...quizData, section_id: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select section" />
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="section" className="text-right">
+              Section
+            </Label>
+            <Select onValueChange={setSelectedSection} value={selectedSection}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select a section" />
               </SelectTrigger>
               <SelectContent>
                 {sections.map((section) => (
-                  <SelectItem key={section.id} value={String(section.id)}>
+                  <SelectItem key={section.id} value={section.id}>
                     {section.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          <div>
-            <Label htmlFor="instruction">Instruction</Label>
-            <Textarea
-              id="instruction"
-              value={quizData.instruction}
-              onChange={(e) => setQuizData({ ...quizData, instruction: e.target.value })}
-              placeholder="Enter quiz instructions"
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="max-attempts">Max quiz Attempts</Label>
-            <Input
-              id="max-attempts"
-              type="number"
-              value={quizData.maxAttempts}
-              onChange={(e) => setQuizData({ ...quizData, maxAttempts: e.target.value })}
-              min="1"
-              max="10"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="time-limit">Timer value in (mm:ss) format :- press up/down arrow to change time</Label>
-            <Input
-              id="time-limit"
-              value={quizData.timeLimit}
-              onChange={(e) => setQuizData({ ...quizData, timeLimit: e.target.value })}
-              placeholder="01:00"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose}>
-              Close
-            </Button>
-            <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
-              Submit
-            </Button>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="title" className="text-right">
+              Title
+            </Label>
+            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
           </div>
         </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
