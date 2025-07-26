@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
 export async function POST(request: NextRequest, { params }: { params: { sectionId: string } }) {
   const { sectionId } = params;
   try {
-    const { title, description, time_limit, passing_score } = await request.json();
+    const { title, description, time_limit, passing_score, max_attempts } = await request.json();
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -30,8 +30,8 @@ export async function POST(request: NextRequest, { params }: { params: { section
     const db = await getDb();
 
     const newQuiz = await db.get(
-      'INSERT INTO quizzes (section_id, title, description, time_limit, passing_score) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [sectionId, title, description, time_limit, passing_score]
+      'INSERT INTO quizzes (section_id, title, description, time_limit, passing_score, max_attempts) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [sectionId, title, description, time_limit, passing_score, max_attempts]
     );
 
     if (!newQuiz) {

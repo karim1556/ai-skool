@@ -20,12 +20,11 @@ interface AddAssignmentModalProps {
 export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssignmentModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [duration, setDuration] = useState('');
   const [maxScore, setMaxScore] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [selectedSection, setSelectedSection] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
 
   const handleSave = async () => {
     if (!title || !selectedSection) {
@@ -63,7 +62,7 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
         body: JSON.stringify({
           title,
           description,
-          due_date: dueDate || null,
+          duration,
           max_score: maxScore ? parseInt(maxScore, 10) : null,
           attachment_url: attachmentUrl,
         }),
@@ -81,7 +80,7 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
       // Reset form
       setTitle('');
       setDescription('');
-      setDueDate('');
+      setDuration('');
       setMaxScore('');
       setAttachment(null);
       setSelectedSection('');
@@ -127,19 +126,19 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="description" className="text-right">
-              Description
+              Assignment Instructions
             </Label>
             <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" placeholder="Assignment instructions..." />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="due_date" className="text-right">
-              Due Date
+            <Label htmlFor="duration" className="text-right">
+              Duration
             </Label>
-            <Input id="due_date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="col-span-3" />
+            <Input id="duration" value={duration} onChange={(e) => setDuration(e.target.value)} className="col-span-3" placeholder="e.g., 2 hours 30 minutes" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="max_score" className="text-right">
-              Max Score
+              Total Points
             </Label>
             <Input id="max_score" type="number" value={maxScore} onChange={(e) => setMaxScore(e.target.value)} className="col-span-3" placeholder="e.g., 100" />
           </div>

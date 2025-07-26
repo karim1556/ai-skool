@@ -21,6 +21,7 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
   const [description, setDescription] = useState('');
   const [timeLimit, setTimeLimit] = useState('');
   const [passingScore, setPassingScore] = useState('');
+  const [maxAttempts, setMaxAttempts] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,6 +41,7 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
           description,
           time_limit: timeLimit ? parseInt(timeLimit, 10) : null,
           passing_score: passingScore ? parseInt(passingScore, 10) : null,
+          max_attempts: maxAttempts ? parseInt(maxAttempts, 10) : null,
         }),
       });
 
@@ -57,6 +59,7 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
       setDescription('');
       setTimeLimit('');
       setPassingScore('');
+      setMaxAttempts('');
       setSelectedSection('');
 
     } catch (error) {
@@ -92,21 +95,27 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
               </SelectContent>
             </Select>
           </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="title" className="text-right">
-              Title
+              Quiz Title
             </Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
-              Description
+            <Label htmlFor="instruction" className="text-right">
+              Instruction
             </Label>
-            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" placeholder="Quiz description..." />
+            <Textarea id="instruction" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" placeholder="Quiz instructions..." />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="max_attempts" className="text-right">
+              Max quiz Attempts
+            </Label>
+            <Input id="max_attempts" type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} className="col-span-3" placeholder="e.g., 3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="time_limit" className="text-right">
-              Time Limit (mins)
+              Timer value (minutes)
             </Label>
             <Input id="time_limit" type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className="col-span-3" placeholder="e.g., 60" />
           </div>

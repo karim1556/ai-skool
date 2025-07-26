@@ -237,11 +237,19 @@ export const CourseContentManager = ({ course: initialCourse, instructors }: Cou
 
       {/* Modals */}
       <AddSectionModal isOpen={showAddSection} onClose={() => setShowAddSection(false)} onAdd={handleAddSection} />
-      <AddLessonModal isOpen={showAddLesson} onClose={() => setShowAddLesson(false)} sections={sections} onAdd={(data) => refreshContentForSection(data.section_id)} />
+      <AddLessonModal
+        isOpen={showAddLesson}
+        onClose={() => setShowAddLesson(false)}
+        onAdd={(newLesson) => {
+          // Add to the correct section in the UI
+          refreshContentForSection(newLesson.section_id);
+        }}
+        sections={sections}
+        courseTitle={course.title}
+      />
       <AddQuizModal isOpen={showAddQuiz} onClose={() => setShowAddQuiz(false)} sections={sections} onAdd={(data) => refreshContentForSection(data.section_id)} />
       <AddAssignmentModal isOpen={showAddAssignment} onClose={() => setShowAddAssignment(false)} sections={sections} onAdd={(data) => refreshContentForSection(data.section_id)} />
       <SortSectionsModal isOpen={showSortSections} onClose={() => setShowSortSections(false)} sections={sections} onSort={handleSortSections} />
     </div>
   );
 }
-
