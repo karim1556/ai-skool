@@ -100,84 +100,70 @@ interface Course {
 }
 
 async function getCourse(courseId: string): Promise<Course | null> {
-  console.log('--- Running STABLE getCourse ---');
+  console.log('--- Running ULTRA-STABLE getCourse for Production ---');
   const db = await getDb();
 
   try {
-    // 1. Fetch course
+    // Step 1: Fetch the core course data. This is the only critical query.
     const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
     if (!courseResult) {
-      console.error('Stable: No course found with ID:', courseId);
-      return null;
+      console.error('Production Safe: No course found with ID:', courseId);
+      return null; // If no course, we can't proceed.
     }
 
-    // 2. Fetch instructor (with simple fallback)
+    // Step 2: Fetch the instructor. Non-critical, fallback to null.
     let instructor = null;
     if (courseResult.created_by) {
       try {
         instructor = await db.get('SELECT * FROM profiles WHERE id = $1', [courseResult.created_by]);
       } catch (e) {
-        console.error('Stable: Failed to fetch instructor', e);
+        console.warn('Production Safe: Could not fetch instructor.', e);
       }
     }
 
-    // 3. Fetch sections
+    // Step 3: Fetch sections. Non-critical, fallback to empty array.
     const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY sort_order ASC', [courseId]).catch(err => {
-      console.error('Stable: Failed to fetch sections:', err);
-      return []; // Return empty array on error
+      console.warn('Production Safe: Could not fetch sections:', err);
+      return [];
     });
 
-    // 4. Fetch all lessons for the course in one go
-    const allLessons = await db.all(`
-      SELECT l.* FROM lessons l
-      JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = $1
-      ORDER BY l.sort_order ASC
-    `, [courseId]).catch(err => {
-      console.error('Stable: Failed to fetch lessons:', err);
-      return []; // Return empty array on error
+    // Step 4: Fetch all lessons for the course. Non-critical, fallback to empty array.
+    const allLessons = await db.all(`SELECT l.* FROM lessons l JOIN sections s ON l.section_id = s.id WHERE s.course_id = $1 ORDER BY l.sort_order ASC`, [courseId]).catch(err => {
+      console.warn('Production Safe: Could not fetch lessons:', err);
+      return [];
     });
 
-    // 5. Group lessons by section in JavaScript
-    const lessonsBySection = allLessons.reduce((acc, lesson) => {
-      const sectionId = lesson.section_id;
-      if (!acc[sectionId]) {
-        acc[sectionId] = [];
-      }
-      acc[sectionId].push(lesson);
-      return acc;
-    }, {} as Record<string, any[]>);
-
-    // 6. Build the curriculum structure
+    // Step 5: Combine sections and lessons into a curriculum structure.
     const curriculum = sections.map(section => ({
       ...section,
-      lessons: lessonsBySection[section.id] || [],
+      lessons: allLessons.filter(lesson => lesson.section_id === section.id),
     }));
 
-    // 7. Fetch reviews
-    const reviews = await db.all('SELECT r.*, p.full_name as user, p.image as user_image FROM reviews r JOIN profiles p ON r.user_id = p.id WHERE r.course_id = $1 ORDER BY r.created_at DESC', [courseId]).catch(err => {
-      console.error('Stable: Failed to fetch reviews:', err);
-      return []; // Return empty array on error
+    // Step 6: Fetch reviews. Non-critical, fallback to empty array.
+    const reviews = await db.all('SELECT r.*, p.full_name as user, p.image as user_image FROM reviews r LEFT JOIN profiles p ON r.user_id = p.id WHERE r.course_id = $1 ORDER BY r.created_at DESC', [courseId]).catch(err => {
+      console.warn('Production Safe: Could not fetch reviews:', err);
+      return [];
     });
 
-    // 8. Assemble the final course object
+    // Step 7: Assemble the final, safe course object for rendering.
     const courseData: Course = {
       ...courseResult,
-      instructor: instructor,
-      curriculum: curriculum,
-      reviews: reviews,
+      instructor,
+      curriculum,
+      reviews,
       rating: reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0,
       reviews_count: reviews.length,
-      enrolled_students_count: 0, // Placeholder
+      // Use placeholders for fields that might require complex joins we are avoiding
+      enrolled_students_count: courseResult.enrolled_students_count || 0,
       last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
     };
 
-    console.log('--- STABLE getCourse finished successfully ---');
+    console.log('--- ULTRA-STABLE getCourse finished successfully ---');
     return courseData;
 
   } catch (error) {
-    console.error('❌ CRITICAL ERROR in STABLE getCourse:', error);
-    return null; // Ensure page doesn't crash
+    console.error('❌ CRITICAL ERROR in getCourse. Returning null to prevent crash.', error);
+    return null;
   }
 }
 
