@@ -100,211 +100,84 @@ interface Course {
 }
 
 async function getCourse(courseId: string): Promise<Course | null> {
-  console.log('=== Starting getCourse ===');
-  console.log('Course ID:', courseId);
-  
-  let db;
+  console.log('--- Running STABLE getCourse ---');
+  const db = await getDb();
+
   try {
-    db = await getDb();
-    if (!db) {
-      console.error('❌ Database connection failed');
-      return null;
-    }
-    console.log('✅ Database connection successful');
-    
-    // 1. Fetch basic course data
-    console.log('🔍 Fetching course with ID:', courseId);
-    const courseQuery = `
-      SELECT 
-        c.*, 
-        (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as enrolled_students_count,
-        (SELECT AVG(rating) FROM reviews WHERE course_id = c.id) as average_rating,
-        (SELECT COUNT(*) FROM reviews WHERE course_id = c.id) as reviews_count
-      FROM courses c 
-      WHERE c.id = $1`;
-      
-    const courseResult = await db.get(courseQuery, [courseId]);
+    // 1. Fetch course
+    const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
     if (!courseResult) {
-      console.error('❌ No course found with ID:', courseId);
+      console.error('Stable: No course found with ID:', courseId);
       return null;
     }
-    console.log('✅ Found course:', courseResult.title);
 
-    // 2. Fetch instructor with fallback if course_instructors doesn't exist
-    console.log('\n🔍 Fetching instructor for course...');
+    // 2. Fetch instructor (with simple fallback)
     let instructor = null;
-    try {
-      instructor = await db.get(`
-        SELECT p.* FROM profiles p
-        JOIN course_instructors ci ON p.id = ci.instructor_id
-        WHERE ci.course_id = $1 LIMIT 1
-      `, [courseId]);
-      console.log('✅ Instructor data:', instructor ? 'Found' : 'Not found in course_instructors');
-      
-      // Fallback to course creator if no instructor found
-      if (!instructor && courseResult.created_by) {
+    if (courseResult.created_by) {
+      try {
         instructor = await db.get('SELECT * FROM profiles WHERE id = $1', [courseResult.created_by]);
-        console.log('✅ Using course creator as instructor:', instructor ? 'Found' : 'Not found');
+      } catch (e) {
+        console.error('Stable: Failed to fetch instructor', e);
       }
-    } catch (error) {
-      const err = error as Error;
-      console.warn('⚠️ Instructor fetch failed, using fallback:', err.message);
-      // Fallback to a default instructor
-      instructor = {
-        name: 'Instructor',
-        image: '/default-avatar.png',
-        title: 'Course Instructor',
-        bio: 'Experienced educator with a passion for teaching',
-        courses_count: 1,
-        students_count: courseResult.enrolled_students_count || 0,
-        average_rating: courseResult.average_rating || 4.5,
-        reviews_count: courseResult.reviews_count || 0
-      };
     }
 
-    // 3. Fetch curriculum (sections + lessons)
-    console.log('\n🔍 Fetching curriculum...');
-    let curriculum = [];
-    
-    try {
-      // First, try fetching sections and lessons in a single query
-      const curriculumQuery = `
-        WITH course_sections AS (
-          SELECT * FROM sections 
-          WHERE course_id = $1 
-          ORDER BY sort_order ASC
-        )
-        SELECT 
-          s.id as section_id,
-          s.title as section_title,
-          s.sort_order as section_sort_order,
-          l.id as lesson_id,
-          l.title as lesson_title,
-          l.type as lesson_type,
-          l.duration as lesson_duration,
-          l.is_preview as is_preview,
-          l.sort_order as lesson_sort_order,
-          l.content as content
-        FROM course_sections s
-        LEFT JOIN lessons l ON s.id = l.section_id
-        ORDER BY s.sort_order, l.sort_order`;
-      
-      const curriculumResults = await db.all(curriculumQuery, [courseId]);
-      
-      // Group by sections
-      const sectionsMap = new Map();
-      
-      curriculumResults.forEach(row => {
-        if (!sectionsMap.has(row.section_id)) {
-          sectionsMap.set(row.section_id, {
-            id: row.section_id,
-            title: row.section_title,
-            sort_order: row.section_sort_order || 0,
-            lessons: []
-          });
-        }
-        
-        if (row.lesson_id) {
-          sectionsMap.get(row.section_id).lessons.push({
-            id: row.lesson_id,
-            title: row.lesson_title,
-            type: row.lesson_type || 'lesson',
-            duration: row.lesson_duration ? `${row.lesson_duration} min` : '5 min',
-            is_preview: Boolean(row.is_preview),
-            sort_order: row.lesson_sort_order || 0,
-            content: row.content
-          });
-        }
-      });
-      
-      curriculum = Array.from(sectionsMap.values());
-      console.log(`✅ Found ${curriculum.length} sections with lessons`);
-      
-    } catch (error) {
-      const err = error as Error;
-      console.error('❌ Error fetching curriculum:', err);
-      // Fallback to empty curriculum
-      curriculum = [];
-    }
-    
-
-
-    // 4. Fetch reviews with fallback
-    console.log('\n🔍 Fetching reviews...');
-    let reviews = [];
-    try {
-      reviews = await db.all(`
-        SELECT 
-          r.*, 
-          COALESCE(p.full_name, 'Anonymous') as user, 
-          COALESCE(p.image, '/default-avatar.png') as user_image 
-        FROM reviews r
-        LEFT JOIN profiles p ON r.user_id = p.id
-        WHERE r.course_id = $1 
-        ORDER BY r.created_at DESC
-      `, [courseId]);
-      console.log(`✅ Found ${reviews.length} reviews`);
-    } catch (error) {
-      const err = error as Error;
-      console.warn('⚠️ Could not fetch reviews:', err.message);
-      reviews = [];
-    }
-
-    // 5. Assemble and sanitize the final course object
-    const courseData: Course = {
-      id: courseResult.id,
-      title: courseResult.title,
-      tagline: courseResult.tagline || courseResult.title,
-      description: courseResult.description || 'No description available',
-      objectives: Array.isArray(courseResult.objectives) ? 
-        courseResult.objectives : 
-        (courseResult.objectives ? [courseResult.objectives] : ['Learn valuable skills']),
-      rating: parseFloat(courseResult.average_rating) || 4.5,
-      reviews_count: parseInt(courseResult.reviews_count) || 0,
-      enrolled_students_count: parseInt(courseResult.enrolled_students_count) || 0,
-      price: parseFloat(courseResult.price) || 0,
-      original_price: parseFloat(courseResult.original_price) || 0,
-      duration: courseResult.duration_hours ? 
-        `${courseResult.duration_hours} hours` : 'Self-paced',
-      level: courseResult.level || 'All Levels',
-      last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
-      demo_video_url: courseResult.demo_video_url || '',
-      video_preview_image: courseResult.video_preview_image || '/placeholder-course.jpg',
-      instructor: instructor || {
-        name: 'Instructor',
-        image: '/default-avatar.png',
-        title: 'Course Instructor',
-        bio: 'Experienced educator with a passion for teaching',
-        courses_count: 1,
-        students_count: courseResult.enrolled_students_count || 0,
-        average_rating: courseResult.average_rating || 4.5,
-        reviews_count: courseResult.reviews_count || 0
-      },
-      curriculum: curriculum,
-      reviews: reviews,
-      attachments: Array.isArray(courseResult.attachments) ? 
-        courseResult.attachments : 
-        (courseResult.attachments ? [courseResult.attachments] : []),
-      external_links: Array.isArray(courseResult.external_links) ? 
-        courseResult.external_links : 
-        (courseResult.external_links ? [courseResult.external_links] : [])
-    };
-
-    // Log final data (without logging the full content to avoid cluttering)
-    console.log('\n🎉 Final course data:', {
-      id: courseData.id,
-      title: courseData.title,
-      sections: courseData.curriculum?.length || 0,
-      totalLessons: courseData.curriculum?.reduce((sum, section) => sum + (section.lessons?.length || 0), 0) || 0,
-      hasInstructor: !!courseData.instructor,
-      reviewCount: courseData.reviews.length
+    // 3. Fetch sections
+    const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY sort_order ASC', [courseId]).catch(err => {
+      console.error('Stable: Failed to fetch sections:', err);
+      return []; // Return empty array on error
     });
 
+    // 4. Fetch all lessons for the course in one go
+    const allLessons = await db.all(`
+      SELECT l.* FROM lessons l
+      JOIN sections s ON l.section_id = s.id
+      WHERE s.course_id = $1
+      ORDER BY l.sort_order ASC
+    `, [courseId]).catch(err => {
+      console.error('Stable: Failed to fetch lessons:', err);
+      return []; // Return empty array on error
+    });
+
+    // 5. Group lessons by section in JavaScript
+    const lessonsBySection = allLessons.reduce((acc, lesson) => {
+      const sectionId = lesson.section_id;
+      if (!acc[sectionId]) {
+        acc[sectionId] = [];
+      }
+      acc[sectionId].push(lesson);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // 6. Build the curriculum structure
+    const curriculum = sections.map(section => ({
+      ...section,
+      lessons: lessonsBySection[section.id] || [],
+    }));
+
+    // 7. Fetch reviews
+    const reviews = await db.all('SELECT r.*, p.full_name as user, p.image as user_image FROM reviews r JOIN profiles p ON r.user_id = p.id WHERE r.course_id = $1 ORDER BY r.created_at DESC', [courseId]).catch(err => {
+      console.error('Stable: Failed to fetch reviews:', err);
+      return []; // Return empty array on error
+    });
+
+    // 8. Assemble the final course object
+    const courseData: Course = {
+      ...courseResult,
+      instructor: instructor,
+      curriculum: curriculum,
+      reviews: reviews,
+      rating: reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0,
+      reviews_count: reviews.length,
+      enrolled_students_count: 0, // Placeholder
+      last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
+    };
+
+    console.log('--- STABLE getCourse finished successfully ---');
     return courseData;
 
   } catch (error) {
-    console.error("Failed to fetch course directly:", error);
-    return null;
+    console.error('❌ CRITICAL ERROR in STABLE getCourse:', error);
+    return null; // Ensure page doesn't crash
   }
 }
 
