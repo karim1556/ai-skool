@@ -20,6 +20,7 @@ import {
   Check,
   Globe,
   Calendar,
+  ClipboardList,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 
@@ -35,9 +36,25 @@ interface Instructor {
   reviews_count: number;
 }
 
-interface CurriculumSection {
+interface Lesson {
   title: string;
-  lessons: { title: string; duration: string }[];
+  duration: string;
+  type?: 'lesson' | 'quiz' | 'assignment';
+  is_preview?: boolean;
+  id?: string | number;
+  description?: string;
+  content?: string;
+  url?: string;
+  sort_order?: number;
+}
+
+interface CurriculumSection {
+  id: string | number;
+  title: string;
+  description?: string;
+  sort_order?: number;
+  course_id?: string | number;
+  lessons: Lesson[];
 }
 
 interface Attachment {
@@ -83,9 +100,13 @@ interface Course {
 }
 
 async function getCourse(courseId: string): Promise<Course | null> {
-  const db = await getDb();
-
+  let db;
   try {
+    db = await getDb();
+    if (!db) {
+      console.error('Database connection failed');
+      return null;
+    }
     console.log('Fetching course with ID:', courseId);
     // 1. Fetch the main course data
     const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
@@ -121,23 +142,33 @@ async function getCourse(courseId: string): Promise<Course | null> {
     console.log('Found lessons:', allLessons.length, allLessons);
     
     // Group lessons by section_id
-    const lessonsBySection = allLessons.reduce((acc, lesson) => {
-      if (!acc[lesson.section_id]) {
-        acc[lesson.section_id] = [];
+    const lessonsBySection = allLessons.reduce<Record<string | number, any[]>>((acc, lesson) => {
+      const sectionId = lesson.section_id;
+      if (!acc[sectionId]) {
+        acc[sectionId] = [];
       }
-      acc[lesson.section_id].push({
+      acc[sectionId].push({
+        id: lesson.id,
         title: lesson.title,
+        description: lesson.description,
         duration: lesson.duration || '0 min',
         type: lesson.type || 'lesson',
-        is_preview: lesson.is_preview || false
+        is_preview: Boolean(lesson.is_preview),
+        content: lesson.content,
+        url: lesson.url,
+        sort_order: lesson.sort_order || 0
       });
       return acc;
     }, {});
 
     // Map sections with their lessons
     const curriculum = sections.map(section => ({
+      id: section.id,
       title: section.title,
-      lessons: lessonsBySection[section.id] || []
+      description: section.description,
+      sort_order: section.sort_order || 0,
+      course_id: section.course_id,
+      lessons: (lessonsBySection[section.id] || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     }));
     
     console.log('Mapped curriculum:', JSON.stringify(curriculum, null, 2));
@@ -246,27 +277,71 @@ export default async function CoursePage({ params }: { params: { courseId: strin
           {/* Course Content */}
           <Card className="p-6 shadow-sm">
             <CardContent className="p-0">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Course content</h2>
-              <Accordion type="single" collapsible className="w-full">
-                {course.curriculum?.map((section: CurriculumSection, index: number) => (
-                  <AccordionItem key={index} value={`item-${index}`}>
-                    <AccordionTrigger className="font-semibold text-lg">{section.title}</AccordionTrigger>
-                    <AccordionContent>
-                      <ul className="space-y-2 pl-4">
-                        {section.lessons.map((lesson, lessonIndex) => (
-                          <li key={lessonIndex} className="flex items-center justify-between text-gray-600">
-                            <div className="flex items-center space-x-2">
-                              <PlayCircle className="h-4 w-4 text-gray-500" />
-                              <span>{lesson.title}</span>
-                            </div>
-                            <span>{lesson.duration}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Course content</h2>
+                <span className="text-sm text-gray-500">
+                  {lessonsCount} {lessonsCount === 1 ? 'lesson' : 'lessons'}
+                </span>
+              </div>
+              
+              {course.curriculum?.length > 0 ? (
+                <Accordion type="single" collapsible className="w-full">
+                  {course.curriculum.map((section: CurriculumSection, index: number) => (
+                    <AccordionItem key={index} value={`item-${index}`}>
+                      <AccordionTrigger className="font-semibold text-lg">
+                        <div className="flex items-center">
+                          <span>{section.title}</span>
+                          <span className="ml-2 text-sm font-normal text-gray-500">
+                            ({section.lessons?.length || 0} {section.lessons?.length === 1 ? 'item' : 'items'})
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        {section.lessons?.length > 0 ? (
+                          <ul className="space-y-2 pl-4">
+                            {section.lessons.map((lesson, lessonIndex) => (
+                              <li key={lessonIndex} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50">
+                                <div className="flex items-center space-x-3">
+                                  {lesson.type === 'quiz' ? (
+                                    <FileText className="h-4 w-4 text-blue-500" />
+                                  ) : lesson.type === 'assignment' ? (
+                                    <ClipboardList className="h-4 w-4 text-purple-500" />
+                                  ) : (
+                                    <PlayCircle className="h-4 w-4 text-green-500" />
+                                  )}
+                                  <span className="text-gray-700">{lesson.title}</span>
+                                  {lesson.is_preview && (
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                      Preview
+                                    </span>
+                                  )}
+                                </div>
+                                {lesson.duration && (
+                                  <span className="text-sm text-gray-500">{lesson.duration}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="text-center py-4 text-gray-500">
+                            No lessons in this section yet.
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="mx-auto h-12 w-12 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No content yet</h3>
+                  <p className="mt-1 text-sm text-gray-500">This course doesn't have any sections or lessons yet.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
