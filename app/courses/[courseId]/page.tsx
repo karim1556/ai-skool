@@ -112,127 +112,193 @@ async function getCourse(courseId: string): Promise<Course | null> {
     }
     console.log('✅ Database connection successful');
     
+    // 1. Fetch basic course data
     console.log('🔍 Fetching course with ID:', courseId);
-    const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
+    const courseQuery = `
+      SELECT 
+        c.*, 
+        (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as enrolled_students_count,
+        (SELECT AVG(rating) FROM reviews WHERE course_id = c.id) as average_rating,
+        (SELECT COUNT(*) FROM reviews WHERE course_id = c.id) as reviews_count
+      FROM courses c 
+      WHERE c.id = $1`;
+      
+    const courseResult = await db.get(courseQuery, [courseId]);
     if (!courseResult) {
       console.error('❌ No course found with ID:', courseId);
       return null;
     }
     console.log('✅ Found course:', courseResult.title);
-    console.log('Course data:', JSON.stringify(courseResult, null, 2));
 
-    // 2. Fetch instructor
+    // 2. Fetch instructor with fallback if course_instructors doesn't exist
     console.log('\n🔍 Fetching instructor for course...');
-    const instructor = await db.get(`
-      SELECT p.* FROM profiles p
-      JOIN course_instructors ci ON p.id = ci.instructor_id
-      WHERE ci.course_id = $1 LIMIT 1
-    `, [courseId]).catch((err) => {
-      console.error('❌ Error fetching instructor:', err);
-      return null;
-    });
-    console.log('✅ Instructor data:', instructor ? 'Found' : 'Not found');
-
-    // 3. Fetch curriculum
-    console.log('\n🔍 Fetching sections for course ID:', courseId);
-    const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY sort_order ASC', [courseId]).catch((err) => {
-      console.error('❌ Error fetching sections:', err);
-      return [];
-    });
-    console.log(`✅ Found ${sections.length} sections`);
-    console.log('Sections data:', JSON.stringify(sections, null, 2));
-    
-    console.log('\n🔍 Fetching lessons for course...');
-    const allLessons = await db.all(`
-      SELECT l.*, s.id as section_id FROM lessons l
-      JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = $1 ORDER BY s.sort_order ASC, l.sort_order ASC
-    `, [courseId]).catch((err) => {
-      console.error('❌ Error fetching lessons:', err);
-      return [];
-    });
-    console.log(`✅ Found ${allLessons.length} lessons`);
-    console.log('Lessons data:', JSON.stringify(allLessons, null, 2));
-    
-    // Group lessons by section_id
-    console.log('\n📊 Grouping lessons by section...');
-    const lessonsBySection = allLessons.reduce<Record<string | number, any[]>>((acc, lesson) => {
-      const sectionId = lesson.section_id;
-      if (!acc[sectionId]) {
-        acc[sectionId] = [];
-      }
-      const lessonData = {
-        id: lesson.id,
-        title: lesson.title,
-        description: lesson.description,
-        duration: lesson.duration || '0 min',
-        type: lesson.type || 'lesson',
-        is_preview: Boolean(lesson.is_preview),
-        content: lesson.content,
-        url: lesson.url,
-        sort_order: lesson.sort_order || 0
-      };
-      console.log(`  - Adding lesson to section ${sectionId}:`, lessonData.title);
-      acc[sectionId].push(lessonData);
-      return acc;
-    }, {});
-    console.log('Grouped lessons:', JSON.stringify(lessonsBySection, null, 2));
-
-    // Map sections with their lessons
-    console.log('\n📋 Building curriculum...');
-    const curriculum = sections.map(section => {
-      const sectionLessons = (lessonsBySection[section.id] || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-      console.log(`  - Section "${section.title}" has ${sectionLessons.length} lessons`);
+    let instructor = null;
+    try {
+      instructor = await db.get(`
+        SELECT p.* FROM profiles p
+        JOIN course_instructors ci ON p.id = ci.instructor_id
+        WHERE ci.course_id = $1 LIMIT 1
+      `, [courseId]);
+      console.log('✅ Instructor data:', instructor ? 'Found' : 'Not found in course_instructors');
       
-      return {
-        id: section.id,
-        title: section.title,
-        description: section.description,
-        sort_order: section.sort_order || 0,
-        course_id: section.course_id,
-        lessons: sectionLessons
+      // Fallback to course creator if no instructor found
+      if (!instructor && courseResult.created_by) {
+        instructor = await db.get('SELECT * FROM profiles WHERE id = $1', [courseResult.created_by]);
+        console.log('✅ Using course creator as instructor:', instructor ? 'Found' : 'Not found');
+      }
+    } catch (error) {
+      const err = error as Error;
+      console.warn('⚠️ Instructor fetch failed, using fallback:', err.message);
+      // Fallback to a default instructor
+      instructor = {
+        name: 'Instructor',
+        image: '/default-avatar.png',
+        title: 'Course Instructor',
+        bio: 'Experienced educator with a passion for teaching',
+        courses_count: 1,
+        students_count: courseResult.enrolled_students_count || 0,
+        average_rating: courseResult.average_rating || 4.5,
+        reviews_count: courseResult.reviews_count || 0
       };
-    });
-    console.log('Final curriculum:', JSON.stringify(curriculum, null, 2));
-    
-    console.log('Mapped curriculum:', JSON.stringify(curriculum, null, 2));
+    }
 
-    // 4. Fetch reviews
+    // 3. Fetch curriculum (sections + lessons)
+    console.log('\n🔍 Fetching curriculum...');
+    let curriculum = [];
+    
+    try {
+      // First, try fetching sections and lessons in a single query
+      const curriculumQuery = `
+        WITH course_sections AS (
+          SELECT * FROM sections 
+          WHERE course_id = $1 
+          ORDER BY sort_order ASC
+        )
+        SELECT 
+          s.id as section_id,
+          s.title as section_title,
+          s.sort_order as section_sort_order,
+          l.id as lesson_id,
+          l.title as lesson_title,
+          l.type as lesson_type,
+          l.duration as lesson_duration,
+          l.is_preview as is_preview,
+          l.sort_order as lesson_sort_order,
+          l.content as content
+        FROM course_sections s
+        LEFT JOIN lessons l ON s.id = l.section_id
+        ORDER BY s.sort_order, l.sort_order`;
+      
+      const curriculumResults = await db.all(curriculumQuery, [courseId]);
+      
+      // Group by sections
+      const sectionsMap = new Map();
+      
+      curriculumResults.forEach(row => {
+        if (!sectionsMap.has(row.section_id)) {
+          sectionsMap.set(row.section_id, {
+            id: row.section_id,
+            title: row.section_title,
+            sort_order: row.section_sort_order || 0,
+            lessons: []
+          });
+        }
+        
+        if (row.lesson_id) {
+          sectionsMap.get(row.section_id).lessons.push({
+            id: row.lesson_id,
+            title: row.lesson_title,
+            type: row.lesson_type || 'lesson',
+            duration: row.lesson_duration ? `${row.lesson_duration} min` : '5 min',
+            is_preview: Boolean(row.is_preview),
+            sort_order: row.lesson_sort_order || 0,
+            content: row.content
+          });
+        }
+      });
+      
+      curriculum = Array.from(sectionsMap.values());
+      console.log(`✅ Found ${curriculum.length} sections with lessons`);
+      
+    } catch (error) {
+      const err = error as Error;
+      console.error('❌ Error fetching curriculum:', err);
+      // Fallback to empty curriculum
+      curriculum = [];
+    }
+    
+
+
+    // 4. Fetch reviews with fallback
     console.log('\n🔍 Fetching reviews...');
-    const reviews = await db.all(`
-      SELECT r.*, p.full_name as user, p.image as user_image FROM reviews r
-      JOIN profiles p ON r.user_id = p.id
-      WHERE r.course_id = $1 ORDER BY r.created_at DESC
-    `, [courseId]).catch((err) => {
-      console.error('❌ Error fetching reviews:', err);
-      return [];
-    });
-    console.log(`✅ Found ${reviews.length} reviews`);
+    let reviews = [];
+    try {
+      reviews = await db.all(`
+        SELECT 
+          r.*, 
+          COALESCE(p.full_name, 'Anonymous') as user, 
+          COALESCE(p.image, '/default-avatar.png') as user_image 
+        FROM reviews r
+        LEFT JOIN profiles p ON r.user_id = p.id
+        WHERE r.course_id = $1 
+        ORDER BY r.created_at DESC
+      `, [courseId]);
+      console.log(`✅ Found ${reviews.length} reviews`);
+    } catch (error) {
+      const err = error as Error;
+      console.warn('⚠️ Could not fetch reviews:', err.message);
+      reviews = [];
+    }
 
     // 5. Assemble and sanitize the final course object
-    const courseData = {
-      ...courseResult,
-      instructor: instructor || null,
+    const courseData: Course = {
+      id: courseResult.id,
+      title: courseResult.title,
+      tagline: courseResult.tagline || courseResult.title,
+      description: courseResult.description || 'No description available',
+      objectives: Array.isArray(courseResult.objectives) ? 
+        courseResult.objectives : 
+        (courseResult.objectives ? [courseResult.objectives] : ['Learn valuable skills']),
+      rating: parseFloat(courseResult.average_rating) || 4.5,
+      reviews_count: parseInt(courseResult.reviews_count) || 0,
+      enrolled_students_count: parseInt(courseResult.enrolled_students_count) || 0,
+      price: parseFloat(courseResult.price) || 0,
+      original_price: parseFloat(courseResult.original_price) || 0,
+      duration: courseResult.duration_hours ? 
+        `${courseResult.duration_hours} hours` : 'Self-paced',
+      level: courseResult.level || 'All Levels',
+      last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
+      demo_video_url: courseResult.demo_video_url || '',
+      video_preview_image: courseResult.video_preview_image || '/placeholder-course.jpg',
+      instructor: instructor || {
+        name: 'Instructor',
+        image: '/default-avatar.png',
+        title: 'Course Instructor',
+        bio: 'Experienced educator with a passion for teaching',
+        courses_count: 1,
+        students_count: courseResult.enrolled_students_count || 0,
+        average_rating: courseResult.average_rating || 4.5,
+        reviews_count: courseResult.reviews_count || 0
+      },
       curriculum: curriculum,
       reviews: reviews,
-      attachments: courseResult.attachments || [],
-      external_links: courseResult.external_links || [],
-      // Ensure numeric types are correct
-      rating: Number(courseResult.rating) || 0,
-      price: Number(courseResult.price) || 0,
-      original_price: Number(courseResult.original_price) || 0,
-      enrolled_students_count: Number(courseResult.students) || 0,
-      reviews_count: reviews.length,
-      last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
-    } as Course;
+      attachments: Array.isArray(courseResult.attachments) ? 
+        courseResult.attachments : 
+        (courseResult.attachments ? [courseResult.attachments] : []),
+      external_links: Array.isArray(courseResult.external_links) ? 
+        courseResult.external_links : 
+        (courseResult.external_links ? [courseResult.external_links] : [])
+    };
 
-    console.log('\n🎉 Final course data:', JSON.stringify({
-      ...courseData,
-      curriculum: courseData.curriculum?.map(s => ({
-        ...s,
-        lessons: s.lessons?.map(l => l.title)
-      }))
-    }, null, 2));
+    // Log final data (without logging the full content to avoid cluttering)
+    console.log('\n🎉 Final course data:', {
+      id: courseData.id,
+      title: courseData.title,
+      sections: courseData.curriculum?.length || 0,
+      totalLessons: courseData.curriculum?.reduce((sum, section) => sum + (section.lessons?.length || 0), 0) || 0,
+      hasInstructor: !!courseData.instructor,
+      reviewCount: courseData.reviews.length
+    });
 
     return courseData;
 
