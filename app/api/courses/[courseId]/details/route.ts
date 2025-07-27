@@ -1,146 +1,106 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getDb } from '@/lib/db';
 
-export async function GET(request: Request, { params }: { params: { courseId: string } }) {
+// GET handler to fetch all details for the course content manager
+export async function GET(request: NextRequest, { params }: { params: { courseId: string } }) {
   const { courseId } = params;
-
-  if (!courseId) {
-    return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
-  }
+  const db = await getDb();
 
   try {
-    const db = await getDb();
+    const course = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
 
-    // 1. Fetch the main course data
-    const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
-    if (!courseResult) {
+    if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    // 2. Fetch instructor(s)
-    // For now, we'll fetch the first instructor associated with the course, matching the UI mock.
-    const instructorQuery = `
-      SELECT p.* 
-      FROM profiles p
-      JOIN course_instructors ci ON p.id = ci.instructor_id
-      WHERE ci.course_id = $1
-      LIMIT 1;
-    `;
-    const instructor = await db.get(instructorQuery, [courseId]).catch(() => null);
+    // Fetch instructor, gracefully handle if not found
+    let instructor = null;
+    if (course.created_by) {
+        try {
+            instructor = await db.get('SELECT id, full_name, image, title FROM profiles WHERE id = $1', [course.created_by]);
+        } catch (e) {
+            console.warn(`Could not fetch instructor for course ${courseId}:`, e)
+        }
+    }
 
-    // 3. Fetch curriculum (sections and lessons)
-    const sectionsQuery = 'SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC';
-    const sections = await db.all(sectionsQuery, [courseId]).catch(() => []);
+    // Fetch all content in parallel for efficiency
+    const [sections, lessons, quizzes, assignments] = await Promise.all([
+      db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY sort_order', [courseId]),
+      db.all('SELECT * FROM lessons WHERE section_id IN (SELECT id FROM sections WHERE course_id = $1) ORDER BY sort_order', [courseId]),
+      db.all('SELECT * FROM quizzes WHERE section_id IN (SELECT id FROM sections WHERE course_id = $1) ORDER BY sort_order', [courseId]),
+      db.all('SELECT * FROM assignments WHERE section_id IN (SELECT id FROM sections WHERE course_id = $1) ORDER BY sort_order', [courseId]),
+    ]);
 
-    const lessonsQuery = `
-      SELECT l.* 
-      FROM lessons l
-      JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = $1
-      ORDER BY s."order" ASC, l."order" ASC;
-    `;
-    const allLessons = await db.all(lessonsQuery, [courseId]).catch(() => []);
-
-    const curriculum = sections.map(section => ({
+    // Combine all content types into a single lessons array for each section
+    const sectionsWithContent = sections.map(section => ({
       ...section,
-      lessons: allLessons.filter(lesson => lesson.section_id === section.id)
+      lessons: lessons.filter(l => l.section_id === section.id),
+      quizzes: quizzes.filter(q => q.section_id === section.id),
+      assignments: assignments.filter(a => a.section_id === section.id),
     }));
 
-    // 4. Fetch reviews
-    const reviewsQuery = `
-      SELECT r.*, p.full_name as user, p.image as user_image
-      FROM reviews r
-      JOIN profiles p ON r.user_id = p.id
-      WHERE r.course_id = $1
-      ORDER BY r.created_at DESC;
-    `;
-    const reviews = await db.all(reviewsQuery, [courseId]).catch(() => []);
-
-    // Attachments and external links are now stored as JSONB in the courses table.
-    // They are already part of the courseResult object.
-
-    // 7. Assemble the final course object
-    const courseDetails = {
-      ...courseResult,
-      instructor: instructor || null,
-      curriculum: curriculum,
-      reviews: reviews,
-      // Use the JSONB data directly from the course object, providing empty arrays as fallbacks.
-      attachments: courseResult.attachments || [], 
-      external_links: courseResult.external_links || [],
-      // Mocking some data that is not in the schema yet for UI compatibility
-      reviewsCount: reviews.length,
-      tagline: courseResult.tagline || 'Unlock your potential with this amazing course!',
-      lastUpdated: new Date(courseResult.updated_at).toLocaleString('default', { month: 'long', year: 'numeric' }),
-      videoUrl: courseResult.demo_video_url,
-      videoPreview: courseResult.video_preview_image
-    };
-
-    return NextResponse.json(courseDetails);
+    return NextResponse.json({ 
+      ...course, 
+      instructor,
+      sections: sectionsWithContent 
+    });
   } catch (error) {
     console.error('Error fetching course details:', error);
     return NextResponse.json({ error: 'Failed to fetch course details' }, { status: 500 });
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { courseId: string } }) {
+// PUT handler to update course details
+export async function PUT(request: NextRequest, { params }: { params: { courseId: string } }) {
   const { courseId } = params;
-  if (!courseId) {
-    return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
-  }
-
   const db = await getDb();
 
   try {
-    const { 
-      objectives = [], 
-      demo_video_url = '', 
-      attachments = [], 
-      externalLinks = [] 
-    } = await request.json();
+    const body = await request.json();
 
-    // Begin transaction
-    await db.exec('BEGIN');
+    // List of fields that are expected to be JSONB in the database
+    const jsonFields = ['objectives', 'requirements', 'attachments', 'external_links'];
 
-    // 1. Update the main courses table
-    await db.run(
-      'UPDATE courses SET objectives = $1, demo_video_url = $2 WHERE id = $3',
-      [objectives, demo_video_url, courseId]
-    );
+    // Dynamically build the update query to handle partial updates
+    const fieldsToUpdate = { ...body };
+    const setClauses: string[] = [];
+    const queryParams: any[] = [];
 
-    // 2. Handle attachments (delete and re-insert)
-    await db.run('DELETE FROM attachments WHERE course_id = $1', [courseId]);
-    if (attachments.length > 0) {
-      for (const att of attachments) {
-        await db.run('INSERT INTO attachments (course_id, title, url) VALUES ($1, $2, $3)', [
-          courseId, 
-          att.title, 
-          att.url
-        ]);
-      }
+    Object.entries(fieldsToUpdate).forEach(([key, value]) => {
+      // Do not try to update the course ID or other read-only fields
+      if (key === 'id' || key === 'created_at' || key === 'updated_at') return;
+
+      queryParams.push(jsonFields.includes(key) && value !== null ? JSON.stringify(value) : value);
+      setClauses.push(`${key} = $${queryParams.length}`);
+    });
+
+    if (setClauses.length === 0) {
+      return NextResponse.json({ message: 'No valid fields to update' }, { status: 400 });
     }
 
-    // 3. Handle external links (delete and re-insert)
-    await db.run('DELETE FROM external_links WHERE course_id = $1', [courseId]);
-    if (externalLinks.length > 0) {
-      for (const link of externalLinks) {
-        await db.run('INSERT INTO external_links (course_id, title, url) VALUES ($1, $2, $3)', [
-          courseId, 
-          link.title, 
-          link.url
-        ]);
-      }
+    // Add the courseId to the end of the parameters for the WHERE clause
+    queryParams.push(courseId);
+    const query = `
+      UPDATE courses 
+      SET ${setClauses.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $${queryParams.length} 
+      RETURNING *`;
+
+    const updatedCourse = await db.get(query, queryParams);
+
+    if (!updatedCourse) {
+      return NextResponse.json({ error: 'Course not found or failed to update' }, { status: 404 });
     }
 
-    // Commit transaction
-    await db.exec('COMMIT');
-
-    return NextResponse.json({ message: 'Course details updated successfully' });
+    return NextResponse.json(updatedCourse);
 
   } catch (error) {
-    // Rollback transaction on error
-    await db.exec('ROLLBACK');
-    console.error('Error updating course details:', error);
-    return NextResponse.json({ error: 'Failed to update course details' }, { status: 500 });
+    const err = error as Error;
+    console.error('Error updating course details:', err);
+    // Provide a more specific error message if it's a JSON parsing issue
+    if (err.message.includes('syntax error')) {
+        return NextResponse.json({ error: 'Invalid JSON format in request body.' }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to update course details', details: err.message }, { status: 500 });
   }
 }
