@@ -100,54 +100,68 @@ interface Course {
 }
 
 async function getCourse(courseId: string): Promise<Course | null> {
+  console.log('=== Starting getCourse ===');
+  console.log('Course ID:', courseId);
+  
   let db;
   try {
     db = await getDb();
     if (!db) {
-      console.error('Database connection failed');
+      console.error('❌ Database connection failed');
       return null;
     }
-    console.log('Fetching course with ID:', courseId);
-    // 1. Fetch the main course data
+    console.log('✅ Database connection successful');
+    
+    console.log('🔍 Fetching course with ID:', courseId);
     const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
     if (!courseResult) {
-      console.log('No course found with ID:', courseId);
+      console.error('❌ No course found with ID:', courseId);
       return null;
     }
-    console.log('Found course:', courseResult.title);
+    console.log('✅ Found course:', courseResult.title);
+    console.log('Course data:', JSON.stringify(courseResult, null, 2));
 
     // 2. Fetch instructor
+    console.log('\n🔍 Fetching instructor for course...');
     const instructor = await db.get(`
       SELECT p.* FROM profiles p
       JOIN course_instructors ci ON p.id = ci.instructor_id
       WHERE ci.course_id = $1 LIMIT 1
-    `, [courseId]).catch(() => null);
+    `, [courseId]).catch((err) => {
+      console.error('❌ Error fetching instructor:', err);
+      return null;
+    });
+    console.log('✅ Instructor data:', instructor ? 'Found' : 'Not found');
 
     // 3. Fetch curriculum
-    console.log('Fetching sections for course ID:', courseId);
+    console.log('\n🔍 Fetching sections for course ID:', courseId);
     const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY sort_order ASC', [courseId]).catch((err) => {
-      console.error('Error fetching sections:', err);
+      console.error('❌ Error fetching sections:', err);
       return [];
     });
-    console.log('Found sections:', sections.length, sections);
+    console.log(`✅ Found ${sections.length} sections`);
+    console.log('Sections data:', JSON.stringify(sections, null, 2));
     
+    console.log('\n🔍 Fetching lessons for course...');
     const allLessons = await db.all(`
       SELECT l.*, s.id as section_id FROM lessons l
       JOIN sections s ON l.section_id = s.id
       WHERE s.course_id = $1 ORDER BY s.sort_order ASC, l.sort_order ASC
     `, [courseId]).catch((err) => {
-      console.error('Error fetching lessons:', err);
+      console.error('❌ Error fetching lessons:', err);
       return [];
     });
-    console.log('Found lessons:', allLessons.length, allLessons);
+    console.log(`✅ Found ${allLessons.length} lessons`);
+    console.log('Lessons data:', JSON.stringify(allLessons, null, 2));
     
     // Group lessons by section_id
+    console.log('\n📊 Grouping lessons by section...');
     const lessonsBySection = allLessons.reduce<Record<string | number, any[]>>((acc, lesson) => {
       const sectionId = lesson.section_id;
       if (!acc[sectionId]) {
         acc[sectionId] = [];
       }
-      acc[sectionId].push({
+      const lessonData = {
         id: lesson.id,
         title: lesson.title,
         description: lesson.description,
@@ -157,31 +171,46 @@ async function getCourse(courseId: string): Promise<Course | null> {
         content: lesson.content,
         url: lesson.url,
         sort_order: lesson.sort_order || 0
-      });
+      };
+      console.log(`  - Adding lesson to section ${sectionId}:`, lessonData.title);
+      acc[sectionId].push(lessonData);
       return acc;
     }, {});
+    console.log('Grouped lessons:', JSON.stringify(lessonsBySection, null, 2));
 
     // Map sections with their lessons
-    const curriculum = sections.map(section => ({
-      id: section.id,
-      title: section.title,
-      description: section.description,
-      sort_order: section.sort_order || 0,
-      course_id: section.course_id,
-      lessons: (lessonsBySection[section.id] || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-    }));
+    console.log('\n📋 Building curriculum...');
+    const curriculum = sections.map(section => {
+      const sectionLessons = (lessonsBySection[section.id] || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      console.log(`  - Section "${section.title}" has ${sectionLessons.length} lessons`);
+      
+      return {
+        id: section.id,
+        title: section.title,
+        description: section.description,
+        sort_order: section.sort_order || 0,
+        course_id: section.course_id,
+        lessons: sectionLessons
+      };
+    });
+    console.log('Final curriculum:', JSON.stringify(curriculum, null, 2));
     
     console.log('Mapped curriculum:', JSON.stringify(curriculum, null, 2));
 
     // 4. Fetch reviews
+    console.log('\n🔍 Fetching reviews...');
     const reviews = await db.all(`
       SELECT r.*, p.full_name as user, p.image as user_image FROM reviews r
       JOIN profiles p ON r.user_id = p.id
       WHERE r.course_id = $1 ORDER BY r.created_at DESC
-    `, [courseId]).catch(() => []);
+    `, [courseId]).catch((err) => {
+      console.error('❌ Error fetching reviews:', err);
+      return [];
+    });
+    console.log(`✅ Found ${reviews.length} reviews`);
 
     // 5. Assemble and sanitize the final course object
-    return {
+    const courseData = {
       ...courseResult,
       instructor: instructor || null,
       curriculum: curriculum,
@@ -196,6 +225,16 @@ async function getCourse(courseId: string): Promise<Course | null> {
       reviews_count: reviews.length,
       last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
     } as Course;
+
+    console.log('\n🎉 Final course data:', JSON.stringify({
+      ...courseData,
+      curriculum: courseData.curriculum?.map(s => ({
+        ...s,
+        lessons: s.lessons?.map(l => l.title)
+      }))
+    }, null, 2));
+
+    return courseData;
 
   } catch (error) {
     console.error("Failed to fetch course directly:", error);
