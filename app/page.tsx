@@ -222,7 +222,7 @@ export default function HomePage() {
     },
     {
       id: 5,
-      name: "Educational Board Game Set",
+      name: "Educational Board Game Karim",
       description: "5 STEM-focused board games for classroom use",
       price: 89,
       originalPrice: 120,
