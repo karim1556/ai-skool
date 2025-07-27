@@ -125,7 +125,7 @@ async function getCourse(courseId: string): Promise<Course | null> {
 
     // 3. Fetch curriculum
     console.log('Fetching sections for course ID:', courseId);
-    const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC', [courseId]).catch((err) => {
+    const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY sort_order ASC', [courseId]).catch((err) => {
       console.error('Error fetching sections:', err);
       return [];
     });
@@ -134,7 +134,7 @@ async function getCourse(courseId: string): Promise<Course | null> {
     const allLessons = await db.all(`
       SELECT l.*, s.id as section_id FROM lessons l
       JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = $1 ORDER BY s."order" ASC, l."order" ASC
+      WHERE s.course_id = $1 ORDER BY s.sort_order ASC, l.sort_order ASC
     `, [courseId]).catch((err) => {
       console.error('Error fetching lessons:', err);
       return [];
