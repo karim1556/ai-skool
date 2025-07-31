@@ -26,20 +26,20 @@ export async function GET(request: Request, { params }: { params: { courseId: st
       WHERE ci.course_id = $1
       LIMIT 1;
     `;
-    const instructor = await db.get(instructorQuery, [courseId]);
+    const instructor = await db.get(instructorQuery, [courseId]).catch(() => null);
 
     // 3. Fetch curriculum (sections and lessons)
-    const sectionsQuery = 'SELECT * FROM sections WHERE course_id = $1 ORDER BY sort_order ASC';
-    const sections = await db.all(sectionsQuery, [courseId]);
+    const sectionsQuery = 'SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC';
+    const sections = await db.all(sectionsQuery, [courseId]).catch(() => []);
 
     const lessonsQuery = `
       SELECT l.* 
       FROM lessons l
       JOIN sections s ON l.section_id = s.id
       WHERE s.course_id = $1
-      ORDER BY s.sort_order ASC, l.sort_order ASC;
+      ORDER BY s."order" ASC, l."order" ASC;
     `;
-    const allLessons = await db.all(lessonsQuery, [courseId]);
+    const allLessons = await db.all(lessonsQuery, [courseId]).catch(() => []);
 
     const curriculum = sections.map(section => ({
       ...section,
@@ -54,7 +54,7 @@ export async function GET(request: Request, { params }: { params: { courseId: st
       WHERE r.course_id = $1
       ORDER BY r.created_at DESC;
     `;
-    const reviews = await db.all(reviewsQuery, [courseId]);
+    const reviews = await db.all(reviewsQuery, [courseId]).catch(() => []);
 
     // Attachments and external links are now stored as JSONB in the courses table.
     // They are already part of the courseResult object.
