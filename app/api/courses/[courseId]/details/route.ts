@@ -104,7 +104,7 @@ export async function PUT(request: Request, { params }: { params: { courseId: st
     } = await request.json();
 
     // Begin transaction
-    await db.exec('BEGIN');
+    await db.run('BEGIN', []);
 
     // 1. Update the main courses table
     await db.run(
@@ -137,13 +137,13 @@ export async function PUT(request: Request, { params }: { params: { courseId: st
     }
 
     // Commit transaction
-    await db.exec('COMMIT');
+    await db.run('COMMIT', []);
 
     return NextResponse.json({ message: 'Course details updated successfully' });
 
   } catch (error) {
     // Rollback transaction on error
-    await db.exec('ROLLBACK');
+    await db.run('ROLLBACK', []);
     console.error('Error updating course details:', error);
     return NextResponse.json({ error: 'Failed to update course details' }, { status: 500 });
   }

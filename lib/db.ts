@@ -1,131 +1,98 @@
+import postgres from 'postgres';
 
-import { Pool } from 'pg';
-
-// Database connection pool
-let pool: Pool | null = null;
-
-// Database interface to maintain compatibility with existing code
-interface DatabaseInterface {
-  get(query: string, params?: any[]): Promise<any>;
-  all(query: string, params?: any[]): Promise<any[]>;
-  run(query: string, params?: any[]): Promise<{ changes: number; lastInsertRowid?: number }>;
-  exec(query: string): Promise<void>;
+// Define the interface for our database operations
+interface Database {
+  get(query: string, params: any[]): Promise<any | null>;
+  all(query: string, params: any[]): Promise<any[]>;
+  run(query: string, params: any[]): Promise<void>;
   close(): Promise<void>;
 }
 
-class PostgresDatabase implements DatabaseInterface {
-  private pool: Pool;
+// Create a singleton instance of the postgres client
+// The 'postgres' library automatically handles connection pooling
+let sql: postgres.Sql<Record<string, postgres.PostgresType>> | null = null;
 
-  constructor(pool: Pool) {
-    this.pool = pool;
+function getClient() {
+  if (!sql) {
+    const connectionString = process.env.POSTGRES_URL;
+    if (!connectionString) {
+      throw new Error('POSTGRES_URL environment variable is not set.');
+    }
+
+    console.log('Initializing postgres client...');
+    // The 'postgres' library handles SSL and other Supabase-specific settings automatically
+    // when connecting to a Supabase URL.
+    sql = postgres(connectionString, {
+      // Prepared statements are disabled by default with Supabase URLs ending in :6543
+      // but we can be explicit if needed.
+      prepare: false,
+      ssl: 'require'
+    });
+    console.log('Postgres client initialized.');
+  }
+  return sql;
+}
+
+// PostgresDatabase class that implements the Database interface using 'postgres'
+class PostgresJsDatabase implements Database {
+  private client: postgres.Sql<Record<string, postgres.PostgresType>>;
+
+  constructor() {
+    this.client = getClient();
   }
 
-  async get(query: string, params: any[] = []): Promise<any> {
-    const client = await this.pool.connect();
-    try {
-      const result = await client.query(query, params);
-      return result.rows[0] || null;
-    } finally {
-      client.release();
-    }
+  private async executeQuery(query: string, params: any[]): Promise<any[]> {
+      // The 'postgres' library uses tagged templates for queries, but it also supports
+      // the standard (query, params) format using sql.unsafe for compatibility.
+      // However, a more direct way is to use sql(query, ...params) but that requires
+      // the query to have placeholders like $1, $2.
+      // Let's stick to a compatible API.
+      return this.client.unsafe(query, params).values();
+  }
+
+  async get(query: string, params: any[] = []): Promise<any | null> {
+    const rows = await this.client.unsafe(query, params);
+    return rows[0] || null;
   }
 
   async all(query: string, params: any[] = []): Promise<any[]> {
-    const client = await this.pool.connect();
-    try {
-      const result = await client.query(query, params);
-      return result.rows;
-    } finally {
-      client.release();
-    }
+    const rows = await this.client.unsafe(query, params);
+    return Array.from(rows);
   }
 
-  async run(query: string, params: any[] = []): Promise<{ changes: number; lastInsertRowid?: number }> {
-    const client = await this.pool.connect();
-    try {
-      const result = await client.query(query, params);
-      return {
-        changes: result.rowCount || 0,
-        lastInsertRowid: result.rows[0]?.id || undefined
-      };
-    } finally {
-      client.release();
-    }
-  }
-
-  async exec(query: string): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query(query);
-    } finally {
-      client.release();
-    }
+  async run(query: string, params: any[] = []): Promise<void> {
+    await this.client.unsafe(query, params);
   }
 
   async close(): Promise<void> {
-    await this.pool.end();
+    await this.client.end();
+    sql = null; // Allow re-initialization
   }
 }
 
-let db: DatabaseInterface | null = null;
+// Singleton instance of the database
+let db: Database | null = null;
 
-export async function getDb(): Promise<DatabaseInterface> {
-  if (db) {
-    return db;
-  }
-
-  try {
-    console.log('Connecting to PostgreSQL database...');
-
-    if (!pool) {
-      const connectionString = process.env.POSTGRES_URL;
-      if (!connectionString) {
-        throw new Error('POSTGRES_URL environment variable is not set.');
-      }
-
-      console.log(`Using connection string: ${connectionString.split('@')[1]}`); // Avoid logging password
-
-      pool = new Pool({
-        connectionString: connectionString,
-        // Use SSL in production (Vercel/Supabase), but not necessarily in local dev
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-      });
+// getDb function to initialize and/or return the database instance
+export async function getDb(): Promise<Database> {
+  if (!db) {
+    try {
+      db = new PostgresJsDatabase();
+      console.log('Database connection wrapper initialized successfully.');
+    } catch (error) {
+      console.error('Failed to initialize database connection wrapper:', error);
+      db = null; // Reset on failure
+      throw error;
     }
-
-    db = new PostgresDatabase(pool);
-    console.log('Database connection pool established successfully.');
-    
-  } catch (error) {
-    console.error('Failed to connect to the database:', error);
-    // Set pool to null to allow retrying the connection on the next call
-    pool = null;
-    db = null;
-    throw error; // Re-throw the error to be handled by the caller
   }
-
   return db;
 }
 
-
-// Initialize database schema if needed
-export async function initializeDatabase() {
-  const database = await getDb();
-  
-  try {
-    // Check if tables exist by querying information_schema
-    const tablesExist = await database.get(`
-      SELECT COUNT(*) as count 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND table_name = 'courses'
-    `);
-    
-    if (!tablesExist || tablesExist.count === 0) {
-      console.log('Database schema needs to be initialized via migration scripts');
-      // Schema should be created via the SQL scripts in the scripts/ directory
-      // or through Vercel Postgres dashboard
-    }
-  } catch (error) {
-    console.error('Error checking database schema:', error);
+// closeDb function to gracefully close the database connection
+export async function closeDb(): Promise<void> {
+  if (db) {
+    await db.close();
+    db = null;
+    console.log('Database connection closed.');
   }
 }

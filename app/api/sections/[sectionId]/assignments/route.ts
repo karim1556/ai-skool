@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
     const db = await getDb();
     
     // Ensure the assignments table exists
-    await db.exec(`
+    await db.run(`
       CREATE TABLE IF NOT EXISTS assignments (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         section_id UUID NOT NULL,
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
         updated_at TIMESTAMPTZ DEFAULT NOW(),
         FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
       );
-    `);
+    `, []);
     
     const assignments = await db.all(
       'SELECT * FROM assignments WHERE section_id = $1 ORDER BY created_at DESC', 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest, { params }: { params: { section
     
     try {
       // Ensure the assignments table exists with all required columns
-      await db.exec(`
+      await db.run(`
         CREATE TABLE IF NOT EXISTS assignments (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           section_id UUID NOT NULL,
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest, { params }: { params: { section
           updated_at TIMESTAMPTZ DEFAULT NOW(),
           FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
         );
-      `);
+      `, []);
 
       const newAssignment = await db.get(
         `INSERT INTO assignments 
