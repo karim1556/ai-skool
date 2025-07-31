@@ -79,11 +79,12 @@ export default function ManageCourseContentPage() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch(`/api/courses/${courseId}/details`)
+      const res = await fetch(`/api/courses/${courseId}/details`);
+      const data = await res.json();
       if (!res.ok) {
-        throw new Error("Failed to fetch course details.")
+        // Use the detailed error message from the API response
+        throw new Error(data.details || "Failed to fetch course details.");
       }
-      const data = await res.json()
       setSelectedCourse(data)
     } catch (error: any) {
       console.error("Error fetching course details:", error)
