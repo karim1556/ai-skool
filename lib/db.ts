@@ -1,5 +1,4 @@
 
-import { sql } from '@vercel/postgres';
 import { Pool } from 'pg';
 
 // Database connection pool
@@ -71,58 +70,39 @@ class PostgresDatabase implements DatabaseInterface {
 let db: DatabaseInterface | null = null;
 
 export async function getDb(): Promise<DatabaseInterface> {
-  if (!db) {
-    try {
-      // Use Vercel Postgres in production, local PostgreSQL in development
-      if (process.env.NODE_ENV === 'production') {
-        console.log('Connecting to Vercel Postgres...');
-        
-        // For Vercel Postgres, we'll use the sql template function
-        // Create a wrapper that implements our interface
-        db = {
-          async get(query: string, params: any[] = []) {
-            const result = await sql.query(query, params);
-            return result.rows[0] || null;
-          },
-          async all(query: string, params: any[] = []) {
-            const result = await sql.query(query, params);
-            return result.rows;
-          },
-          async run(query: string, params: any[] = []) {
-            const result = await sql.query(query, params);
-            return {
-              changes: result.rowCount || 0,
-              lastInsertRowid: result.rows[0]?.id || undefined
-            };
-          },
-          async exec(query: string) {
-            await sql.query(query);
-          },
-          async close() {
-            // Vercel Postgres handles connection pooling automatically
-          }
-        };
-      } else {
-        console.log('Connecting to local PostgreSQL...');
-        
-        // For local development, use pg Pool
-        if (!pool) {
-          pool = new Pool({
-            connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/lms_dev',
-            ssl: false
-          });
-        }
-        
-        db = new PostgresDatabase(pool);
-      }
-      
-      console.log('Database connection established successfully');
-    } catch (error) {
-      console.error('Failed to connect to database:', error);
-      throw error;
-    }
+  if (db) {
+    return db;
   }
-  
+
+  try {
+    console.log('Connecting to PostgreSQL database...');
+
+    if (!pool) {
+      const connectionString = process.env.POSTGRES_URL;
+      if (!connectionString) {
+        throw new Error('POSTGRES_URL environment variable is not set.');
+      }
+
+      console.log(`Using connection string: ${connectionString.split('@')[1]}`); // Avoid logging password
+
+      pool = new Pool({
+        connectionString: connectionString,
+        // Use SSL in production (Vercel/Supabase), but not necessarily in local dev
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      });
+    }
+
+    db = new PostgresDatabase(pool);
+    console.log('Database connection pool established successfully.');
+    
+  } catch (error) {
+    console.error('Failed to connect to the database:', error);
+    // Set pool to null to allow retrying the connection on the next call
+    pool = null;
+    db = null;
+    throw error; // Re-throw the error to be handled by the caller
+  }
+
   return db;
 }
 
