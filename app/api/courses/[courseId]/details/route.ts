@@ -79,7 +79,11 @@ export async function GET(request: Request, { params }: { params: { courseId: st
     return NextResponse.json(courseDetails);
   } catch (error) {
     console.error('Error fetching course details:', error);
-    return NextResponse.json({ error: 'Failed to fetch course details' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ 
+      error: 'Failed to fetch course details.',
+      details: errorMessage 
+    }, { status: 500 });
   }
 }
 
