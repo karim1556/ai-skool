@@ -37,7 +37,7 @@ export async function GET(request: Request, { params }: { params: { courseId: st
       FROM lessons l
       JOIN sections s ON l.section_id = s.id
       WHERE s.course_id = $1
-      ORDER BY s.sort_order ASC, l.sort_order ASC;
+      ORDER BY s.sort_order ASC;
     `;
     const allLessons = await db.all(lessonsQuery, [courseId]);
 
