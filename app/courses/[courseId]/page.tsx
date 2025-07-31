@@ -100,107 +100,23 @@ interface Course {
 }
 
 async function getCourse(courseId: string): Promise<Course | null> {
-  let db;
-  try {
-    db = await getDb();
-    if (!db) {
-      console.error('Database connection failed');
-      return null;
-    }
-    console.log('Fetching course with ID:', courseId);
-    // 1. Fetch the main course data
-    const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
-    if (!courseResult) {
-      console.log('No course found with ID:', courseId);
-      return null;
-    }
-    console.log('Found course:', courseResult.title);
+  // Fetch from the API route
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const res = await fetch(`${baseUrl}/api/courses/${courseId}/details`, {
+    cache: 'no-store', // Ensure fresh data
+  });
 
-    // 2. Fetch instructor
-    const instructor = await db.get(`
-      SELECT p.* FROM profiles p
-      JOIN course_instructors ci ON p.id = ci.instructor_id
-      WHERE ci.course_id = $1 LIMIT 1
-    `, [courseId]).catch(() => null);
-
-    // 3. Fetch curriculum
-    console.log('Fetching sections for course ID:', courseId);
-    const sections = await db.all('SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC', [courseId]).catch((err) => {
-      console.error('Error fetching sections:', err);
-      return [];
-    });
-    console.log('Found sections:', sections.length, sections);
-    
-    const allLessons = await db.all(`
-      SELECT l.*, s.id as section_id FROM lessons l
-      JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = $1 ORDER BY s."order" ASC, l."order" ASC
-    `, [courseId]).catch((err) => {
-      console.error('Error fetching lessons:', err);
-      return [];
-    });
-    console.log('Found lessons:', allLessons.length, allLessons);
-    
-    // Group lessons by section_id
-    const lessonsBySection = allLessons.reduce<Record<string | number, any[]>>((acc, lesson) => {
-      const sectionId = lesson.section_id;
-      if (!acc[sectionId]) {
-        acc[sectionId] = [];
-      }
-      acc[sectionId].push({
-        id: lesson.id,
-        title: lesson.title,
-        description: lesson.description,
-        duration: lesson.duration || '0 min',
-        type: lesson.type || 'lesson',
-        is_preview: Boolean(lesson.is_preview),
-        content: lesson.content,
-        url: lesson.url,
-        sort_order: lesson.sort_order || 0
-      });
-      return acc;
-    }, {});
-
-    // Map sections with their lessons
-    const curriculum = sections.map(section => ({
-      id: section.id,
-      title: section.title,
-      description: section.description,
-      sort_order: section.sort_order || 0,
-      course_id: section.course_id,
-      lessons: (lessonsBySection[section.id] || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-    }));
-    
-    console.log('Mapped curriculum:', JSON.stringify(curriculum, null, 2));
-
-    // 4. Fetch reviews
-    const reviews = await db.all(`
-      SELECT r.*, p.full_name as user, p.image as user_image FROM reviews r
-      JOIN profiles p ON r.user_id = p.id
-      WHERE r.course_id = $1 ORDER BY r.created_at DESC
-    `, [courseId]).catch(() => []);
-
-    // 5. Assemble and sanitize the final course object
-    return {
-      ...courseResult,
-      instructor: instructor || null,
-      curriculum: curriculum,
-      reviews: reviews,
-      attachments: courseResult.attachments || [],
-      external_links: courseResult.external_links || [],
-      // Ensure numeric types are correct
-      rating: Number(courseResult.rating) || 0,
-      price: Number(courseResult.price) || 0,
-      original_price: Number(courseResult.original_price) || 0,
-      enrolled_students_count: Number(courseResult.students) || 0,
-      reviews_count: reviews.length,
-      last_updated: new Date(courseResult.updated_at || courseResult.created_at).toISOString(),
-    } as Course;
-
-  } catch (error) {
-    console.error("Failed to fetch course directly:", error);
-    return null;
+  if (!res.ok) {
+    // Log the detailed error from the API
+    const errorBody = await res.json();
+    console.error('Failed to fetch course details:', errorBody.details);
+    // We can throw an error here to be caught by an error boundary, 
+    // or return null to show a 'not found' or custom error component.
+    throw new Error(`Failed to fetch course details: ${errorBody.details}`);
   }
+
+  const course = await res.json();
+  return course as Course;
 }
 
 export default async function CoursePage({ params }: { params: { courseId: string } }) {
