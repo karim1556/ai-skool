@@ -76,6 +76,10 @@ export async function getDb(): Promise<DatabaseInterface> {
       // Use the same pg Pool for both development and production
       if (!pool) {
         console.log(`Connecting to database in ${process.env.NODE_ENV} mode...`);
+        // Diagnostic log to verify the database host
+        const dbHost = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).host : 'DATABASE_URL not set';
+        console.log(`VERCEL IS CONNECTING TO DATABASE HOST: ${dbHost}`);
+
         pool = new Pool({
           connectionString: process.env.DATABASE_URL,
           ssl: {
