@@ -68,12 +68,16 @@ export async function GET(request: Request, { params }: { params: { courseId: st
       // Use the JSONB data directly from the course object, providing empty arrays as fallbacks.
       attachments: courseResult.attachments || [], 
       external_links: courseResult.external_links || [],
-      // Mocking some data that is not in the schema yet for UI compatibility
-      reviewsCount: reviews.length,
+      // Ensure numeric types and correct field names for UI compatibility
+      rating: parseFloat(courseResult.rating) || 0,
+      price: parseFloat(courseResult.price) || 0,
+      original_price: parseFloat(courseResult.original_price) || null,
+      enrolled_students_count: parseInt(courseResult.enrolled_students_count, 10) || 0,
+      reviews_count: reviews.length,
       tagline: courseResult.tagline || 'Unlock your potential with this amazing course!',
-      lastUpdated: new Date(courseResult.updated_at).toLocaleString('default', { month: 'long', year: 'numeric' }),
-      videoUrl: courseResult.demo_video_url,
-      videoPreview: courseResult.video_preview_image
+      last_updated: courseResult.updated_at, // Pass ISO string directly
+      demo_video_url: courseResult.demo_video_url,
+      video_preview_image: courseResult.video_preview_image
     };
 
     return NextResponse.json(courseDetails);
