@@ -99,9 +99,22 @@ interface Course {
   reviews: Review[];
 }
 
+// Helper to construct the base URL dynamically for server-side fetching
+const getBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  // Vercel provides this variable for the deployment URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // Fallback for local development
+  return 'http://localhost:3000';
+};
+
 async function getCourse(courseId: string): Promise<Course | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     const res = await fetch(`${baseUrl}/api/courses/${courseId}/details`, {
       cache: 'no-store', // Ensure fresh data
     });
