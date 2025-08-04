@@ -100,23 +100,37 @@ interface Course {
 }
 
 async function getCourse(courseId: string): Promise<Course | null> {
-  // Fetch from the API route
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const res = await fetch(`${baseUrl}/api/courses/${courseId}/details`, {
-    cache: 'no-store', // Ensure fresh data
-  });
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/courses/${courseId}/details`, {
+      cache: 'no-store', // Ensure fresh data
+    });
 
-  if (!res.ok) {
-    // Log the detailed error from the API
-    const errorBody = await res.json();
-    console.error('Failed to fetch course details:', errorBody.details);
-    // We can throw an error here to be caught by an error boundary, 
-    // or return null to show a 'not found' or custom error component.
-    throw new Error(`Failed to fetch course details: ${errorBody.details}`);
+    if (!res.ok) {
+      // Try to parse error body for more details
+      try {
+        const errorBody = await res.json();
+        console.error('API Error:', res.status, errorBody.details || errorBody.error);
+      } catch (e) {
+        console.error('Failed to fetch course details, and the error response was not valid JSON.', res.status);
+      }
+      return null; // Return null on failure to trigger notFound()
+    }
+
+    const course = await res.json();
+
+    // Basic validation to ensure the response looks like a course object
+    if (!course || typeof course.id === 'undefined' || typeof course.rating === 'undefined') {
+      console.error('Received malformed course data from API.');
+      return null;
+    }
+
+    return course as Course;
+
+  } catch (error) {
+    console.error('An unexpected error occurred in getCourse:', error);
+    return null; // Return null on any unexpected error
   }
-
-  const course = await res.json();
-  return course as Course;
 }
 
 export default async function CoursePage({ params }: { params: { courseId: string } }) {
