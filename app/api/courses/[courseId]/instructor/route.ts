@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic'; // This line is added to fix the build error
 import { getDb } from '@/lib/db';
 
 export async function PUT(request: Request, { params }: { params: { courseId: string } }) {

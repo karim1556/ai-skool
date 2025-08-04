@@ -94,7 +94,7 @@ export async function POST(request: NextRequest, { params }: { params: { section
       await db.run('ALTER TABLE lessons ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0', []);
       
       // Find the highest current sort_order value for lessons in this section
-      const lastLesson = await db.get(
+      const lastLesson = await db.get<{ sort_order: number }>(
         'SELECT sort_order FROM lessons WHERE section_id = $1 ORDER BY sort_order DESC LIMIT 1',
         [sectionId]
       );
