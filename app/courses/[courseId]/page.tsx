@@ -22,7 +22,7 @@ import {
   Calendar,
   ClipboardList,
 } from "lucide-react";
-import { getDb } from "@/lib/db";
+import { GET as getCourseDetails } from "@/app/api/courses/[courseId]/details/route";
 
 // Define the types based on your API response
 interface Instructor {
@@ -100,23 +100,25 @@ interface Course {
 }
 
 async function getCourse(courseId: string): Promise<Course | null> {
-  // Fetch from the API route
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const res = await fetch(`${baseUrl}/api/courses/${courseId}/details`, {
-    cache: 'no-store', // Ensure fresh data
-  });
+  try {
+    // Directly call the API route's GET function
+    const response = await getCourseDetails(
+      {} as Request, // The Request object is not used in the GET handler, so we can pass a mock
+      { params: { courseId } }
+    );
 
-  if (!res.ok) {
-    // Log the detailed error from the API
-    const errorBody = await res.json();
-    console.error('Failed to fetch course details:', errorBody.details);
-    // We can throw an error here to be caught by an error boundary, 
-    // or return null to show a 'not found' or custom error component.
-    throw new Error(`Failed to fetch course details: ${errorBody.details}`);
+    if (response.status !== 200) {
+      console.error(`API returned status ${response.status}`);
+      return null;
+    }
+
+    const course = await response.json();
+    return course as Course;
+
+  } catch (error) {
+    console.error('An unexpected error occurred while fetching course data:', error);
+    return null;
   }
-
-  const course = await res.json();
-  return course as Course;
 }
 
 export default async function CoursePage({ params }: { params: { courseId: string } }) {
