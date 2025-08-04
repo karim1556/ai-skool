@@ -132,6 +132,25 @@ export default async function CoursePage({ params }: { params: { courseId: strin
   const lessonsCount = course.curriculum?.reduce((acc: number, section: CurriculumSection) => acc + (section.lessons?.length || 0), 0) || 0;
   const discount = course.original_price && course.price ? Math.round(((course.original_price - course.price) / course.price) * 100) : 0;
 
+  // Defensive coding: Create new, safe arrays for JSON-like fields to avoid prop mutation.
+  const parseJsonSafe = (jsonString: any, fieldName: string): any[] => {
+    if (Array.isArray(jsonString)) return jsonString;
+    if (typeof jsonString === 'string') {
+      try {
+        const parsed = JSON.parse(jsonString);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error(`Failed to parse ${fieldName} string, defaulting to empty array`, e);
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const objectivesArray = parseJsonSafe(course?.objectives, 'objectives');
+  const attachmentsArray = parseJsonSafe(course?.attachments, 'attachments');
+  const externalLinksArray = parseJsonSafe(course?.external_links, 'external_links');
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -182,7 +201,7 @@ export default async function CoursePage({ params }: { params: { courseId: strin
             <CardContent className="p-0">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">What you'll learn</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {course.objectives?.map((item: string, index: number) => (
+                {objectivesArray.map((item: string, index: number) => (
                   <div key={index} className="flex items-start space-x-2">
                     <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
                     <p className="text-gray-700">{item}</p>
@@ -272,12 +291,12 @@ export default async function CoursePage({ params }: { params: { courseId: strin
           </Card>
 
           {/* Attachments */}
-          {course.attachments && course.attachments.length > 0 && (
+          {attachmentsArray.length > 0 && (
             <Card className="p-6 shadow-sm">
               <CardContent className="p-0">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Attachments</h2>
                 <ul className="space-y-3">
-                  {course.attachments.map((attachment: Attachment, index: number) => (
+                  {attachmentsArray.map((attachment: Attachment, index: number) => (
                     <li key={index} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <FileText className="h-5 w-5 text-gray-600" />
@@ -297,12 +316,12 @@ export default async function CoursePage({ params }: { params: { courseId: strin
           )}
 
           {/* Useful Links */}
-          {course.external_links && course.external_links.length > 0 && (
+          {externalLinksArray.length > 0 && (
             <Card className="p-6 shadow-sm">
               <CardContent className="p-0">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Useful Links</h2>
                 <ul className="space-y-3">
-                  {course.external_links.map((link: ExternalLink, index: number) => (
+                  {externalLinksArray.map((link: ExternalLink, index: number) => (
                     <li key={index} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <LinkIcon className="h-5 w-5 text-gray-600" />

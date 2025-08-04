@@ -46,5 +46,8 @@ export function getDb(): Database {
   return db;
 }
 
+// Export the raw sql client for transactions or advanced features
+export { sql };
+
 // Note: There is no closeDb function. The 'postgres' library manages the connection
 // lifecycle automatically. You do not need to manually close the connection.

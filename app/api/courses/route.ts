@@ -61,19 +61,15 @@ export async function POST(req: NextRequest) {
 
     // Process other form fields
     formData.forEach((value, key) => {
-      if (key === 'image') return;
-
       if (key === 'image' || key.startsWith('attachment_files')) return;
 
       try {
-        // Try to parse fields that are expected to be JSON
         if (['objectives', 'external_links', 'outcomes'].includes(key)) {
           course[key] = JSON.parse(value as string);
         } else {
           course[key] = value;
         }
       } catch (e) {
-        // Fallback for non-JSON values
         if (['price', 'original_price', 'lessons', 'rating', 'reviews', 'students'].includes(key)) {
           course[key] = parseFloat(value as string) || 0;
         } else if (key === 'is_free') {
@@ -111,7 +107,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const result = await db.run(
+    // Define the expected shape of the result from the INSERT...RETURNING query
+    interface InsertResult {
+      id: string;
+    }
+
+    // Use db.get with the correct type to retrieve the inserted row
+    const result = await db.get<InsertResult>(
       `INSERT INTO courses (
         title, description, objectives, outcomes, created_by,
         provider, image, price, original_price, lessons, duration, language,
@@ -146,8 +148,13 @@ export async function POST(req: NextRequest) {
       ]
     );
     
+    if (!result) {
+      throw new Error('Course creation failed: No result returned from database.');
+    }
+
+    // Correctly get the ID from the returned row object
     return NextResponse.json({ 
-      id: result.lastInsertRowid,
+      id: result.id,
       success: true 
     });
   } catch (error) {
