@@ -22,7 +22,7 @@ import {
   Calendar,
   ClipboardList,
 } from "lucide-react";
-import { getDb } from "@/lib/db";
+import { GET as getCourseDetails } from "@/app/api/courses/[courseId]/details/route";
 
 // Define the types based on your API response
 interface Instructor {
@@ -99,50 +99,25 @@ interface Course {
   reviews: Review[];
 }
 
-// Helper to construct the base URL dynamically for server-side fetching
-const getBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    return process.env.NEXT_PUBLIC_BASE_URL;
-  }
-  // Vercel provides this variable for the deployment URL
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  // Fallback for local development
-  return 'http://localhost:3000';
-};
-
 async function getCourse(courseId: string): Promise<Course | null> {
   try {
-    const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/courses/${courseId}/details`, {
-      cache: 'no-store', // Ensure fresh data
-    });
+    // Directly call the API route's GET function
+    const response = await getCourseDetails(
+      {} as Request, // The Request object is not used in the GET handler, so we can pass a mock
+      { params: { courseId } }
+    );
 
-    if (!res.ok) {
-      // Try to parse error body for more details
-      try {
-        const errorBody = await res.json();
-        console.error('API Error:', res.status, errorBody.details || errorBody.error);
-      } catch (e) {
-        console.error('Failed to fetch course details, and the error response was not valid JSON.', res.status);
-      }
-      return null; // Return null on failure to trigger notFound()
-    }
-
-    const course = await res.json();
-
-    // Basic validation to ensure the response looks like a course object
-    if (!course || typeof course.id === 'undefined' || typeof course.rating === 'undefined') {
-      console.error('Received malformed course data from API.');
+    if (response.status !== 200) {
+      console.error(`API returned status ${response.status}`);
       return null;
     }
 
+    const course = await response.json();
     return course as Course;
 
   } catch (error) {
-    console.error('An unexpected error occurred in getCourse:', error);
-    return null; // Return null on any unexpected error
+    console.error('An unexpected error occurred while fetching course data:', error);
+    return null;
   }
 }
 
