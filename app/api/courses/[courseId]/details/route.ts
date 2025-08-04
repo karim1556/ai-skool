@@ -2,51 +2,45 @@ import { NextResponse } from 'next/server';
 import { getDb, sql } from '@/lib/db';
 import postgres from 'postgres';
 
-// Define interfaces for our database models to ensure type safety
-interface Course {
-  id: string;
+// Define types for our data structures
+interface Instructor {
+  name: string;
+  image: string;
   title: string;
-  description: string;
-  image_url: string;
-  price: string; // Comes from DB as string
-  original_price?: string;
-  rating: string; // Comes from DB as string
-  enrolled_students_count: string; // Comes from DB as string
-  level: string;
-  instructor_id: string;
-  tagline?: string;
-  updated_at: string;
-  demo_video_url?: string;
-  video_preview_image?: string;
-  objectives?: any; // JSONB
-  attachments?: any; // JSONB
-  external_links?: any; // JSONB
+  bio: string;
+  courses_count: number;
+  students_count: number;
+  average_rating: number;
+  reviews_count: number;
 }
 
-interface Instructor {
+interface Review {
   id: string;
-  full_name: string;
-  image: string;
+  user: string;
+  user_image: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+interface Course {
+  id: string;
+  created_by: string; // Used to fetch instructor
+  curriculum?: Section[];
+  instructor?: Instructor | null;
+  reviews?: Review[];
+}
+
+interface SectionContent {
+  id: string;
+  title: string;
+  type: 'lesson' | 'quiz' | 'assignment';
 }
 
 interface Section {
   id: string;
   title: string;
-  course_id: string;
-  order: number;
-}
-
-interface Lesson {
-  id: string;
-  title: string;
-  section_id: string;
-  order: number;
-}
-
-interface Review {
-  id: string;
-  user: string; // This is an alias from the JOIN
-  user_image: string;
+  lessons: SectionContent[];
 }
 
 interface UpdateCoursePayload {
@@ -58,82 +52,84 @@ interface UpdateCoursePayload {
 
 export async function GET(request: Request, { params }: { params: { courseId: string } }) {
   const { courseId } = params;
-
   if (!courseId) {
     return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
   }
 
-  try {
-    const db = getDb();
+  const db = await getDb();
 
+  try {
     // 1. Fetch the main course data
-    const courseResult = await db.get<Course>('SELECT * FROM courses WHERE id = $1', [courseId]);
-    if (!courseResult) {
+    const course = await db.get<Course>('SELECT * FROM courses WHERE id = $1', [courseId]);
+    if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    // 2. Fetch instructor(s)
-    const instructorQuery = `
-      SELECT p.* 
-      FROM profiles p
-      JOIN course_instructors ci ON p.id = ci.instructor_id
-      WHERE ci.course_id = $1
-      LIMIT 1;
-    `;
-    const instructor = await db.get<Instructor>(instructorQuery, [courseId]).catch(() => null);
+    // 2. Fetch all sections for the course
+    const sections = await db.all<Section>('SELECT * FROM sections WHERE course_id = $1', [courseId]);
 
-    // 3. Fetch curriculum (sections and lessons)
-    const sectionsQuery = 'SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC';
-        const sections = await db.all<Section>(sectionsQuery, [courseId]).catch(() => []);
+    // 3. For each section, fetch all of its content
+    for (const section of sections) {
+      const lessons = await db.all<SectionContent>(
+        `SELECT id, title, 'lesson' as type FROM lessons WHERE section_id = $1`,
+        [section.id]
+      );
+      const quizzes = await db.all<SectionContent>(
+        `SELECT id, title, 'quiz' as type FROM quizzes WHERE section_id = $1`,
+        [section.id]
+      );
+      const assignments = await db.all<SectionContent>(
+        `SELECT id, title, 'assignment' as type FROM assignments WHERE section_id = $1`,
+        [section.id]
+      );
 
-    const lessonsQuery = `
-      SELECT l.* 
-      FROM lessons l
-      JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = $1
-      ORDER BY s."order" ASC, l."order" ASC;
-    `;
-        const allLessons = await db.all<Lesson>(lessonsQuery, [courseId]).catch(() => []);
+      // Combine all content
+      section.lessons = [...lessons, ...quizzes, ...assignments];
+    }
 
-    const curriculum = sections.map((section: Section) => ({
-      ...section,
-      lessons: allLessons.filter((lesson: Lesson) => lesson.section_id === section.id)
-    }));
+    // 4. Attach the fully populated sections to the course object
+    course.curriculum = sections;
 
-    // 4. Fetch reviews
+    // 5. Fetch instructor details
+    let instructor = null;
+    if (course.created_by) {
+      const instructorQuery = `
+        SELECT 
+          p.full_name as name, 
+          p.avatar_url as image, 
+          i.title as title,
+          i.bio as bio,
+          (SELECT COUNT(*) FROM courses WHERE created_by = i.user_id) as courses_count,
+          (SELECT SUM(enrolled_students_count) FROM courses WHERE created_by = i.user_id) as students_count,
+          (SELECT AVG(rating) FROM reviews r JOIN courses c ON r.course_id = c.id WHERE c.created_by = i.user_id) as average_rating,
+          (SELECT COUNT(*) FROM reviews r JOIN courses c ON r.course_id = c.id WHERE c.created_by = i.user_id) as reviews_count
+        FROM instructors i
+        JOIN profiles p ON i.user_id = p.id
+        WHERE i.user_id = $1;
+      `;
+      instructor = await db.get(instructorQuery, [course.created_by]).catch(() => null);
+    }
+
+    // 6. Fetch reviews with user details
     const reviewsQuery = `
-      SELECT r.*, p.full_name as user, p.image as user_image
+      SELECT r.*, p.full_name as user, p.avatar_url as user_image
       FROM reviews r
       JOIN profiles p ON r.user_id = p.id
       WHERE r.course_id = $1
       ORDER BY r.created_at DESC;
     `;
-        const reviews = await db.all<Review>(reviewsQuery, [courseId]).catch(() => []);
+    const reviews = await db.all(reviewsQuery, [courseId]).catch(() => []);
 
-    const objectives = typeof courseResult.objectives === 'string' 
-      ? JSON.parse(courseResult.objectives) 
-      : courseResult.objectives || [];
-
+    // 7. Combine all data into a single response object
     const courseDetails = {
-      ...courseResult,
-      instructor: instructor || null,
-      curriculum: curriculum,
-      reviews: reviews,
-      objectives: objectives,
-      attachments: courseResult.attachments || [], 
-      external_links: courseResult.external_links || [],
-      rating: parseFloat(courseResult.rating) || 0,
-      price: parseFloat(courseResult.price) || 0,
-      original_price: courseResult.original_price ? parseFloat(courseResult.original_price) : null,
-      enrolled_students_count: parseInt(courseResult.enrolled_students_count, 10) || 0,
-      reviews_count: reviews.length,
-      tagline: courseResult.tagline || 'Unlock your potential with this amazing course!',
-      last_updated: courseResult.updated_at,
-      demo_video_url: courseResult.demo_video_url,
-      video_preview_image: courseResult.video_preview_image
+      ...course,
+      instructor,
+      curriculum: sections,
+      reviews,
     };
 
     return NextResponse.json(courseDetails);
+
   } catch (error) {
     console.error('Error fetching course details:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

@@ -131,6 +131,7 @@ export default async function CoursePage({ params }: { params: { courseId: strin
   // Calculate derived values
   const lessonsCount = course.curriculum?.reduce((acc: number, section: CurriculumSection) => acc + (section.lessons?.length || 0), 0) || 0;
   const discount = course.original_price && course.price ? Math.round(((course.original_price - course.price) / course.price) * 100) : 0;
+  const numericRating = Number(course.rating) || 0;
 
   // Defensive coding: Create new, safe arrays for JSON-like fields to avoid prop mutation.
   const parseJsonSafe = (jsonString: any, fieldName: string): any[] => {
@@ -161,12 +162,12 @@ export default async function CoursePage({ params }: { params: { courseId: strin
             <p className="text-xl text-gray-300">{course.tagline}</p>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1">
-                <span className="font-bold text-yellow-400">{course.rating.toFixed(1)}</span>
+                <span className="font-bold text-yellow-400">{numericRating.toFixed(1)}</span>
                 <div className="flex">
                   {Array.from({ length: 5 }, (_, i) => (
                     <Star
                       key={i}
-                      className={`h-5 w-5 ${i < Math.round(course.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-600"}`}
+                      className={`h-5 w-5 ${i < Math.round(numericRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-600"}`}
                     />
                   ))}
                 </div>
