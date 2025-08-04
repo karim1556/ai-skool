@@ -19,13 +19,13 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
     const db = await getDb();
     // First check if the sort_order column exists
     const columnCheck = await db.get(
-      "SELECT column_name FROM information_schema.columns WHERE table_name = 'lessons' AND column_name = 'sort_order'"
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'lessons' AND column_name = 'sort_order'", []
     );
     
     if (!columnCheck) {
       // If sort_order doesn't exist, try to add it
       try {
-        await db.exec('ALTER TABLE lessons ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0');
+        await db.run('ALTER TABLE lessons ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0', []);
       } catch (alterError) {
         console.error('Failed to add sort_order column:', alterError);
       }
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest, { params }: { params: { section
 
     try {
       // Ensure sort_order column exists
-      await db.exec('ALTER TABLE lessons ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0');
+      await db.run('ALTER TABLE lessons ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0', []);
       
       // Find the highest current sort_order value for lessons in this section
       const lastLesson = await db.get<{ sort_order: number }>(
