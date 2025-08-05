@@ -13,7 +13,7 @@ export async function POST(request: Request, { params }: { params: { courseId: s
     const db = await getDb();
 
     // 1. Find the highest current order value for sections in this course
-    const lastSection = await db.get(
+    const lastSection = await db.get<{ order: number } | undefined>(
       'SELECT "order" FROM sections WHERE course_id = $1 ORDER BY "order" DESC LIMIT 1',
       [courseId]
     );
