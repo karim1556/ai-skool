@@ -44,16 +44,8 @@ export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientP
   const [videoUrl, setVideoUrl] = useState<string | undefined>(course.curriculum[0]?.lessons[0]?.video_url);
 
   useEffect(() => {
-    if (activeLesson?.type === 'lesson' && activeLesson.video_url) {
+    if (activeLesson?.type === 'lesson') {
       setVideoUrl(activeLesson.video_url);
-    } else if (activeLesson?.type === 'lesson') {
-      // Fallback to fetch URL if not provided initially
-      fetch(`/api/lessons/${activeLesson.id}/video`).then(async res => {
-        if (res.ok) {
-          const { url } = await res.json();
-          setVideoUrl(url);
-        }
-      });
     }
   }, [activeLesson]);
 
@@ -131,24 +123,137 @@ const AssignmentViewer = ({ lesson }: { lesson: Lesson }) => (
   </div>
 );
 
-const DocumentViewer = ({ lesson }: { lesson: Lesson }) => (
-  <div className="p-4 md:p-8 h-full bg-gray-50 dark:bg-gray-900 overflow-y-auto">
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3">
-          <FileText className="w-8 h-8 text-purple-500" />
-          <span>{lesson.title}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div 
-          className="prose dark:prose-invert max-w-none prose-video:w-full prose-video:aspect-video"
-          dangerouslySetInnerHTML={{ __html: lesson.content || '<p>No content available for this lesson.</p>' }}
-        />
-      </CardContent>
-    </Card>
-  </div>
-);
+const DocumentViewer = ({ lesson }: { lesson: Lesson }) => {
+  useEffect(() => {
+    console.log('DocumentViewer mounted with lesson:', {
+      id: lesson.id,
+      title: lesson.title,
+      type: lesson.type, 
+      video_url: lesson.video_url || 'No URL',
+      content_length: lesson.content?.length || 0
+    });
+  }, [lesson]);
+
+  const fileUrl = (lesson as any).file_url || lesson.video_url || '';
+  
+  // Check if this is a video
+  const isVideo = fileUrl && 
+                 typeof fileUrl === 'string' && 
+                 (fileUrl.endsWith('.mp4') || 
+                  fileUrl.includes('video') ||
+                  (lesson as any).type === 'video_file');
+
+  // Check if this is a PDF document
+  const isPdf = fileUrl && 
+               typeof fileUrl === 'string' && 
+               (fileUrl.endsWith('.pdf') || 
+                (lesson as any).type === 'document' ||
+                lesson.type === 'assignment');
+
+  if (isVideo && fileUrl) {
+    console.log('Rendering video player with URL:', fileUrl);
+    
+    return (
+      <div className="w-full h-full bg-black flex items-center justify-center">
+        <video 
+          key={fileUrl} 
+          controls 
+          autoPlay 
+          className="w-full h-full object-contain"
+          onError={(e) => {
+            console.error('Video error:', e);
+            console.error('Video error details:', {
+              networkState: e.currentTarget.networkState,
+              error: e.currentTarget.error,
+              readyState: e.currentTarget.readyState,
+              src: e.currentTarget.src
+            });
+          }}
+          onLoadedMetadata={(e) => {
+            console.log('Video metadata loaded:', {
+              duration: e.currentTarget.duration,
+              videoWidth: e.currentTarget.videoWidth,
+              videoHeight: e.currentTarget.videoHeight,
+              readyState: e.currentTarget.readyState
+            });
+          }}
+          onLoadStart={() => console.log('Video load started')}
+          onLoadedData={() => console.log('Video data loaded')}
+          onCanPlay={() => console.log('Video can play')}
+          onPlaying={() => console.log('Video started playing')}
+        >
+          <source 
+            src={fileUrl} 
+            type="video/mp4" 
+            onError={(e) => console.error('Source error:', e)}
+          />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    );
+  }
+  
+  // Handle PDF documents
+  if (isPdf && fileUrl) {
+    console.log('Rendering PDF viewer with URL:', fileUrl);
+    
+    return (
+      <div className="w-full h-full flex flex-col">
+        <div className="flex-1">
+          <object 
+            data={fileUrl} 
+            type="application/pdf"
+            className="w-full h-full"
+          >
+            <div className="p-4">
+              <p className="mb-4">Unable to display PDF. Please download it to view.</p>
+              <a 
+                href={fileUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                Download PDF
+              </a>
+            </div>
+          </object>
+        </div>
+      </div>
+    );
+  }
+
+  // If there's HTML content, render it
+  if (lesson.content) {
+    return (
+      <div className="p-4 md:p-8 h-full bg-gray-50 dark:bg-gray-900 overflow-y-auto">
+        <Card className="w-full max-w-4xl mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <FileText className="w-8 h-8 text-purple-500" />
+              <span>{lesson.title}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div 
+              className="prose dark:prose-invert max-w-none prose-video:w-full prose-video:aspect-video"
+              dangerouslySetInnerHTML={{ __html: lesson.content }}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Fallback if no content is available
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <FileText className="w-16 h-16 mx-auto text-gray-400" />
+        <p className="mt-2 text-gray-500">No content available for this lesson.</p>
+      </div>
+    </div>
+  );
+};
 
 const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLessons, totalLessons, handleToggleCompletion, setActiveLesson }: any) => (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -199,22 +304,9 @@ const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLes
                 <p className="mt-2 text-gray-400">Select a lesson to begin your course.</p>
               </div>
             </div>
-          ) : activeLesson.type === 'lesson' ? (
-            activeLesson.video_url && videoUrl ? (
-              <div className="w-full h-full bg-black flex items-center justify-center">
-                <video key={videoUrl} controls autoPlay className="w-full h-full object-contain">
-                  <source src={videoUrl} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-            ) : (
-              <DocumentViewer lesson={activeLesson} />
-            )
-          ) : activeLesson.type === 'quiz' ? (
-            <QuizPlayer lesson={activeLesson} />
-          ) : activeLesson.type === 'assignment' ? (
-            <AssignmentViewer lesson={activeLesson} />
-          ) : null}
+          ) : (
+            <DocumentViewer lesson={activeLesson} />
+          )}
         </div>
 
         <div className="p-4 border-y border-gray-200 dark:border-gray-800 flex lg:hidden items-center justify-between">
