@@ -13,6 +13,8 @@ import { AddLessonModal } from "./add-lesson-modal";
 import { AddQuizModal } from "./add-quiz-modal";
 import { AddAssignmentModal } from "./add-assignment-modal";
 import { SortSectionsModal } from "./sort-sections-modal";
+import { DragDropContext, Draggable, DropResult } from 'react-beautiful-dnd';
+import { StrictModeDroppable as Droppable } from './strict-mode-droppable';
 
 // Enhanced Type Definitions
 interface ContentItem {
@@ -67,6 +69,50 @@ export const CourseContentManager = ({ course: initialCourse, instructors }: Cou
   const [editingLesson, setEditingLesson] = useState<any | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<any | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<any | null>(null);
+
+  const onDragEnd = async (result: DropResult) => {
+    const { source, destination } = result;
+
+    if (!destination) {
+      return;
+    }
+
+    const sectionId = source.droppableId;
+    if (source.droppableId !== destination.droppableId) {
+      // Moving between sections is not supported in this implementation
+      return;
+    }
+
+    const items = Array.from(content[sectionId] || []);
+    const [reorderedItem] = items.splice(source.index, 1);
+    items.splice(destination.index, 0, reorderedItem);
+
+    const originalContent = { ...content };
+    // Optimistically update the UI
+    setContent(prev => ({ ...prev, [sectionId]: items }));
+
+    const updatedOrder = items.map((item, index) => ({
+      id: item.id,
+      type: item.type,
+      sort_order: index,
+    }));
+
+    try {
+      const response = await fetch('/api/content/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: updatedOrder }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save sorted order');
+      }
+    } catch (error) {
+      console.error('Error saving sort order:', error);
+      // Revert UI on failure
+      setContent(originalContent);
+    }
+  };
 
   // Fetch content for all sections on mount
   useEffect(() => {
@@ -295,6 +341,7 @@ export const CourseContentManager = ({ course: initialCourse, instructors }: Cou
     return (
       <div key={`${item.type}-${item.id}`} className="flex items-center justify-between p-3 bg-white rounded border">
         <div className="flex items-center gap-3">
+          <GripVertical className="h-5 w-5 text-gray-400" />
           {icons[item.type]}
           <span>{item.title}</span>
         </div>
@@ -368,31 +415,54 @@ export const CourseContentManager = ({ course: initialCourse, instructors }: Cou
         </CardHeader>
         <CardContent>
           {loading && <p>Loading content...</p>}
-          <Accordion type="multiple" className="w-full">
-            {sections.sort((a, b) => a.order - b.order).map((section) => (
-              <AccordionItem value={section.id} key={section.id}>
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center space-x-2">
-                      <GripVertical className="h-5 w-5 text-gray-400" />
-                      <span className="font-semibold">{section.title}</span>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Accordion type="multiple" className="w-full">
+              {sections.sort((a, b) => a.order - b.order).map((section) => (
+                <AccordionItem value={section.id} key={section.id}>
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center space-x-2">
+                        <GripVertical className="h-5 w-5 text-gray-400" />
+                        <span className="font-semibold">{section.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEditSection(section); }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteSection(section.id); }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEditSection(section); }}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteSection(section.id); }}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pl-8 space-y-2">
-                  {content[section.id] ? content[section.id].map(item => renderContentItem(item, section.id)) : <p>No content for this section.</p>}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+                  </AccordionTrigger>
+                  <Droppable droppableId={section.id} key={section.id}>
+                    {(provided) => (
+                      <AccordionContent
+                        className="pl-8 space-y-2"
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                      >
+                        {(content[section.id] || []).map((item, index) => (
+                          <Draggable key={item.id} draggableId={item.id} index={index}>
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                              >
+                                {renderContentItem(item, section.id)}
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </AccordionContent>
+                    )}
+                  </Droppable>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </DragDropContext>
         </CardContent>
       </Card>
 

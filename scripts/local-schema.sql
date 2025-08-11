@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS quizzes (
     description TEXT,
     time_limit INTEGER,
     passing_score INTEGER DEFAULT 70,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -56,6 +57,7 @@ CREATE TABLE IF NOT EXISTS assignments (
     description TEXT,
     due_date TIMESTAMP WITH TIME ZONE,
     max_score INTEGER DEFAULT 100,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
