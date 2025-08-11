@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,14 +9,26 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
+interface QuizDetails {
+  id: string;
+  title: string;
+  description: string;
+  time_limit: number | null;
+  passing_score: number | null;
+  max_attempts: number | null;
+  section_id: string;
+}
+
 interface AddQuizModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (newQuiz: any) => void;
+  onEdit: (updatedQuiz: any) => void;
+  quizToEdit: QuizDetails | null;
   sections: { id: string; title: string }[];
 }
 
-export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalProps) {
+export function AddQuizModal({ isOpen, onClose, onAdd, onEdit, quizToEdit, sections }: AddQuizModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [timeLimit, setTimeLimit] = useState('');
@@ -24,6 +36,28 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
   const [maxAttempts, setMaxAttempts] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const isEditMode = quizToEdit !== null;
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && quizToEdit) {
+        setTitle(quizToEdit.title);
+        setDescription(quizToEdit.description || '');
+        setTimeLimit(String(quizToEdit.time_limit || ''));
+        setPassingScore(String(quizToEdit.passing_score || ''));
+        setMaxAttempts(String(quizToEdit.max_attempts || ''));
+        setSelectedSection(quizToEdit.section_id);
+      } else {
+        setTitle('');
+        setDescription('');
+        setTimeLimit('');
+        setPassingScore('');
+        setMaxAttempts('');
+        setSelectedSection('');
+      }
+    }
+  }, [quizToEdit, isOpen]);
 
   const handleSave = async () => {
     if (!title || !selectedSection) {
@@ -33,7 +67,10 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/sections/${selectedSection}/quizzes`, {
+      const url = isEditMode ? `/api/quizzes/${quizToEdit.id}` : `/api/sections/${selectedSection}/quizzes`;
+      const method = isEditMode ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -50,17 +87,14 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
         throw new Error(errorData.error || 'Failed to create quiz');
       }
 
-      const newQuiz = await response.json();
-      toast.success('Quiz added successfully!');
-      onAdd(newQuiz);
+      const result = await response.json();
+      toast.success(`Quiz ${isEditMode ? 'updated' : 'added'} successfully!`);
+      if (isEditMode) {
+        onEdit(result);
+      } else {
+        onAdd(result);
+      }
       onClose();
-      // Reset form
-      setTitle('');
-      setDescription('');
-      setTimeLimit('');
-      setPassingScore('');
-      setMaxAttempts('');
-      setSelectedSection('');
 
     } catch (error) {
       console.error(error);
@@ -75,7 +109,7 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Quiz</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Quiz' : 'Add New Quiz'}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
@@ -131,7 +165,7 @@ export function AddQuizModal({ isOpen, onClose, onAdd, sections }: AddQuizModalP
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? 'Saving...' : 'Save'}
+            {isLoading ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Save')}
           </Button>
         </DialogFooter>
       </DialogContent>

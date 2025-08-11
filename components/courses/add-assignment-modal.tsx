@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,14 +10,25 @@ import { supabase } from '@/lib/supabase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
+interface AssignmentDetails {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  max_score: number | null;
+  section_id: string;
+}
+
 interface AddAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (newAssignment: any) => void;
+  onEdit: (updatedAssignment: any) => void;
+  assignmentToEdit: AssignmentDetails | null;
   sections: { id: string; title: string }[];
 }
 
-export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssignmentModalProps) {
+export function AddAssignmentModal({ isOpen, onClose, onAdd, onEdit, assignmentToEdit, sections }: AddAssignmentModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState('');
@@ -25,6 +36,28 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
   const [attachment, setAttachment] = useState<File | null>(null);
   const [selectedSection, setSelectedSection] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const isEditMode = assignmentToEdit !== null;
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && assignmentToEdit) {
+        setTitle(assignmentToEdit.title);
+        setDescription(assignmentToEdit.description || '');
+        setDuration(assignmentToEdit.duration || '');
+        setMaxScore(String(assignmentToEdit.max_score || ''));
+        setSelectedSection(assignmentToEdit.section_id);
+        setAttachment(null); // Reset file input
+      } else {
+        setTitle('');
+        setDescription('');
+        setDuration('');
+        setMaxScore('');
+        setAttachment(null);
+        setSelectedSection('');
+      }
+    }
+  }, [assignmentToEdit, isOpen]);
 
   const handleSave = async () => {
     if (!title || !selectedSection) {
@@ -47,9 +80,11 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
         formData.append('file', attachment);
       }
 
-      const response = await fetch(`/api/sections/${selectedSection}/assignments`, {
-        method: 'POST',
-        // Don't set Content-Type header - the browser will set it with the correct boundary
+      const url = isEditMode ? `/api/assignments/${assignmentToEdit.id}` : `/api/sections/${selectedSection}/assignments`;
+      const method = isEditMode ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         body: formData,
       });
 
@@ -65,17 +100,14 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
         throw new Error(errorMessage);
       }
 
-      const newAssignment = await response.json();
-      toast.success('Assignment added successfully!');
-      onAdd(newAssignment);
+      const result = await response.json();
+      toast.success(`Assignment ${isEditMode ? 'updated' : 'added'} successfully!`);
+      if (isEditMode) {
+        onEdit(result);
+      } else {
+        onAdd(result);
+      }
       onClose();
-      // Reset form
-      setTitle('');
-      setDescription('');
-      setDuration('');
-      setMaxScore('');
-      setAttachment(null);
-      setSelectedSection('');
 
     } catch (error) {
       console.error(error);
@@ -90,7 +122,7 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Assignment</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Assignment' : 'Add New Assignment'}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
@@ -146,7 +178,7 @@ export function AddAssignmentModal({ isOpen, onClose, onAdd, sections }: AddAssi
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? 'Saving...' : 'Save'}
+            {isLoading ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Save')}
           </Button>
         </DialogFooter>
       </DialogContent>

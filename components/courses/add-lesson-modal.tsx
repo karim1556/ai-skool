@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,10 +11,22 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
+interface LessonDetails {
+  id: string;
+  title: string;
+  duration: string;
+  type: string;
+  content: string;
+  is_preview: boolean;
+  section_id: string;
+}
+
 interface AddLessonModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (newLesson: any) => void;
+  onEdit: (updatedLesson: any) => void;
+  lessonToEdit: LessonDetails | null;
   sections: { id: string; title: string }[];
   courseTitle: string;
 }
@@ -29,7 +41,7 @@ const lessonTypes = [
   { id: 'iframe', label: 'Iframe embed' },
 ];
 
-export function AddLessonModal({ isOpen, onClose, onAdd, sections, courseTitle }: AddLessonModalProps) {
+export function AddLessonModal({ isOpen, onClose, onAdd, onEdit, lessonToEdit, sections, courseTitle }: AddLessonModalProps) {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,6 +53,27 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections, courseTitle }
   const [content, setContent] = useState(''); // For URLs or iframe code
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isPreview, setIsPreview] = useState(false);
+
+  const isEditMode = lessonToEdit !== null;
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && lessonToEdit) {
+        // Pre-fill form for editing
+        setTitle(lessonToEdit.title);
+        setDuration(lessonToEdit.duration);
+        setLessonType(lessonToEdit.type);
+        setContent(lessonToEdit.content || '');
+        setIsPreview(lessonToEdit.is_preview);
+        setSelectedSection(lessonToEdit.section_id);
+        // Skip to step 2 in edit mode
+        setStep(2);
+      } else {
+        // Reset form for adding
+        resetForm();
+      }
+    }
+  }, [lessonToEdit, isOpen]);
 
   const resetForm = () => {
     setStep(1);
@@ -74,16 +107,19 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections, courseTitle }
       formData.append('content', content || '');
       formData.append('is_preview', String(isPreview));
       formData.append('type', lessonType);
+      formData.append('section_id', selectedSection);
       
       // Only append file if it exists and is a file upload type
       if (attachment && ['video_file', 'document', 'image'].includes(lessonType)) {
         formData.append('file', attachment);
       }
 
-      const response = await fetch(`/api/sections/${selectedSection}/lessons`, {
-        method: 'POST',
+      const url = isEditMode ? `/api/lessons/${lessonToEdit.id}` : `/api/sections/${selectedSection}/lessons`;
+      const method = isEditMode ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         body: formData,
-        // Don't set Content-Type header - let the browser set it with the correct boundary
       });
 
       if (!response.ok) {
@@ -97,9 +133,13 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections, courseTitle }
         throw new Error(errorMessage);
       }
 
-      const newLesson = await response.json();
-      toast.success('Lesson added successfully!');
-      onAdd(newLesson);
+      const result = await response.json();
+      toast.success(`Lesson ${isEditMode ? 'updated' : 'added'} successfully!`);
+      if (isEditMode) {
+        onEdit(result);
+      } else {
+        onAdd(result);
+      }
       handleClose();
 
     } catch (error) {
@@ -163,7 +203,7 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections, courseTitle }
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Add New Lesson</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Lesson' : 'Add New Lesson'}</DialogTitle>
         </DialogHeader>
         {step === 1 ? (
           <div className='space-y-4'>
@@ -182,16 +222,16 @@ export function AddLessonModal({ isOpen, onClose, onAdd, sections, courseTitle }
           </div>
         ) : renderStep2()}
         <DialogFooter>
-          {step === 1 ? (
+          {step === 1 && !isEditMode ? (
             <>
-              <Button variant="outline" onClick={handleClose}>Close</Button>
+              <Button variant="outline" onClick={handleClose}>Cancel</Button>
               <Button onClick={() => setStep(2)}>Next</Button>
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+              {!isEditMode && <Button variant="outline" onClick={() => setStep(1)}>Back</Button>}
               <Button onClick={handleSave} disabled={isLoading}>
-                {isLoading ? 'Saving...' : 'Save Lesson'}
+                {isLoading ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Save Lesson')}
               </Button>
             </>
           )}
