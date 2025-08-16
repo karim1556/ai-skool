@@ -1,4 +1,4 @@
-import CoursePlaybackClientV2 from '@/components/courses/course-playback-client-v2';
+import CoursePlaybackClientV2 from '@/components/courses/course-playback-client-v2'
 import { getDb } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';

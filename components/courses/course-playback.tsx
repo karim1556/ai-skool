@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { PlayCircle, FileText, CheckSquare } from 'lucide-react';
@@ -31,8 +33,10 @@ interface CoursePlaybackProps {
 export default function CoursePlayback({ course }: CoursePlaybackProps) {
   const [selectedContent, setSelectedContent] = useState<Lesson | null>(course.curriculum?.[0]?.lessons?.[0] || null);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const router = useRouter();
 
   const handleSelectContent = async (content: Lesson) => {
+    console.log('Selected content:', content);
     setSelectedContent(content);
     if (content.type === 'lesson') {
       setIsLoadingContent(true);
@@ -68,7 +72,7 @@ export default function CoursePlayback({ course }: CoursePlaybackProps) {
             {isLoadingContent ? (
               <div className="text-center">Loading content...</div>
             ) : selectedContent ? (
-              <div className="w-full">
+              <div className="w-full" key={selectedContent.id}>
                 <h2 className="text-3xl font-bold mb-4">{selectedContent.title}</h2>
                 {selectedContent.type === 'lesson' && selectedContent.video_url && (
                   <div className="aspect-video">
@@ -84,7 +88,18 @@ export default function CoursePlayback({ course }: CoursePlaybackProps) {
                 {selectedContent.type === 'lesson' && selectedContent.content && (
                   <div className="prose max-w-none mt-4" dangerouslySetInnerHTML={{ __html: selectedContent.content }} />
                 )}
-                {selectedContent.type === 'quiz' && <div className="mt-4">Quiz UI will be here.</div>}
+                {selectedContent.type === 'quiz' && (
+                  <div className="text-center">
+                    <h3 className="text-2xl font-semibold">Quiz Ready</h3>
+                    <p className="text-gray-600 my-4">You are about to start the quiz. Make sure you are prepared.</p>
+                    <Button onClick={() => {
+                      console.log(`Navigating to /quizzes/${selectedContent.id}`);
+                      router.push(`/quizzes/${selectedContent.id}`);
+                    }}>
+                      Start Quiz
+                    </Button>
+                  </div>
+                )}
                 {selectedContent.type === 'assignment' && <div className="mt-4">Assignment details will be here.</div>}
               </div>
             ) : (
@@ -108,10 +123,10 @@ export default function CoursePlayback({ course }: CoursePlaybackProps) {
                   <AccordionContent>
                     <ul className="space-y-2">
                       {section.lessons?.map((lesson) => (
-                        <li key={lesson.id} onClick={() => handleSelectContent(lesson)} className={`flex items-center p-2 rounded-md hover:bg-gray-100 cursor-pointer ${selectedContent?.id === lesson.id ? 'bg-blue-100' : ''}`}>
+                        <button key={lesson.id} onClick={() => handleSelectContent(lesson)} className={`w-full text-left flex items-center p-2 rounded-md hover:bg-gray-100 cursor-pointer ${selectedContent?.id === lesson.id ? 'bg-blue-100' : ''}`}>
                           {getIcon(lesson.type)}
                           {lesson.title}
-                        </li>
+                        </button>
                       ))}
                     </ul>
                   </AccordionContent>

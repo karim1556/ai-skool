@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { AddSectionModal } from "./add-section-modal";
-import { AddLessonModal } from "./add-lesson-modal";
-import { AddQuizModal } from "./add-quiz-modal";
-import { AddAssignmentModal } from "./add-assignment-modal";
+import { AddLessonModal } from './add-lesson-modal';
+import { AddQuizModal } from './add-quiz-modal';
+import { AddAssignmentModal } from './add-assignment-modal';
+import { ManageQuizQuestionsModal } from './manage-quiz-questions-modal';
 import { SortSectionsModal } from "./sort-sections-modal";
 import { DragDropContext, Draggable, DropResult } from 'react-beautiful-dnd';
 import { StrictModeDroppable as Droppable } from './strict-mode-droppable';
@@ -65,6 +66,8 @@ export const CourseContentManager = ({ course: initialCourse, instructors }: Cou
   const [showAddQuiz, setShowAddQuiz] = useState(false);
   const [showAddAssignment, setShowAddAssignment] = useState(false);
   const [showSortSections, setShowSortSections] = useState(false);
+  const [isManageQuestionsModalOpen, setManageQuestionsModalOpen] = useState(false);
+  const [selectedQuiz, setSelectedQuiz] = useState<{ id: string; title: string } | null>(null);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [editingLesson, setEditingLesson] = useState<any | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<any | null>(null);
@@ -353,6 +356,12 @@ export const CourseContentManager = ({ course: initialCourse, instructors }: Cou
           }}>
             <Pencil className="h-4 w-4" />
           </Button>
+          {item.type === 'quiz' && (
+            <Button variant="outline" size="sm" onClick={() => {
+              setSelectedQuiz({ id: item.id, title: item.title });
+              setManageQuestionsModalOpen(true);
+            }}>Manage Questions</Button>
+          )}
           <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id, item.type, sectionId)}>
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -511,6 +520,7 @@ export const CourseContentManager = ({ course: initialCourse, instructors }: Cou
         onEdit={handleUpdateAssignment}
         assignmentToEdit={editingAssignment}
       />
+      {isManageQuestionsModalOpen && <ManageQuizQuestionsModal isOpen={isManageQuestionsModalOpen} onClose={() => setManageQuestionsModalOpen(false)} quiz={selectedQuiz} />}
       <SortSectionsModal isOpen={showSortSections} onClose={() => setShowSortSections(false)} sections={sections} onSort={handleSortSections} />
     </div>
   );
