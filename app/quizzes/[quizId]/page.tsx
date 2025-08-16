@@ -1,15 +1,15 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useParams, useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { Loader } from '@/components/ui/loader';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowLeft, Award, Repeat } from 'lucide-react';
 
 interface QuizOption {
   id: string;
@@ -30,6 +30,7 @@ interface Quiz {
 
 export default function QuizPlaybackPage() {
   const params = useParams();
+  const router = useRouter();
   const quizId = params.quizId as string;
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -38,9 +39,7 @@ export default function QuizPlaybackPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (quizId) {
-      fetchQuizDetails();
-    }
+    if (quizId) fetchQuizDetails();
   }, [quizId]);
 
   const fetchQuizDetails = async () => {
@@ -50,12 +49,9 @@ export default function QuizPlaybackPage() {
         fetch(`/api/quizzes/${quizId}`),
         fetch(`/api/quizzes/${quizId}/questions`)
       ]);
-
       if (!quizRes.ok || !questionsRes.ok) throw new Error('Failed to load quiz data');
-
       const quizData = await quizRes.json();
       const questionsData = await questionsRes.json();
-      
       setQuiz({ ...quizData, questions: questionsData });
     } catch (error) {
       toast.error('Could not load the quiz.');
@@ -76,9 +72,7 @@ export default function QuizPlaybackPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers }),
       });
-
       if (!response.ok) throw new Error('Failed to submit quiz');
-
       const data = await response.json();
       setResults(data);
       toast.success('Quiz submitted successfully!');
@@ -98,7 +92,7 @@ export default function QuizPlaybackPage() {
 
   if (isLoading && !results) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <Loader size="lg" />
       </div>
     );
@@ -106,7 +100,7 @@ export default function QuizPlaybackPage() {
 
   if (!quiz) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <p className="text-xl text-gray-500">Quiz not found.</p>
       </div>
     );
@@ -114,62 +108,80 @@ export default function QuizPlaybackPage() {
 
   if (results) {
     const percentage = (results.score / results.total) * 100;
+    const isPassed = percentage >= 70;
+
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
-        <Card className="w-full max-w-3xl shadow-2xl rounded-2xl">
-          <CardHeader className="text-center bg-gray-50 dark:bg-gray-800 p-8 rounded-t-2xl">
-            <CardTitle className="text-3xl font-bold">Quiz Results: {quiz.title}</CardTitle>
-            <p className="text-5xl font-bold mt-4" style={{ color: percentage >= 70 ? '#22c55e' : '#ef4444' }}>
-              {percentage.toFixed(1)}%
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans">
+        <Card className="w-full max-w-3xl shadow-xl rounded-2xl border-t-8 ${isPassed ? 'border-green-500' : 'border-red-500'}">
+          <CardHeader className="text-center p-8">
+            <Award className={`mx-auto h-16 w-16 ${isPassed ? 'text-green-500' : 'text-red-500'}`} />
+            <CardTitle className="text-3xl font-bold mt-4">Quiz Complete!</CardTitle>
+            <p className="text-lg text-gray-600 mt-2">You scored {results.score} out of {results.total}.</p>
+            <p className={`text-6xl font-bold mt-4 ${isPassed ? 'text-green-600' : 'text-red-600'}`}>
+              {percentage.toFixed(0)}%
             </p>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mt-2">Your score: {results.score} out of {results.total}</p>
           </CardHeader>
-          <CardContent className="p-8 space-y-6">
-            <div className="space-y-4">
+          <CardContent className="p-8 space-y-6 bg-gray-50/80">
+            <h3 className="text-xl font-semibold text-center">Review Your Answers</h3>
+            <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
               {quiz.questions.map(q => (
-                <div key={q.id} className={`p-4 rounded-lg flex items-center gap-4 ${results.results[q.id] ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700'}`}>
-                  {results.results[q.id] ? <CheckCircle className="w-6 h-6 text-green-500" /> : <XCircle className="w-6 h-6 text-red-500" />}
-                  <p className="font-semibold flex-1 text-gray-800 dark:text-gray-200">{q.question_text}</p>
+                <div key={q.id} className={`p-4 rounded-lg flex items-start gap-4 border ${results.results[q.id] ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  {results.results[q.id] ? <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" /> : <XCircle className="w-5 h-5 text-red-600 mt-1 flex-shrink-0" />}
+                  <p className="font-medium text-gray-800">{q.question_text}</p>
                 </div>
               ))}
             </div>
-            <Button onClick={handleRetake} size="lg" className="w-full text-lg py-6 rounded-lg">Retake Quiz</Button>
           </CardContent>
+          <CardFooter className="p-6 flex flex-col sm:flex-row gap-4 bg-gray-100 rounded-b-2xl">
+            <Button onClick={() => router.back()} variant="outline" size="lg" className="w-full text-lg">
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to Course
+            </Button>
+            <Button onClick={handleRetake} size="lg" className="w-full text-lg">
+              <Repeat className="w-5 h-5 mr-2" />
+              Retake Quiz
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-4xl mx-auto">
-        <Card className="shadow-xl rounded-2xl overflow-hidden">
-          <CardHeader className="p-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-            <CardTitle className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">{quiz.title}</CardTitle>
-            <div className="mt-4">
-              <Progress value={progress} className="h-3" />
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2"> {Object.keys(answers).length} of {quiz.questions.length} answered</p>
+        <div className="mb-6">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">{quiz.title}</h1>
+            <p className="text-gray-500 mt-1">Complete all questions to finish the quiz.</p>
+        </div>
+        <Card className="shadow-lg rounded-2xl overflow-hidden border">
+          <CardHeader className="p-6 bg-white border-b">
+            <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Question {Object.keys(answers).length + 1} of {quiz.questions.length}</h2>
+                <span className="text-sm font-medium text-gray-600">{Math.round(progress)}% Complete</span>
             </div>
+            <Progress value={progress} className="h-2 mt-2" />
           </CardHeader>
-          <CardContent className="p-8 space-y-10">
+          <CardContent className="p-8">
             {quiz.questions.map((question, index) => (
-              <div key={question.id} className="border-t border-gray-200 dark:border-gray-700 pt-6 first:border-t-0 first:pt-0">
-                <p className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-5">Question {index + 1}</p>
-                <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-5">{question.question_text}</p>
-                <RadioGroup onValueChange={(value) => handleAnswerChange(question.id, value)} value={answers[question.id] || ''} className="space-y-3">
+              <div key={question.id} style={{ display: Object.keys(answers).length === index ? 'block' : 'none' }}>
+                <p className="text-xl font-semibold text-gray-800 mb-6">{question.question_text}</p>
+                <RadioGroup onValueChange={(value) => handleAnswerChange(question.id, value)} value={answers[question.id] || ''} className="space-y-4">
                   {question.options.map(option => (
-                    <Label key={option.id} htmlFor={`${question.id}-${option.id}`} className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${answers[question.id] === option.id ? 'bg-blue-50 border-blue-500 dark:bg-blue-900/30 dark:border-blue-500' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 border-transparent'}`}>
+                    <Label key={option.id} htmlFor={`${question.id}-${option.id}`} className={`flex items-center p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 ease-in-out ${answers[question.id] === option.id ? 'bg-blue-50 border-blue-500 shadow-md' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
                       <RadioGroupItem value={option.id} id={`${question.id}-${option.id}`} className="w-5 h-5" />
-                      <span className="ml-4 text-md font-medium text-gray-800 dark:text-gray-200">{option.option_text}</span>
+                      <span className="ml-4 text-lg font-medium text-gray-700">{option.option_text}</span>
                     </Label>
                   ))}
                 </RadioGroup>
               </div>
             ))}
-            <Button onClick={handleSubmit} disabled={isLoading || Object.keys(answers).length !== quiz.questions.length} size="lg" className="w-full text-lg py-7 rounded-lg font-bold">
+          </CardContent>
+          <CardFooter className="p-6 bg-gray-50 border-t">
+            <Button onClick={handleSubmit} disabled={isLoading || Object.keys(answers).length !== quiz.questions.length} size="lg" className="w-full text-lg py-6 font-bold">
               {isLoading ? 'Submitting...' : 'Submit Quiz'}
             </Button>
-          </CardContent>
+          </CardFooter>
         </Card>
       </div>
     </div>
