@@ -7,7 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, PlayCircle, FileText, HelpCircle, ClipboardEdit, Video, CheckSquare } from "lucide-react";
+import { Loader } from "@/components/ui/loader";
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // Define clear, explicit props for the component
 type LessonType = 'lesson' | 'quiz' | 'assignment' | 'video' | 'document' | 'video_file';
@@ -41,15 +43,24 @@ interface CoursePlaybackClientProps {
 
 // This component is now fully type-safe and handles all UI logic.
 export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientProps) {
+  const router = useRouter();
   const [curriculum, setCurriculum] = useState(course.curriculum);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(course.curriculum[0]?.lessons[0] || null);
   const [videoUrl, setVideoUrl] = useState<string | undefined>(course.curriculum[0]?.lessons[0]?.video_url);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (activeLesson?.type === 'lesson') {
       setVideoUrl(activeLesson.video_url);
     }
   }, [activeLesson]);
+
+  const handleSelectLesson = (lesson: Lesson) => {
+    setIsLoading(true);
+    setActiveLesson(lesson);
+    // Simulate network latency for loader visibility
+    setTimeout(() => setIsLoading(false), 300);
+  };
 
   const handleToggleCompletion = (lessonId: string, sectionId: string) => {
     const newCurriculum = curriculum.map(section => {
@@ -98,22 +109,29 @@ export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientP
     }
   };
 
-const QuizPlayer = ({ lesson }: { lesson: Lesson }) => (
-  <div className="p-4 md:p-8 flex flex-col items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3">
-          <HelpCircle className="w-8 h-8 text-blue-500" />
-          <span>{lesson.title}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="text-center">
-        <p className="text-gray-600 dark:text-gray-400 mb-6">This is where the interactive quiz will be rendered.</p>
-        <Button size="lg">Start Quiz</Button>
-      </CardContent>
-    </Card>
-  </div>
-);
+const QuizPlayer = ({ lesson }: { lesson: Lesson }) => {
+  const router = useRouter();
+  return (
+    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl shadow-lg rounded-xl">
+        <CardHeader className="text-center">
+          <div className="mx-auto bg-blue-100 dark:bg-blue-900 rounded-full p-4 w-max">
+            <HelpCircle className="w-12 h-12 text-blue-500" />
+          </div>
+          <CardTitle className="text-2xl font-bold mt-4">{lesson.title}</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center px-6 pb-6">
+          <p className="text-gray-600 dark:text-gray-300 mb-6">You are about to start the quiz. Review your notes and get ready to test your knowledge!</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+             <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-transform transform hover:scale-105" onClick={() => router.push(`/quizzes/${lesson.id}`)}>
+                Start Quiz
+             </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 const AssignmentViewer = ({ lesson }: { lesson: Lesson }) => {
   // The signed URL for the PDF is passed in video_url by the server
@@ -300,7 +318,7 @@ const DocumentViewer = ({ lesson }: { lesson: Lesson }) => {
   );
 };
 
-const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLessons, totalLessons, handleToggleCompletion, setActiveLesson }: any) => (
+const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLessons, totalLessons, handleToggleCompletion, handleSelectLesson }: any) => (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="p-4 border-b">
             <h2 className="text-lg font-bold truncate">{title}</h2>
@@ -318,7 +336,7 @@ const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLes
                         <AccordionContent className="pb-0">
                             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                                 {section.lessons.map((lesson: any) => (
-                                    <li key={lesson.id} onClick={() => setActiveLesson(lesson)} className={`flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors ${activeLesson?.id === lesson.id ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                                    <li key={lesson.id} onClick={() => handleSelectLesson(lesson)} className={`flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors ${activeLesson?.id === lesson.id ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                                         <ContentIcon lesson={lesson} />
                                         <div className="flex-1 flex flex-col">
                                             <span className={`text-sm truncate ${lesson.completed ? 'line-through text-gray-500' : ''}`}>{lesson.title}</span>
@@ -340,8 +358,13 @@ const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLes
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-black text-gray-900 dark:text-white">
-      <main className="flex-1 flex flex-col bg-white dark:bg-black">
+      <main className="flex-1 flex flex-col bg-white dark:bg-black relative">
         <div className="flex-grow relative overflow-y-auto">
+          {isLoading && (
+            <div className="absolute inset-0 bg-white dark:bg-black bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center z-10">
+              <Loader size="lg" />
+            </div>
+          )}
           {!activeLesson ? (
             <div className="flex items-center justify-center h-full text-center">
               <div>
@@ -368,7 +391,7 @@ const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLes
               <Button variant="secondary">View Content</Button>
             </SheetTrigger>
             <SheetContent side="right" className="p-0 w-full max-w-sm bg-gray-50 dark:bg-gray-900">
-              <CourseSidebar {...{ title: course.title, curriculum, activeLesson, progress, completedLessons, totalLessons, handleToggleCompletion, setActiveLesson }} />
+              <CourseSidebar {...{ title: course.title, curriculum, activeLesson, progress, completedLessons, totalLessons, handleToggleCompletion, handleSelectLesson }} />
             </SheetContent>
           </Sheet>
         </div>
@@ -396,7 +419,7 @@ const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLes
         </div>
       </main>
       <aside className="hidden lg:flex w-80 flex-col border-l border-gray-200 dark:border-gray-800">
-        <CourseSidebar {...{ title: course.title, curriculum, activeLesson, progress, completedLessons, totalLessons, handleToggleCompletion, setActiveLesson }} />
+        <CourseSidebar {...{ title: course.title, curriculum, activeLesson, progress, completedLessons, totalLessons, handleToggleCompletion, handleSelectLesson }} />
       </aside>
     </div>
   );
