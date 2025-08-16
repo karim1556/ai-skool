@@ -37,6 +37,7 @@ export default function QuizPlaybackPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [results, setResults] = useState<{ score: number; total: number; results: Record<string, boolean> } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   useEffect(() => {
     if (quizId) fetchQuizDetails();
@@ -86,6 +87,19 @@ export default function QuizPlaybackPage() {
   const handleRetake = () => {
     setAnswers({});
     setResults(null);
+    setCurrentQuestionIndex(0);
+  };
+
+  const handleNext = () => {
+    if (quiz && currentQuestionIndex < quiz.questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
   };
 
   const progress = quiz ? (Object.keys(answers).length / quiz.questions.length) * 100 : 0;
@@ -157,30 +171,41 @@ export default function QuizPlaybackPage() {
         <Card className="shadow-lg rounded-2xl overflow-hidden border">
           <CardHeader className="p-6 bg-white border-b">
             <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Question {Object.keys(answers).length + 1} of {quiz.questions.length}</h2>
+                <h2 className="text-lg font-semibold">Question {currentQuestionIndex + 1} of {quiz.questions.length}</h2>
                 <span className="text-sm font-medium text-gray-600">{Math.round(progress)}% Complete</span>
             </div>
             <Progress value={progress} className="h-2 mt-2" />
           </CardHeader>
           <CardContent className="p-8">
-            {quiz.questions.map((question, index) => (
-              <div key={question.id} style={{ display: Object.keys(answers).length === index ? 'block' : 'none' }}>
-                <p className="text-xl font-semibold text-gray-800 mb-6">{question.question_text}</p>
-                <RadioGroup onValueChange={(value) => handleAnswerChange(question.id, value)} value={answers[question.id] || ''} className="space-y-4">
-                  {question.options.map(option => (
-                    <Label key={option.id} htmlFor={`${question.id}-${option.id}`} className={`flex items-center p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 ease-in-out ${answers[question.id] === option.id ? 'bg-blue-50 border-blue-500 shadow-md' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
-                      <RadioGroupItem value={option.id} id={`${question.id}-${option.id}`} className="w-5 h-5" />
+            {quiz.questions.length > 0 && (
+              <div>
+                <p className="text-xl font-semibold text-gray-800 mb-6">{quiz.questions[currentQuestionIndex].question_text}</p>
+                <RadioGroup onValueChange={(value) => handleAnswerChange(quiz.questions[currentQuestionIndex].id, value)} value={answers[quiz.questions[currentQuestionIndex].id] || ''} className="space-y-4">
+                  {quiz.questions[currentQuestionIndex].options.map(option => (
+                    <Label key={option.id} htmlFor={`${quiz.questions[currentQuestionIndex].id}-${option.id}`} className={`flex items-center p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 ease-in-out ${answers[quiz.questions[currentQuestionIndex].id] === option.id ? 'bg-blue-50 border-blue-500 shadow-md' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
+                      <RadioGroupItem value={option.id} id={`${quiz.questions[currentQuestionIndex].id}-${option.id}`} className="w-5 h-5" />
                       <span className="ml-4 text-lg font-medium text-gray-700">{option.option_text}</span>
                     </Label>
                   ))}
                 </RadioGroup>
               </div>
-            ))}
+            )}
           </CardContent>
           <CardFooter className="p-6 bg-gray-50 border-t">
-            <Button onClick={handleSubmit} disabled={isLoading || Object.keys(answers).length !== quiz.questions.length} size="lg" className="w-full text-lg py-6 font-bold">
-              {isLoading ? 'Submitting...' : 'Submit Quiz'}
-            </Button>
+            <div className="flex justify-between w-full">
+              <Button onClick={handlePrevious} disabled={currentQuestionIndex === 0} size="lg" className="text-lg py-6 font-bold">
+                Previous
+              </Button>
+              {currentQuestionIndex === quiz.questions.length - 1 ? (
+                <Button onClick={handleSubmit} disabled={isLoading || Object.keys(answers).length !== quiz.questions.length} size="lg" className="text-lg py-6 font-bold">
+                  {isLoading ? 'Submitting...' : 'Submit Quiz'}
+                </Button>
+              ) : (
+                <Button onClick={handleNext} size="lg" className="text-lg py-6 font-bold">
+                  Next
+                </Button>
+              )}
+            </div>
           </CardFooter>
         </Card>
       </div>
