@@ -141,6 +141,13 @@ export default function CoursePage({ params }: { params: { courseId: string } })
     fetchCourse();
   }, [params.courseId]);
 
+  // Autoplay demo video as soon as course data (and demo_video_url) is available
+  useEffect(() => {
+    if (course?.demo_video_url) {
+      setShowVideo(true);
+    }
+  }, [course?.demo_video_url]);
+
   if (!course) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>; // Or a proper loading skeleton
   }
@@ -344,6 +351,9 @@ export default function CoursePage({ params }: { params: { courseId: string } })
                     src={course.demo_video_url}
                     controls
                     autoPlay
+                    muted
+                    playsInline
+                    preload="metadata"
                     className="w-full h-full"
                   />
                 ) : (

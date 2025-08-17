@@ -3,16 +3,39 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Filter, MapPin } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 interface SchoolFilterProps {
-  onFilterChange?: (filters: any) => void
+  onFilterChange?: (filters: { type: string; location: string; size: string }) => void
+  types?: string[]
+  locations?: string[]
+  sizes?: string[]
 }
 
-export function SchoolFilter({ onFilterChange }: SchoolFilterProps) {
-  const [selectedType, setSelectedType] = useState("All types")
-  const [selectedLocation, setSelectedLocation] = useState("All locations")
-  const [selectedSize, setSelectedSize] = useState("All")
+export function SchoolFilter({ onFilterChange, types, locations, sizes }: SchoolFilterProps) {
+  const typeOptions = useMemo(() => ["All types", ...(types?.filter(Boolean) || [
+    "Primary School",
+    "Secondary School",
+    "STEM Academy",
+    "Coding Bootcamp",
+    "Online School",
+  ])], [types])
+  const locationOptions = useMemo(() => ["All locations", ...(locations?.filter(Boolean) || [
+    "New York",
+    "California",
+    "Texas",
+    "Florida",
+    "Online",
+  ])], [locations])
+  const sizeOptions = useMemo(() => ["All", ...(sizes?.filter(Boolean) || [
+    "Small (< 500)",
+    "Medium (500-1500)",
+    "Large (> 1500)",
+  ])], [sizes])
+
+  const [selectedType, setSelectedType] = useState(typeOptions[0])
+  const [selectedLocation, setSelectedLocation] = useState(locationOptions[0])
+  const [selectedSize, setSelectedSize] = useState(sizeOptions[0])
 
   const handleFilterChange = (type: string, value: string) => {
     const filters = {
@@ -40,14 +63,7 @@ export function SchoolFilter({ onFilterChange }: SchoolFilterProps) {
         <div className="mb-6">
           <h4 className="font-semibold mb-3 text-gray-900">School Type</h4>
           <div className="space-y-2">
-            {[
-              "All types",
-              "Primary School",
-              "Secondary School",
-              "STEM Academy",
-              "Coding Bootcamp",
-              "Online School",
-            ].map((type) => (
+            {typeOptions.map((type) => (
               <label key={type} className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="radio"
@@ -72,7 +88,7 @@ export function SchoolFilter({ onFilterChange }: SchoolFilterProps) {
             Location
           </h4>
           <div className="space-y-2">
-            {["All locations", "New York", "California", "Texas", "Florida", "Online"].map((location) => (
+            {locationOptions.map((location) => (
               <label key={location} className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="radio"
@@ -94,7 +110,7 @@ export function SchoolFilter({ onFilterChange }: SchoolFilterProps) {
         <div className="mb-6">
           <h4 className="font-semibold mb-3 text-gray-900">School Size</h4>
           <div className="space-y-2">
-            {["All", "Small (< 500)", "Medium (500-1500)", "Large (> 1500)"].map((size) => (
+            {sizeOptions.map((size) => (
               <label key={size} className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="radio"

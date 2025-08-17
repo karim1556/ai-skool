@@ -160,12 +160,12 @@ export function ManageQuizQuestionsModal({ isOpen, onClose, quiz }: ManageQuizQu
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] grid grid-rows-[auto_1fr_auto] p-0 sm:rounded-lg">
+        <DialogHeader className="px-6 pt-6 row-start-1">
           <DialogTitle>Manage Questions for: {quiz.title}</DialogTitle>
         </DialogHeader>
 
-        <div className="py-4 space-y-6">
+        <div className="row-start-2 overflow-y-auto max-h-[70vh] p-6">
           {/* Add New Question Form */}
           <div className="p-4 border rounded-lg space-y-4">
             <h3 className="font-semibold">Add New Question</h3>
@@ -261,7 +261,7 @@ export function ManageQuizQuestionsModal({ isOpen, onClose, quiz }: ManageQuizQu
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t row-start-3">
           <Button variant="outline" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>

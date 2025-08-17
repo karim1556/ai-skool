@@ -6,68 +6,25 @@ import { Grid, List, RefreshCw, MapPin, Users, Phone, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 
-const allSchools = [
-  {
-    id: 1,
-    name: "Ai Academy",
-    location: "New York",
-    type: "Primary School",
-    size: "Medium (500-1500)",
-    description:
-      "Located in the heart of the city, Ai Academy has created a wonderful environment for children to develop and experience childhood. Every stakeholder is a learner and every day is an opportunity to learn and discover.",
-    logo: "/placeholder.svg?height=150&width=200",
-    students: 850,
-    phone: "+1 (555) 123-4567",
-    email: "info@Aiacademy.edu",
-    address: "123 Skool St, New York, NY 10001",
-  },
-  {
-    id: 2,
-    name: "STEM Learning Center",
-    location: "California",
-    type: "STEM Academy",
-    size: "Large (> 1500)",
-    description:
-      "At STEM Learning Center, we take a personalized approach to Skool. We recognize that every individual is unique, with their own set of skills, experiences, and learning aspirations. That's why we take the time to get to know our students on a personal level, so we can offer tailored guidance and support that meets their specific needs.",
-    logo: "/placeholder.svg?height=150&width=200",
-    students: 1200,
-    phone: "+1 (555) 987-6543",
-    email: "contact@stemlearning.edu",
-    address: "456 Innovation Ave, San Francisco, CA 94102",
-  },
-  {
-    id: 3,
-    name: "Future Coders Institute",
-    location: "Texas",
-    type: "Coding Bootcamp",
-    size: "Small (< 500)",
-    description:
-      "Future Coders Institute specializes in intensive coding Skool for students of all ages. Our immersive programs prepare students for the digital future with hands-on projects and real-world applications.",
-    logo: "/placeholder.svg?height=150&width=200",
-    students: 300,
-    phone: "+1 (555) 456-7890",
-    email: "hello@futurecoders.edu",
-    address: "789 Tech Blvd, Austin, TX 73301",
-  },
-  {
-    id: 4,
-    name: "Digital Minds Academy",
-    location: "Florida",
-    type: "Secondary School",
-    size: "Medium (500-1500)",
-    description:
-      "Digital Minds Academy focuses on preparing high school students for careers in technology and digital innovation. Our curriculum combines traditional academics with cutting-edge technology Skool.",
-    logo: "/placeholder.svg?height=150&width=200",
-    students: 750,
-    phone: "+1 (555) 321-0987",
-    email: "admissions@digitalminds.edu",
-    address: "321 Future Dr, Miami, FL 33101",
-  },
-]
+type UISchool = {
+  id: string | number
+  name: string
+  location?: string | null
+  type?: string | null
+  size?: string | null
+  description?: string | null
+  logo?: string | null
+  students?: number | null
+  phone?: string | null
+  email?: string | null
+  address?: string | null
+}
 
 export default function SchoolsPage() {
+  const router = useRouter()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [filters, setFilters] = useState({
     type: "All types",
@@ -75,18 +32,66 @@ export default function SchoolsPage() {
     size: "All",
   })
 
+  const [schools, setSchools] = useState<UISchool[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const typeOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const s of schools) if (s.type) set.add(s.type)
+    return Array.from(set)
+  }, [schools])
+  const locationOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const s of schools) if (s.location) set.add(s.location)
+    return Array.from(set)
+  }, [schools])
+
+  const sizeBucket = (count?: number | null) => {
+    if (count == null) return null
+    if (count < 500) return "Small (< 500)"
+    if (count <= 1500) return "Medium (500-1500)"
+    return "Large (> 1500)"
+  }
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/schools", { cache: "no-store" })
+        const data = await res.json()
+        const mapped: UISchool[] = (Array.isArray(data) ? data : []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          logo: s.logo_url,
+          students: s.student_count ?? null,
+          phone: s.phone,
+          email: s.email,
+          address: [s.address_line1, s.address_line2].filter(Boolean).join(", "),
+          location: [s.city, s.state, s.country].filter(Boolean).join(", "),
+          type: s.accreditation || null,
+          size: null,
+        }))
+        setSchools(mapped)
+      } catch (e) {
+        console.error("Failed to load schools", e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
   const filteredSchools = useMemo(() => {
-    return allSchools.filter((school) => {
+    return schools.filter((school) => {
       if (filters.type !== "All types" && school.type !== filters.type) return false
       if (filters.location !== "All locations" && school.location !== filters.location) return false
-      if (filters.size !== "All" && school.size !== filters.size) return false
+      if (filters.size !== "All" && sizeBucket(school.students) !== filters.size) return false
       return true
     })
-  }, [filters])
+  }, [filters, schools])
 
-  const handleLearnMore = (schoolId: number) => {
-    // Navigate to school detail page or show more info
-    console.log(`Learn more about school ${schoolId}`)
+  const handleLearnMore = (schoolId: string | number) => {
+    router.push(`/schools/${schoolId}`)
   }
 
   const handleContact = (school: any) => {
@@ -138,12 +143,14 @@ export default function SchoolsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar Filter */}
           <div className="lg:col-span-1">
-            <SchoolFilter onFilterChange={setFilters} />
+            <SchoolFilter onFilterChange={setFilters} types={typeOptions} locations={locationOptions} sizes={["Small (< 500)", "Medium (500-1500)", "Large (> 1500)"]} />
           </div>
 
           {/* Schools Grid */}
           <div className="lg:col-span-3">
-            {filteredSchools.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading...</div>
+            ) : filteredSchools.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 text-lg">No results found</p>
                 <Button onClick={handleRefresh} className="mt-4">
@@ -171,7 +178,7 @@ export default function SchoolsPage() {
                           <div>
                             <h3 className="text-xl font-bold text-blue-600 mb-1">{school.name}</h3>
                             <div className="flex flex-wrap gap-2 mb-2">
-                              <Badge variant="secondary">{school.type}</Badge>
+                              {school.type && <Badge variant="secondary">{school.type}</Badge>}
                               <Badge variant="outline" className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
                                 {school.location}
