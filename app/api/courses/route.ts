@@ -5,6 +5,24 @@ import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+// Ensure uploaded file names are safe for Supabase Storage keys
+function sanitizeFileName(name: string): string {
+  const dotIdx = name.lastIndexOf('.')
+  const rawBase = dotIdx > 0 ? name.slice(0, dotIdx) : name
+  const rawExt = dotIdx > 0 ? name.slice(dotIdx + 1) : ''
+  // Remove diacritics, spaces, unusual unicode (e.g., narrow no-break spaces)
+  const normalized = rawBase.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+  const safeBase = normalized
+    .replace(/[^a-zA-Z0-9-_]+/g, '-') // keep alnum, dash, underscore
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase() || 'file'
+  const safeExt = (rawExt || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+  return safeExt ? `${safeBase}.${safeExt}` : safeBase
+}
+
 export async function GET() {
   const db = await getDb();
   const courses = await db.all("SELECT * FROM courses");
@@ -22,10 +40,10 @@ export async function POST(req: NextRequest) {
     // Handle image upload
     const imageFile = formData.get("image") as File | null;
     if (imageFile && imageFile.size > 0) {
-      const fileName = `${Date.now()}-${imageFile.name}`;
+      const fileName = `thumbnails/${Date.now()}-${sanitizeFileName(imageFile.name)}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('course-thumbnails')
-        .upload(fileName, imageFile);
+        .upload(fileName, imageFile, { contentType: imageFile.type || undefined, upsert: false, cacheControl: '3600' });
 
       if (uploadError) {
         throw new Error(`Failed to upload image: ${uploadError.message}`);
@@ -43,10 +61,10 @@ export async function POST(req: NextRequest) {
     let demoVideoUrl = course.demo_video_url || '';
 
     if (demoVideoFile && demoVideoFile.size > 0) {
-      const videoFileName = `videos/${Date.now()}-${demoVideoFile.name}`;
+      const videoFileName = `videos/${Date.now()}-${sanitizeFileName(demoVideoFile.name)}`;
       const { data: videoUploadData, error: videoUploadError } = await supabase.storage
         .from('course-videos') // A separate bucket for videos
-        .upload(videoFileName, demoVideoFile);
+        .upload(videoFileName, demoVideoFile, { contentType: demoVideoFile.type || undefined, upsert: false, cacheControl: '3600' });
 
       if (videoUploadError) {
         throw new Error(`Failed to upload demo video: ${videoUploadError.message}`);
@@ -89,10 +107,10 @@ export async function POST(req: NextRequest) {
       const file = attachmentFiles[i];
       const title = attachmentTitles[i];
       if (file && file.size > 0) {
-        const fileName = `attachments/${Date.now()}-${file.name}`;
+        const fileName = `attachments/${Date.now()}-${sanitizeFileName(file.name)}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('course-thumbnails') // Using the same bucket for simplicity
-          .upload(fileName, file);
+          .upload(fileName, file, { contentType: file.type || undefined, upsert: false, cacheControl: '3600' });
 
         if (uploadError) {
           console.error(`Failed to upload attachment ${file.name}:`, uploadError);
