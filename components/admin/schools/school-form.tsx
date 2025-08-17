@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { MultiStepForm } from "@/components/forms/multi-step-form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,6 +26,8 @@ export type SchoolFormValues = {
   facebook: string
   instagram: string
   twitter: string
+  banner_focal_x?: number
+  banner_focal_y?: number
 }
 
 export function SchoolForm({
@@ -54,6 +56,24 @@ export function SchoolForm({
   const [facebook, setFacebook] = useState(initial?.facebook ?? "")
   const [instagram, setInstagram] = useState(initial?.instagram ?? "")
   const [twitter, setTwitter] = useState(initial?.twitter ?? "")
+  const [bannerFocalX, setBannerFocalX] = useState<number>(
+    typeof (initial as any)?.banner_focal_x === 'number' ? (initial as any).banner_focal_x : 50
+  )
+  const [bannerFocalY, setBannerFocalY] = useState<number>(
+    typeof (initial as any)?.banner_focal_y === 'number' ? (initial as any).banner_focal_y : 50
+  )
+
+  // Banner preview URL for interactive focal control
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (bannerFile) {
+      const url = URL.createObjectURL(bannerFile)
+      setBannerPreviewUrl(url)
+      return () => URL.revokeObjectURL(url)
+    } else {
+      setBannerPreviewUrl(null)
+    }
+  }, [bannerFile])
 
   const steps = [
     { id: "basic", title: "Basic info", icon: User },
@@ -80,6 +100,8 @@ export function SchoolForm({
       name, board, stateVal, district, description, address,
       logoFile, bannerFile, email, phone, contactPerson,
       website, facebook, instagram, twitter,
+      banner_focal_x: Math.round(bannerFocalX),
+      banner_focal_y: Math.round(bannerFocalY),
     })
   }
 
@@ -172,6 +194,35 @@ export function SchoolForm({
         </div>
       </div>
 
+      {/* Interactive Banner Focal Preview */}
+      {bannerPreviewUrl && (
+        <div className="space-y-2">
+          <Label>Banner preview (drag to adjust focus)</Label>
+          <BannerFocalPreview
+            src={bannerPreviewUrl}
+            focalX={bannerFocalX}
+            focalY={bannerFocalY}
+            onChange={(x, y) => { setBannerFocalX(x); setBannerFocalY(y) }}
+          />
+          <div className="text-xs text-gray-500">Visible area matches the hero banner (16:9). Drag the image to position the important part within the frame. Outside area is not shown on the page.</div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="bannerFocalX">Banner focal X (0–100%)</Label>
+          <input id="bannerFocalX" type="range" min={0} max={100} value={bannerFocalX} onChange={(e)=>setBannerFocalX(Number(e.target.value))} className="w-full" />
+          <div className="text-sm text-gray-600">{bannerFocalX}%</div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="bannerFocalY">Banner focal Y (0–100%)</Label>
+          <input id="bannerFocalY" type="range" min={0} max={100} value={bannerFocalY} onChange={(e)=>setBannerFocalY(Number(e.target.value))} className="w-full" />
+          <div className="text-sm text-gray-600">{bannerFocalY}%</div>
+        </div>
+      </div>
+
+      {/* Sub-component is defined at module scope below */}
+
       <div className="space-y-3">
         <Label>
           Status<span className="text-red-500">*</span>
@@ -255,6 +306,67 @@ export function SchoolForm({
         <Button onClick={handleComplete} disabled={!!submitting} className="bg-green-600 hover:bg-green-700">
           {submitting ? "Saving..." : submitLabel}
         </Button>
+      </div>
+    </div>
+  )
+}
+
+// Module-scope sub-component used by SchoolForm
+function BannerFocalPreview({ src, focalX, focalY, onChange }: { src: string, focalX: number, focalY: number, onChange: (x:number, y:number)=>void }) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const draggingRef = useRef(false)
+  const lastRef = useRef<{x:number,y:number}>({x:0,y:0})
+
+  const clamp = (n: number, min = 0, max = 100) => Math.max(min, Math.min(max, n))
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    draggingRef.current = true
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    lastRef.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!draggingRef.current) return
+    const dx = e.clientX - lastRef.current.x
+    const dy = e.clientY - lastRef.current.y
+    lastRef.current = { x: e.clientX, y: e.clientY }
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const deltaXPercent = (dx / rect.width) * 100
+    const deltaYPercent = (dy / rect.height) * 100
+    const nextX = clamp(focalX - deltaXPercent)
+    const nextY = clamp(focalY - deltaYPercent)
+    onChange(nextX, nextY)
+  }
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    draggingRef.current = false
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch {}
+  }
+
+  const objectPosition = `${clamp(focalX)}% ${clamp(focalY)}%`
+
+  return (
+    <div className="w-full bg-gray-200 rounded-lg p-3">
+      <div
+        ref={containerRef}
+        className="relative w-full aspect-[16/9] overflow-hidden rounded-md ring-1 ring-gray-300 bg-black/60"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <img
+          src={src}
+          alt="Banner preview"
+          className="absolute inset-0 w-full h-full object-cover select-none"
+          style={{ objectPosition }}
+          draggable={false}
+        />
+        {/* Optional crosshair to indicate focus */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-white/70 shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
+        </div>
       </div>
     </div>
   )

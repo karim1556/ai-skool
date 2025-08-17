@@ -27,6 +27,8 @@ export default function AddSchoolPage() {
       if (values.bannerFile) fd.append("banner", values.bannerFile)
       const social = { facebook: values.facebook, instagram: values.instagram, twitter: values.twitter }
       fd.append("social_links", JSON.stringify(social))
+      if (typeof values.banner_focal_x === 'number') fd.append("banner_focal_x", String(values.banner_focal_x))
+      if (typeof values.banner_focal_y === 'number') fd.append("banner_focal_y", String(values.banner_focal_y))
 
       const res = await fetch("/api/schools", { method: "POST", body: fd })
       if (!res.ok) {

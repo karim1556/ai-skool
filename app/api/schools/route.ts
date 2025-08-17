@@ -34,6 +34,9 @@ async function ensureTable() {
     social_links jsonb,
     created_at timestamptz DEFAULT now()
   )`);
+  // Add new focal point columns if missing (ignore errors if they already exist)
+  try { await db.run(`ALTER TABLE schools ADD COLUMN banner_focal_x int`); } catch {}
+  try { await db.run(`ALTER TABLE schools ADD COLUMN banner_focal_y int`); } catch {}
 }
 
 export async function GET() {
@@ -94,8 +97,12 @@ export async function POST(req: NextRequest) {
     // Numbers
     const established_year_raw = formData.get("established_year");
     const student_count_raw = formData.get("student_count");
+    const banner_focal_x_raw = formData.get("banner_focal_x");
+    const banner_focal_y_raw = formData.get("banner_focal_y");
     const established_year = established_year_raw != null && `${established_year_raw}` !== "" ? Number(established_year_raw) : null;
     const student_count = student_count_raw != null && `${student_count_raw}` !== "" ? Number(student_count_raw) : null;
+    const banner_focal_x = banner_focal_x_raw != null && `${banner_focal_x_raw}` !== "" ? Number(banner_focal_x_raw) : null;
+    const banner_focal_y = banner_focal_y_raw != null && `${banner_focal_y_raw}` !== "" ? Number(banner_focal_y_raw) : null;
     const currentYear = new Date().getFullYear();
     if (established_year != null) {
       if (!Number.isInteger(established_year) || established_year < 1800 || established_year > currentYear) {
@@ -105,6 +112,10 @@ export async function POST(req: NextRequest) {
     if (student_count != null) {
       if (!Number.isFinite(student_count) || student_count < 0) errors.push("student_count must be a non-negative number");
     }
+    // Validate focal points 0-100
+    const inRange = (n: number | null) => n == null || (Number.isFinite(n) && n >= 0 && n <= 100);
+    if (!inRange(banner_focal_x)) errors.push("banner_focal_x must be between 0 and 100");
+    if (!inRange(banner_focal_y)) errors.push("banner_focal_y must be between 0 and 100");
 
     // JSON
     let social_links: any = null;
@@ -130,9 +141,10 @@ export async function POST(req: NextRequest) {
       `INSERT INTO schools (
         name, tagline, description, logo_url, banner_url, website, email, phone,
         address_line1, address_line2, city, state, country, postal_code,
-        principal, established_year, student_count, accreditation, social_links
+        principal, established_year, student_count, accreditation, social_links,
+        banner_focal_x, banner_focal_y
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
       ) RETURNING id`,
       [
         values.name,
@@ -153,7 +165,9 @@ export async function POST(req: NextRequest) {
         established_year,
         student_count,
         values.accreditation,
-        social_links
+        social_links,
+        banner_focal_x,
+        banner_focal_y
       ]
     );
 

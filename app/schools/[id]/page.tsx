@@ -10,9 +10,10 @@ import type { School } from "@/types/school";
 
 export const dynamic = "force-dynamic";
 
-export default async function SchoolDetailPage({ params }: { params: { id: string } }) {
+export default async function SchoolDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const db = getDb();
-  const school = await db.get<School>("SELECT * FROM schools WHERE id = $1", [params.id]);
+  const school = await db.get<School>("SELECT * FROM schools WHERE id = $1", [id]);
   if (!school) return notFound();
 
   const location = [school.city, school.state, school.country].filter(Boolean).join(", ");
@@ -31,14 +32,23 @@ export default async function SchoolDetailPage({ params }: { params: { id: strin
       {/* Hero */}
       <section className="relative">
         <div className="relative h-[22rem] sm:h-[26rem] lg:h-[32rem]">
-          <Image
-            src={school.banner_url || "/images/skool1.png"}
-            alt={`${school.name} banner`}
-            fill
-            sizes="100vw"
-            className="object-cover"
-            priority
-          />
+          {/** Compute object-position from focal points (0-100), default 50% */}
+          {(() => {
+            const fx = typeof (school as any).banner_focal_x === 'number' ? (school as any).banner_focal_x : 50;
+            const fy = typeof (school as any).banner_focal_y === 'number' ? (school as any).banner_focal_y : 50;
+            const objectPosition = `${fx}% ${fy}%`;
+            return (
+              <Image
+                src={school.banner_url || "/images/skool1.png"}
+                alt={`${school.name} banner`}
+                fill
+                sizes="100vw"
+                className="object-cover"
+                style={{ objectPosition }}
+                priority
+              />
+            );
+          })()}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
           {/* Overlay content bottom-left */}

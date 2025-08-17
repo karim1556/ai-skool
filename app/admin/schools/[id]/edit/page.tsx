@@ -47,6 +47,8 @@ export default function EditSchoolPage() {
       facebook: social.facebook || "",
       instagram: social.instagram || "",
       twitter: social.twitter || "",
+      banner_focal_x: typeof data.banner_focal_x === 'number' ? data.banner_focal_x : 50,
+      banner_focal_y: typeof data.banner_focal_y === 'number' ? data.banner_focal_y : 50,
     } as Partial<SchoolFormValues>
   }, [data])
 
@@ -70,6 +72,8 @@ export default function EditSchoolPage() {
         fd.append("social_links", JSON.stringify(social))
         if (values.logoFile) fd.append("logo", values.logoFile)
         if (values.bannerFile) fd.append("banner", values.bannerFile)
+        if (typeof values.banner_focal_x === 'number') fd.append("banner_focal_x", String(values.banner_focal_x))
+        if (typeof values.banner_focal_y === 'number') fd.append("banner_focal_y", String(values.banner_focal_y))
         res = await fetch(`/api/schools/${id}`, { method: "PUT", body: fd })
       } else {
         const payload: any = {
@@ -84,6 +88,8 @@ export default function EditSchoolPage() {
           state: values.stateVal,
           website: values.website,
           social_links: JSON.stringify(social),
+          banner_focal_x: values.banner_focal_x,
+          banner_focal_y: values.banner_focal_y,
         }
         res = await fetch(`/api/schools/${id}`, {
           method: "PUT",

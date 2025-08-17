@@ -5,6 +5,8 @@ export interface School {
   description?: string | null;
   logo_url?: string | null;
   banner_url?: string | null;
+  banner_focal_x?: number | null;
+  banner_focal_y?: number | null;
   website?: string | null;
   email?: string | null;
   phone?: string | null;

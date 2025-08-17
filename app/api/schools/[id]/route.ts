@@ -25,7 +25,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const allowed = new Set([
     "name","tagline","description","logo_url","banner_url","website","email","phone",
     "address_line1","address_line2","city","state","country","postal_code",
-    "principal","established_year","student_count","accreditation","social_links"
+    "principal","established_year","student_count","accreditation","social_links",
+    "banner_focal_x","banner_focal_y"
   ]);
 
   // Helper to persist
@@ -67,6 +68,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         try { payload["social_links"] = JSON.parse(String(rawLinks)); } catch {}
       }
 
+      // Coerce numeric focal fields if provided (0-100)
+      const clamp01 = (n: number) => Math.max(0, Math.min(100, n));
+      if (payload.banner_focal_x != null) {
+        const n = Number(payload.banner_focal_x);
+        if (Number.isFinite(n)) payload.banner_focal_x = clamp01(n); else delete payload.banner_focal_x;
+      }
+      if (payload.banner_focal_y != null) {
+        const n = Number(payload.banner_focal_y);
+        if (Number.isFinite(n)) payload.banner_focal_y = clamp01(n); else delete payload.banner_focal_y;
+      }
+
       // Optional files: logo, banner
       const logoFile = formData.get("logo") as File | null;
       if (logoFile && logoFile.size > 0) {
@@ -98,6 +110,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   // If social_links provided as string, try parsing to object; store as-is if object
   if (typeof body.social_links === "string") {
     try { body.social_links = JSON.parse(body.social_links); } catch {}
+  }
+  // Coerce numeric focal fields from JSON
+  if (body.banner_focal_x != null) {
+    const n = Number(body.banner_focal_x); if (Number.isFinite(n)) body.banner_focal_x = Math.max(0, Math.min(100, n)); else delete body.banner_focal_x;
+  }
+  if (body.banner_focal_y != null) {
+    const n = Number(body.banner_focal_y); if (Number.isFinite(n)) body.banner_focal_y = Math.max(0, Math.min(100, n)); else delete body.banner_focal_y;
   }
   return await persist(body);
 }
