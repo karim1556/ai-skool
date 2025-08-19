@@ -1,23 +1,27 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { MultiStepForm } from "@/components/forms/multi-step-form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { User, Lock, GraduationCap, Share2, CheckCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useEffect, useState } from "react"
+import { User, Lock, GraduationCap, Share2, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { useRouter } from "next/navigation"
 
-export default function AddTrainerPage() {
+export default function EditTrainerPage() {
   const router = useRouter()
+  const params = useParams() as { id?: string }
+  const id = params?.id as string
   const { toast } = useToast()
+
+  const [loading, setLoading] = useState(true)
   const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
-  const [coordinators, setCoordinators] = useState<Array<{ id: string; first_name: string; last_name: string }>>([])
+  const [coordinators, setCoordinators] = useState<Array<{ id: string; first_name?: string; last_name?: string }>>([])
+
   const [schoolId, setSchoolId] = useState<string>("")
   const [coordinatorId, setCoordinatorId] = useState<string>("")
   const [firstName, setFirstName] = useState("")
@@ -41,39 +45,61 @@ export default function AddTrainerPage() {
   const [bio, setBio] = useState("")
 
   useEffect(() => {
-    const loadSchools = async () => {
+    const load = async () => {
       try {
-        const res = await fetch("/api/schools")
-        const data = await res.json()
-        setSchools(Array.isArray(data) ? data : [])
-      } catch (_) {}
+        const [schoolsRes, trainerRes] = await Promise.all([
+          fetch("/api/schools", { cache: "no-store" }),
+          fetch(`/api/trainers?id=${id}`, { cache: "no-store" })
+        ])
+        const [schoolsData, trainerRows] = await Promise.all([schoolsRes.json(), trainerRes.json()])
+        if (Array.isArray(schoolsData)) setSchools(schoolsData)
+        const t = Array.isArray(trainerRows) ? trainerRows[0] : trainerRows
+        if (t) {
+          setSchoolId(t.school_id || "")
+          setCoordinatorId(t.coordinator_id || "")
+          setFirstName(t.first_name || "")
+          setLastName(t.last_name || "")
+          setGender(t.gender || "male")
+          setDob(t.dob ? String(t.dob).slice(0,10) : "")
+          setPincode(t.pincode || "")
+          setAddress(t.address || "")
+          setImageUrl(t.image_url || "")
+          setStatus(t.status || "verified")
+          setEmail(t.email || "")
+          setHighestSchool(t.highest_school || "")
+          setExperienceYears(t.experience_years != null ? String(t.experience_years) : "")
+          setSpecialization(t.specialization || "")
+          setCertifications(t.certifications || "")
+          setPhone(t.phone || "")
+          setLinkedin(t.linkedin || "")
+          setTwitter(t.twitter || "")
+          setBio(t.bio || "")
+        }
+      } catch (e) {}
+      setLoading(false)
     }
-    loadSchools()
-  }, [])
+    if (id) load()
+  }, [id])
 
   useEffect(() => {
     const loadCoordinators = async () => {
-      if (!schoolId) {
-        setCoordinators([])
-        setCoordinatorId("")
-        return
-      }
+      if (!schoolId) { setCoordinators([]); setCoordinatorId(""); return }
       try {
         const res = await fetch(`/api/coordinators?schoolId=${schoolId}`)
         const data = await res.json()
         setCoordinators(Array.isArray(data) ? data : [])
-      } catch (_) {}
+      } catch {}
     }
     loadCoordinators()
   }, [schoolId])
 
-  const steps = [
+  const steps = useMemo(() => ([
     { id: "basic", title: "Basic info", icon: User },
     { id: "credentials", title: "Login credentials", icon: Lock },
     { id: "qualification", title: "Qualification", icon: GraduationCap },
     { id: "social", title: "Social information", icon: Share2 },
     { id: "finish", title: "Finish", icon: CheckCircle },
-  ]
+  ]), [])
 
   const handleComplete = async () => {
     try {
@@ -81,8 +107,8 @@ export default function AddTrainerPage() {
         toast({ title: "Passwords do not match", variant: "destructive" })
         return
       }
-      const res = await fetch("/api/trainers", {
-        method: "POST",
+      const res = await fetch(`/api/trainers?id=${id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           school_id: schoolId || null,
@@ -96,7 +122,7 @@ export default function AddTrainerPage() {
           image_url: imageUrl || null,
           status: status || "verified",
           email: email || null,
-          password: password || null,
+          ...(password ? { password } : {}),
           highest_school: highestSchool || null,
           experience_years: experienceYears ? Number(experienceYears) : null,
           specialization: specialization || null,
@@ -105,32 +131,26 @@ export default function AddTrainerPage() {
           linkedin: linkedin || null,
           twitter: twitter || null,
           bio: bio || null,
-        }),
+        })
       })
       let data: any = null
-      try {
-        data = await res.json()
-      } catch (_) {
-        // non-JSON
-      }
+      try { data = await res.json() } catch {}
       if (!res.ok) {
-        const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to create trainer"))
+        const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to update trainer"))
         throw new Error(`${res.status} ${res.statusText}: ${msg}`)
       }
-      toast({ title: "Trainer created" })
+      toast({ title: "Trainer updated" })
       router.push("/admin/trainers")
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || String(e) || "Failed to create trainer", variant: "destructive" })
+      toast({ title: "Error", description: e?.message || String(e) || "Failed to update trainer", variant: "destructive" })
     }
   }
 
   const stepContent = [
-    // Basic Info Step
+    // Basic
     <div key="basic" className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="school">
-          School
-        </Label>
+        <Label htmlFor="school">School</Label>
         <Select value={schoolId} onValueChange={setSchoolId}>
           <SelectTrigger>
             <SelectValue placeholder="Choose School" />
@@ -157,24 +177,16 @@ export default function AddTrainerPage() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label htmlFor="firstName">
-            First Name<span className="text-red-500">*</span>
-          </Label>
+          <Label htmlFor="firstName">First Name<span className="text-red-500">*</span></Label>
           <Input id="firstName" placeholder="Enter first name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         </div>
-
         <div className="space-y-2">
-          <Label htmlFor="lastName">
-            Last Name<span className="text-red-500">*</span>
-          </Label>
+          <Label htmlFor="lastName">Last Name<span className="text-red-500">*</span></Label>
           <Input id="lastName" placeholder="Enter last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
         </div>
       </div>
-
       <div className="space-y-3">
-        <Label>
-          Gender<span className="text-red-500">*</span>
-        </Label>
+        <Label>Gender<span className="text-red-500">*</span></Label>
         <RadioGroup value={gender} onValueChange={setGender} className="flex gap-6">
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="male" id="male" />
@@ -186,33 +198,24 @@ export default function AddTrainerPage() {
           </div>
         </RadioGroup>
       </div>
-
       <div className="space-y-2">
-        <Label htmlFor="dob">
-          Date of Birth<span className="text-red-500">*</span>
-        </Label>
+        <Label htmlFor="dob">Date of Birth<span className="text-red-500">*</span></Label>
         <Input id="dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="pincode">Pincode</Label>
         <Input id="pincode" placeholder="Enter pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="address">Address</Label>
         <Textarea id="address" placeholder="Enter address" rows={4} value={address} onChange={(e) => setAddress(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="profileImage">Profile Image</Label>
         <Input id="profileImage" placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
       </div>
-
       <div className="space-y-3">
-        <Label>
-          Status<span className="text-red-500">*</span>
-        </Label>
+        <Label>Status<span className="text-red-500">*</span></Label>
         <RadioGroup value={status} onValueChange={setStatus} className="flex gap-6">
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="verified" id="verified" />
@@ -226,77 +229,63 @@ export default function AddTrainerPage() {
       </div>
     </div>,
 
-    // Login Credentials Step
+    // Credentials
     <div key="credentials" className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="email">
-          Email<span className="text-red-500">*</span>
-        </Label>
+        <Label htmlFor="email">Email<span className="text-red-500">*</span></Label>
         <Input id="email" type="email" placeholder="Enter email address" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
-
       <div className="space-y-2">
-        <Label htmlFor="password">
-          Password<span className="text-red-500">*</span>
-        </Label>
+        <Label htmlFor="password">Password (leave blank to keep same)</Label>
         <Input id="password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
-
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">
-          Confirm Password<span className="text-red-500">*</span>
-        </Label>
+        <Label htmlFor="confirmPassword">Confirm Password</Label>
         <Input id="confirmPassword" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
       </div>
     </div>,
 
-    // Qualification Step
+    // Qualification
     <div key="qualification" className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="Skool">Highest Skool</Label>
         <Input id="Skool" placeholder="Enter highest Skool" value={highestSchool} onChange={(e) => setHighestSchool(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="experience">Experience (Years)</Label>
         <Input id="experience" type="number" placeholder="Enter years of experience" value={experienceYears} onChange={(e) => setExperienceYears(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="specialization">Specialization</Label>
         <Input id="specialization" placeholder="Enter specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="certifications">Certifications</Label>
         <Textarea id="certifications" placeholder="Enter certifications" rows={4} value={certifications} onChange={(e) => setCertifications(e.target.value)} />
       </div>
     </div>,
 
-    // Social Information Step
+    // Social
     <div key="social" className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="phone">Phone Number</Label>
         <Input id="phone" placeholder="Enter phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="linkedin">LinkedIn Profile</Label>
         <Input id="linkedin" placeholder="Enter LinkedIn URL" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="twitter">Twitter Profile</Label>
         <Input id="twitter" placeholder="Enter Twitter URL" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="bio">Bio</Label>
         <Textarea id="bio" placeholder="Enter bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
       </div>
     </div>,
 
-    // Finish Step
+    // Finish
     <div key="finish" className="space-y-6 text-center">
       <div className="space-y-4">
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
@@ -305,6 +294,15 @@ export default function AddTrainerPage() {
       </div>
     </div>,
   ]
+
+  if (!id) return null
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="p-6">Loading…</div>
+      </AdminLayout>
+    )
+  }
 
   return (
     <AdminLayout>

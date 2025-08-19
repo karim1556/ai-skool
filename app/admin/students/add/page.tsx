@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Lock, Share2, CheckCircle } from "lucide-react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AddStudentPage() {
   const steps = [
@@ -17,37 +19,34 @@ export default function AddStudentPage() {
     { id: "finish", title: "Finish", icon: CheckCircle },
   ]
 
+  const router = useRouter()
+  const { toast } = useToast()
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [biography, setBiography] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [phone, setPhone] = useState("")
+  const [parentPhone, setParentPhone] = useState("")
+  const [address, setAddress] = useState("")
+
   const stepContent = [
     // Basic Info Step
     <div key="basic" className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="school">
-          School<span className="text-red-500">*</span>
-        </Label>
-        <Select>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose School" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="school1">Vrindavan -aiskool</SelectItem>
-            <SelectItem value="school2">humanitypublicschool</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="firstName">
             First name<span className="text-red-500">*</span>
           </Label>
-          <Input id="firstName" placeholder="Enter first name" />
+          <Input id="firstName" placeholder="Enter first name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="lastName">
             Last name<span className="text-red-500">*</span>
           </Label>
-          <Input id="lastName" placeholder="Enter last name" />
+          <Input id="lastName" placeholder="Enter last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
         </div>
       </div>
 
@@ -74,6 +73,8 @@ export default function AddStudentPage() {
             placeholder="Write something..."
             className="border-0 resize-none focus-visible:ring-0"
             rows={8}
+            value={biography}
+            onChange={(e) => setBiography(e.target.value)}
           />
         </div>
       </div>
@@ -93,21 +94,21 @@ export default function AddStudentPage() {
         <Label htmlFor="email">
           Email<span className="text-red-500">*</span>
         </Label>
-        <Input id="email" type="email" placeholder="Enter email address" />
+        <Input id="email" type="email" placeholder="Enter email address" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="password">
           Password<span className="text-red-500">*</span>
         </Label>
-        <Input id="password" type="password" placeholder="Enter password" />
+        <Input id="password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">
           Confirm Password<span className="text-red-500">*</span>
         </Label>
-        <Input id="confirmPassword" type="password" placeholder="Confirm password" />
+        <Input id="confirmPassword" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
       </div>
     </div>,
 
@@ -115,17 +116,17 @@ export default function AddStudentPage() {
     <div key="social" className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="phone">Phone Number</Label>
-        <Input id="phone" placeholder="Enter phone number" />
+        <Input id="phone" placeholder="Enter phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="parentPhone">Parent/Guardian Phone</Label>
-        <Input id="parentPhone" placeholder="Enter parent/guardian phone" />
+        <Input id="parentPhone" placeholder="Enter parent/guardian phone" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="address">Address</Label>
-        <Textarea id="address" placeholder="Enter address" rows={4} />
+        <Textarea id="address" placeholder="Enter address" rows={4} value={address} onChange={(e) => setAddress(e.target.value)} />
       </div>
     </div>,
 
@@ -139,11 +140,45 @@ export default function AddStudentPage() {
     </div>,
   ]
 
+  const handleComplete = async () => {
+    try {
+      const res = await fetch("/api/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: firstName || null,
+          last_name: lastName || null,
+          biography,
+          email: email || null,
+          password,
+          phone: phone || null,
+          parent_phone: parentPhone,
+          address,
+        }),
+      })
+      let data: any = null
+      try {
+        data = await res.json()
+      } catch (_) {
+        // non-JSON
+      }
+      if (!res.ok) {
+        const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to create student"))
+        throw new Error(`${res.status} ${res.statusText}: ${msg}`)
+      }
+      toast({ title: "Student created" })
+      router.push("/admin/students")
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || String(e) || "Failed to create student", variant: "destructive" })
+    }
+  }
+
   return (
     <AdminLayout>
-      <MultiStepForm title="Student add" steps={steps} onSubmit={() => console.log("Form submitted")}>
+      <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </AdminLayout>
   )
 }
+

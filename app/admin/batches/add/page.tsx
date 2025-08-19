@@ -7,8 +7,59 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Users, CheckCircle } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function AddBatchPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [name, setName] = useState("")
+  const [schoolId, setSchoolId] = useState<string>("")
+  const [courseId, setCourseId] = useState<string>("")
+  const [status, setStatus] = useState<string>("verified")
+  const [maxStudents, setMaxStudents] = useState<string>("30")
+  const [startDate, setStartDate] = useState<string>("")
+  const [endDate, setEndDate] = useState<string>("")
+  const [schedule, setSchedule] = useState<string>("")
+  const [description, setDescription] = useState<string>("")
+  const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
+  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([])
+  const [trainers, setTrainers] = useState<Array<{ id: string; first_name?: string; last_name?: string }>>([])
+  const [students, setStudents] = useState<Array<{ id: string; first_name?: string; last_name?: string }>>([])
+  const [selectedTrainerIds, setSelectedTrainerIds] = useState<Set<string>>(new Set())
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [schRes, crsRes, stdRes] = await Promise.all([
+          fetch("/api/schools"),
+          fetch("/api/courses"),
+          fetch("/api/students"),
+        ])
+        const [sch, crs, std] = await Promise.all([schRes.json(), crsRes.json(), stdRes.json()])
+        setSchools(Array.isArray(sch) ? sch : [])
+        setCourses(Array.isArray(crs) ? crs : [])
+        setStudents(Array.isArray(std) ? std : [])
+      } catch (_) {}
+    }
+    load()
+  }, [])
+
+  useEffect(() => {
+    const loadTrainers = async () => {
+      try {
+        const url = schoolId ? `/api/trainers?schoolId=${schoolId}` : "/api/trainers"
+        const res = await fetch(url)
+        const data = await res.json()
+        setTrainers(Array.isArray(data) ? data : [])
+      } catch (_) {}
+    }
+    loadTrainers()
+  }, [schoolId])
+
   const steps = [
     { id: "basic", title: "Basic info", icon: User },
     { id: "students", title: "Students", icon: Users },
@@ -22,41 +73,33 @@ export default function AddBatchPage() {
         <Label htmlFor="batchName">
           Batch Name<span className="text-red-500">*</span>
         </Label>
-        <Input id="batchName" placeholder="Enter batch name" />
+        <Input id="batchName" placeholder="Enter batch name" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="trainer">
-          Add trainer<span className="text-red-500">*</span>
-        </Label>
-        <Select>
+        <Label htmlFor="school">School (optional)</Label>
+        <Select value={schoolId} onValueChange={setSchoolId}>
           <SelectTrigger>
-            <SelectValue placeholder="Choose Trainer" />
+            <SelectValue placeholder="Choose School" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="trainer1">furqan syed</SelectItem>
-            <SelectItem value="trainer2">Snehal s</SelectItem>
-            <SelectItem value="trainer3">Dummy trainer</SelectItem>
-            <SelectItem value="trainer4">humanity trainer</SelectItem>
-            <SelectItem value="trainer5">karim shaikh</SelectItem>
+            {schools.map((s) => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="course">
-          Add course<span className="text-red-500">*</span>
-        </Label>
-        <Select>
+        <Label htmlFor="course">Course (optional)</Label>
+        <Select value={courseId} onValueChange={setCourseId}>
           <SelectTrigger>
             <SelectValue placeholder="Choose Course" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="course1">ROBO SENIOR</SelectItem>
-            <SelectItem value="course2">PROTON-BLOCKS</SelectItem>
-            <SelectItem value="course3">test final course</SelectItem>
-            <SelectItem value="course4">Web Development Fundamentals</SelectItem>
-            <SelectItem value="course5">Data Science with Python</SelectItem>
+            {courses.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -65,7 +108,7 @@ export default function AddBatchPage() {
         <Label>
           Status<span className="text-red-500">*</span>
         </Label>
-        <RadioGroup defaultValue="verified" className="flex gap-6">
+        <RadioGroup value={status} onValueChange={setStatus} className="flex gap-6">
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="verified" id="verified" />
             <Label htmlFor="verified">Verified</Label>
@@ -76,33 +119,87 @@ export default function AddBatchPage() {
           </div>
         </RadioGroup>
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="trainers">Assign Trainers (multi-select)</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {trainers.map((t) => {
+            const id = t.id
+            const label = `${t.first_name ?? ""} ${t.last_name ?? ""}`.trim() || id
+            const checked = selectedTrainerIds.has(id)
+            return (
+              <label key={id} className="flex items-center gap-2 rounded border p-2">
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={(v) => {
+                    setSelectedTrainerIds((prev) => {
+                      const next = new Set(prev)
+                      if (v) next.add(id)
+                      else next.delete(id)
+                      return next
+                    })
+                  }}
+                />
+                <span className="text-sm">{label}</span>
+              </label>
+            )
+          })}
+        </div>
+      </div>
     </div>,
 
     // Students Step
     <div key="students" className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="maxStudents">Maximum Students</Label>
-        <Input id="maxStudents" type="number" placeholder="Enter maximum number of students" defaultValue="30" />
+        <Input id="maxStudents" type="number" placeholder="Enter maximum number of students" value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="startDate">Start Date</Label>
-        <Input id="startDate" type="date" />
+        <Input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="endDate">End Date</Label>
-        <Input id="endDate" type="date" />
+        <Input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="schedule">Schedule</Label>
-        <Input id="schedule" placeholder="Enter batch schedule (e.g., Mon-Fri 10:00-12:00)" />
+        <Input id="schedule" placeholder="Enter batch schedule (e.g., Mon-Fri 10:00-12:00)" value={schedule} onChange={(e) => setSchedule(e.target.value)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
-        <Input id="description" placeholder="Enter batch description" />
+        <Input id="description" placeholder="Enter batch description" value={description} onChange={(e) => setDescription(e.target.value)} />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Assign Students (multi-select; global)</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {students.map((s) => {
+            const id = s.id
+            const label = `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim() || id
+            const checked = selectedStudentIds.has(id)
+            return (
+              <label key={id} className="flex items-center gap-2 rounded border p-2">
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={(v) => {
+                    setSelectedStudentIds((prev) => {
+                      const next = new Set(prev)
+                      if (v) next.add(id)
+                      else next.delete(id)
+                      return next
+                    })
+                  }}
+                />
+                <span className="text-sm">{label}</span>
+              </label>
+            )
+          })}
+        </div>
       </div>
     </div>,
 
@@ -116,11 +213,52 @@ export default function AddBatchPage() {
     </div>,
   ]
 
+  const handleComplete = async () => {
+    try {
+      if (!name) {
+        toast({ title: "Batch name required", variant: "destructive" })
+        return
+      }
+      const res = await fetch("/api/batches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          school_id: schoolId || null,
+          course_id: courseId || null,
+          start_date: startDate || null,
+          end_date: endDate || null,
+          max_students: maxStudents || null,
+          status,
+          schedule,
+          description,
+          trainerIds: Array.from(selectedTrainerIds),
+          studentIds: Array.from(selectedStudentIds),
+        }),
+      })
+      let data: any = null
+      try {
+        data = await res.json()
+      } catch (_) {
+        // non-JSON
+      }
+      if (!res.ok) {
+        const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to create batch"))
+        throw new Error(`${res.status} ${res.statusText}: ${msg}`)
+      }
+      toast({ title: "Batch created" })
+      router.push("/admin/batches")
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || String(e) || "Failed to create batch", variant: "destructive" })
+    }
+  }
+
   return (
     <AdminLayout>
-      <MultiStepForm title="Batch add" steps={steps} onSubmit={() => console.log("Form submitted")}>
+      <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </AdminLayout>
   )
 }
+
