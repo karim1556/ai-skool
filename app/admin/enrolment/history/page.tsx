@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,17 +8,38 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DataTable } from "@/components/ui/data-table"
 import { ActionDropdown } from "@/components/ui/action-dropdown"
 import { Calendar } from "lucide-react"
-import { mockEnrollmentHistory } from "@/lib/mock-data"
+import { useToast } from "@/hooks/use-toast"
 
 export default function EnrolHistoryPage() {
-  const [enrollmentHistory, setEnrollmentHistory] = useState(mockEnrollmentHistory)
+  const { toast } = useToast()
+  const [enrollmentHistory, setEnrollmentHistory] = useState<any[]>([])
 
-  const handleDelete = (id: number) => {
-    setEnrollmentHistory(enrollmentHistory.filter((enrollment) => enrollment.id !== id))
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/enrolments', { cache: 'no-store' })
+        const rows = await res.json()
+        setEnrollmentHistory(Array.isArray(rows) ? rows : [])
+      } catch (_) {}
+    }
+    load()
+  }, [])
+
+  const handleDelete = async (id: string) => {
+    const ok = typeof window !== 'undefined' ? window.confirm('Delete this enrolment?') : true
+    if (!ok) return
+    try {
+      const res = await fetch(`/api/enrolments?id=${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      setEnrollmentHistory(prev => prev.filter(e => e.id !== id))
+      toast({ title: 'Enrolment deleted' })
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'Failed to delete', variant: 'destructive' })
+    }
   }
 
-  const handleView = (id: number) => {
-    console.log("View enrollment:", id)
+  const handleView = (id: string) => {
+    console.log('View enrolment:', id)
   }
 
   return (
@@ -42,7 +63,7 @@ export default function EnrolHistoryPage() {
           <CardContent>
             <DataTable
               data={enrollmentHistory}
-              searchFields={["userName", "email", "enrolledCourse"]}
+              searchFields={["first_name", "last_name", "email", "course_title"]}
               title="Enrollment History"
             >
               {(paginatedHistory) => (
@@ -59,35 +80,33 @@ export default function EnrolHistoryPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {paginatedHistory.map((enrollment) => (
+                      {paginatedHistory.map((enrollment: any) => (
                         <tr key={enrollment.id} className="border-b hover:bg-gray-50">
                           <td className="py-4 px-4">
                             <Avatar className="h-10 w-10">
-                              <AvatarImage src={enrollment.photo || "/placeholder.svg"} />
-                              <AvatarFallback>{enrollment.userName.charAt(0).toUpperCase()}</AvatarFallback>
+                              <AvatarImage src={"/placeholder.svg"} />
+                              <AvatarFallback>{(enrollment.first_name || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                           </td>
                           <td className="py-4 px-4">
                             <div>
-                              <div className="font-medium">{enrollment.userName}</div>
+                              <div className="font-medium">{`${enrollment.first_name ?? ''} ${enrollment.last_name ?? ''}`.trim()}</div>
                               <div className="text-sm text-gray-500">{enrollment.email}</div>
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="text-blue-600 hover:underline cursor-pointer">
-                              {enrollment.enrolledCourse}
-                            </span>
+                            <span className="text-blue-600">{enrollment.course_title || enrollment.course_id}</span>
                           </td>
-                          <td className="py-4 px-4 text-gray-600">{enrollment.enrollmentDate}</td>
+                          <td className="py-4 px-4 text-gray-600">{new Date(enrollment.created_at).toLocaleString()}</td>
                           <td className="py-4 px-4">
                             <span
                               className={`px-2 py-1 rounded-full text-xs ${
-                                enrollment.status === "active"
+                                (enrollment.status || 'active') === "active"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
-                              {enrollment.status}
+                              {enrollment.status || 'active'}
                             </span>
                           </td>
                           <td className="py-4 px-4">

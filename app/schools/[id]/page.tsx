@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Calendar, MapPin, Phone, Mail, Globe, Award, Home } from "lucide-react";
+import { Users, Calendar, MapPin, Phone, Mail, Globe, Award, Home, Linkedin } from "lucide-react";
 import Link from "next/link";
 import type { School } from "@/types/school";
 
@@ -15,6 +15,13 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
   const db = getDb();
   const school = await db.get<School>("SELECT * FROM schools WHERE id = $1", [id]);
   if (!school) return notFound();
+
+  // Fetch school coordinator (basic info only)
+  const coordinator = await db.get<any>(
+    `SELECT id, first_name, last_name, email, phone, status, image_url, linkedin
+     FROM coordinators WHERE school_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [id]
+  );
 
   const location = [school.city, school.state, school.country].filter(Boolean).join(", ");
   const address = [school.address_line1, school.address_line2].filter(Boolean).join(", ");
@@ -144,6 +151,38 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
               <CardHeader><CardTitle>About</CardTitle></CardHeader>
               <CardContent>
                 <p className="text-gray-700 leading-7 whitespace-pre-line">{school.description}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {coordinator && (
+            <Card className="border border-gray-200 shadow-sm">
+              <CardHeader><CardTitle>School Coordinator</CardTitle></CardHeader>
+              <CardContent className="space-y-3 text-gray-700">
+                <div className="flex items-center gap-4">
+                  <div className="relative w-14 h-14 rounded-full overflow-hidden ring-1 ring-gray-200 bg-gray-50">
+                    {coordinator.image_url ? (
+                      <Image src={coordinator.image_url} alt="Coordinator" fill sizes="56px" className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">{(coordinator.first_name?.[0] || 'C').toUpperCase()}</div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-medium text-base truncate">{`${coordinator.first_name ?? ''} ${coordinator.last_name ?? ''}`.trim() || 'Coordinator'}</div>
+                    {coordinator.status && (
+                      <div className="text-xs text-gray-500">Status: {coordinator.status}</div>
+                    )}
+                  </div>
+                </div>
+                {coordinator.email && (
+                  <div className="flex items-center gap-3"><Mail className="h-4 w-4 text-gray-500" /><a className="hover:underline" href={`mailto:${coordinator.email}`}>{coordinator.email}</a></div>
+                )}
+                {coordinator.phone && (
+                  <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-gray-500" /><a className="hover:underline" href={`tel:${coordinator.phone}`}>{coordinator.phone}</a></div>
+                )}
+                {coordinator.linkedin && (
+                  <div className="flex items-center gap-3"><Linkedin className="h-4 w-4 text-gray-500" /><a className="text-blue-600 hover:underline" href={coordinator.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a></div>
+                )}
               </CardContent>
             </Card>
           )}
