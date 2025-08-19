@@ -44,14 +44,39 @@ export async function GET(req: NextRequest) {
   await ensureSchema();
   const db = getDb();
   const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
   const schoolId = searchParams.get('schoolId');
 
   try {
     let rows;
-    if (schoolId) {
-      rows = await db.all(`SELECT * FROM batches WHERE school_id = $1 ORDER BY created_at DESC`, [schoolId]);
+    if (id) {
+      rows = await db.all(
+        `SELECT b.*,
+                (SELECT string_agg(trainer_id::text, ',') FROM batch_trainers WHERE batch_id = b.id) AS trainer_ids,
+                (SELECT string_agg(student_id::text, ',') FROM batch_students WHERE batch_id = b.id) AS student_ids,
+                (SELECT COUNT(*) FROM batch_students WHERE batch_id = b.id) AS student_count
+         FROM batches b
+         WHERE b.id = $1`,
+        [id]
+      );
+    } else if (schoolId) {
+      rows = await db.all(
+        `SELECT b.*,
+                (SELECT COUNT(*) FROM batch_students WHERE batch_id = b.id) AS student_count,
+                (SELECT COUNT(*) FROM batch_trainers WHERE batch_id = b.id) AS trainer_count
+         FROM batches b
+         WHERE b.school_id = $1
+         ORDER BY b.created_at DESC`,
+        [schoolId]
+      );
     } else {
-      rows = await db.all(`SELECT * FROM batches ORDER BY created_at DESC`);
+      rows = await db.all(
+        `SELECT b.*,
+                (SELECT COUNT(*) FROM batch_students WHERE batch_id = b.id) AS student_count,
+                (SELECT COUNT(*) FROM batch_trainers WHERE batch_id = b.id) AS trainer_count
+         FROM batches b
+         ORDER BY b.created_at DESC`
+      );
     }
     return NextResponse.json(rows);
   } catch (e: any) {
@@ -115,5 +140,88 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ id: result, success: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to create batch' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  await ensureSchema();
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+
+    const body = await req.json();
+    const {
+      name,
+      school_id,
+      course_id,
+      start_date,
+      end_date,
+      max_students,
+      status,
+      schedule,
+      description,
+      trainerIds,
+      studentIds,
+    } = body || {};
+
+    await sql.begin(async (trx) => {
+      const sets: string[] = [];
+      const vals: any[] = [];
+      function add(field: string, value: any) {
+        sets.push(`${field} = $${sets.length + 1}`);
+        vals.push(value);
+      }
+      if (name !== undefined) add('name', name || null);
+      if (school_id !== undefined) add('school_id', school_id || null);
+      if (course_id !== undefined) add('course_id', course_id || null);
+      if (start_date !== undefined) add('start_date', start_date || null);
+      if (end_date !== undefined) add('end_date', end_date || null);
+      if (max_students !== undefined) add('max_students', Number.isFinite(+max_students) ? +max_students : null);
+      if (status !== undefined) add('status', status || null);
+      if (schedule !== undefined) add('schedule', schedule || null);
+      if (description !== undefined) add('description', description || null);
+
+      if (sets.length) {
+        const setClause = sets.join(', ');
+        await trx.unsafe(`UPDATE batches SET ${setClause}, updated_at = NOW() WHERE id = $${sets.length + 1}`, [...vals, id]);
+      }
+
+      if (Array.isArray(trainerIds)) {
+        await trx`DELETE FROM batch_trainers WHERE batch_id = ${id}`;
+        for (const tid of trainerIds) {
+          await trx`INSERT INTO batch_trainers (batch_id, trainer_id) VALUES (${id}, ${tid}) ON CONFLICT (batch_id, trainer_id) DO NOTHING`;
+        }
+      }
+
+      if (Array.isArray(studentIds)) {
+        await trx`DELETE FROM batch_students WHERE batch_id = ${id}`;
+        for (const sid of studentIds) {
+          await trx`INSERT INTO batch_students (batch_id, student_id) VALUES (${id}, ${sid}) ON CONFLICT (batch_id, student_id) DO NOTHING`;
+        }
+      }
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || 'Failed to update batch' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  await ensureSchema();
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+
+    await sql.begin(async (trx) => {
+      await trx`DELETE FROM batch_students WHERE batch_id = ${id}`;
+      await trx`DELETE FROM batch_trainers WHERE batch_id = ${id}`;
+      await trx`DELETE FROM batches WHERE id = ${id}`;
+    });
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || 'Failed to delete batch' }, { status: 500 });
   }
 }

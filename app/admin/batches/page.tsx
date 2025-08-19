@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,26 +8,68 @@ import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { ActionDropdown } from "@/components/ui/action-dropdown"
 import { Plus } from "lucide-react"
-import { mockBatches } from "@/lib/mock-data"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 export default function BatchesPage() {
-  const [batches, setBatches] = useState(mockBatches)
+  const router = useRouter()
+  const { toast } = useToast()
+  const [batches, setBatches] = useState<Array<{
+    id: string
+    name: string
+    status?: string | null
+    student_count?: number
+    trainer_count?: number
+    course_id?: string | null
+  }>>([])
+  const [courseMap, setCourseMap] = useState<Record<string, string>>({})
 
-  const handleView = (id: number) => {
-    console.log("View batch:", id)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [bRes, cRes] = await Promise.all([
+          fetch('/api/batches', { cache: 'no-store' }),
+          fetch('/api/courses', { cache: 'no-store' }),
+        ])
+        const [bRows, cRows] = await Promise.all([bRes.json(), cRes.json()])
+        if (Array.isArray(cRows)) {
+          const map: Record<string, string> = {}
+          for (const c of cRows) map[c.id] = c.title || c.name || c.id
+          setCourseMap(map)
+        }
+        if (Array.isArray(bRows)) {
+          setBatches(bRows)
+        }
+      } catch (_) {}
+    }
+    load()
+  }, [])
+
+  const handleView = (id: string) => {
+    console.log('View batch:', id)
   }
 
-  const handleEdit = (id: number) => {
-    console.log("Edit batch:", id)
+  const handleEdit = (id: string) => {
+    router.push(`/admin/batches/${id}/edit`)
   }
 
-  const handleDelete = (id: number) => {
-    setBatches(batches.filter((batch) => batch.id !== id))
-  }
-
-  const handleApprove = (id: number) => {
-    setBatches(batches.map((batch) => (batch.id === id ? { ...batch, status: "active" } : batch)))
+  const handleDelete = async (id: string) => {
+    const ok = typeof window !== 'undefined' ? window.confirm('Delete this batch?') : true
+    if (!ok) return
+    try {
+      const res = await fetch(`/api/batches?id=${id}`, { method: 'DELETE' })
+      let data: any = null
+      try { data = await res.json() } catch (_) {}
+      if (!res.ok) {
+        const msg = data?.error || data?.message || (await res.text().catch(() => 'Failed to delete'))
+        throw new Error(`${res.status} ${res.statusText}: ${msg}`)
+      }
+      setBatches(prev => prev.filter(b => b.id !== id))
+      toast({ title: 'Batch deleted' })
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || String(e) || 'Failed to delete batch', variant: 'destructive' })
+    }
   }
 
   return (
@@ -50,16 +92,15 @@ export default function BatchesPage() {
             <CardTitle>BATCH</CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable data={batches} searchFields={["batchId", "batchName", "trainer", "course"]} title="Batches">
+            <DataTable data={batches} searchFields={["name", "status"]} title="Batches">
               {(paginatedBatches) => (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
                         <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Batch ID</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-600">Batch Name</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Trainer</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Trainers</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-600">Course</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-600">Students</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
@@ -67,26 +108,19 @@ export default function BatchesPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {paginatedBatches.map((batch, index) => (
+                      {paginatedBatches.map((batch: any, index: number) => (
                         <tr key={batch.id} className="border-b hover:bg-gray-50">
                           <td className="py-4 px-4">{index + 1}</td>
-                          <td className="py-4 px-4 font-medium">{batch.batchId}</td>
-                          <td className="py-4 px-4">{batch.batchName}</td>
-                          <td className="py-4 px-4">{batch.trainer}</td>
-                          <td className="py-4 px-4">{batch.course}</td>
+                          <td className="py-4 px-4">{batch.name}</td>
+                          <td className="py-4 px-4">{batch.trainer_count ?? 0}</td>
+                          <td className="py-4 px-4">{batch.course_id ? (courseMap[batch.course_id] || batch.course_id) : '—'}</td>
                           <td className="py-4 px-4">
-                            <span className="text-sm">
-                              {batch.noOfStudents}/{batch.maxStudents}
-                            </span>
+                            <span className="text-sm">{batch.student_count ?? 0}{batch.max_students ? `/${batch.max_students}` : ''}</span>
                           </td>
                           <td className="py-4 px-4">
                             <Badge
                               variant={
-                                batch.status === "active"
-                                  ? "default"
-                                  : batch.status === "pending"
-                                    ? "secondary"
-                                    : "outline"
+                                batch.status === "verified" ? "default" : batch.status === "pending" ? "secondary" : "outline"
                               }
                             >
                               {batch.status}
@@ -97,8 +131,6 @@ export default function BatchesPage() {
                               onView={() => handleView(batch.id)}
                               onEdit={() => handleEdit(batch.id)}
                               onDelete={() => handleDelete(batch.id)}
-                              onApprove={() => handleApprove(batch.id)}
-                              showApprove={batch.status === "pending"}
                             />
                           </td>
                         </tr>

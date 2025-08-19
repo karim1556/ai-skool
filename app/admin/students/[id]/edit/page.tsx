@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { MultiStepForm } from "@/components/forms/multi-step-form"
 import { Input } from "@/components/ui/input"
@@ -7,20 +9,22 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { User, Lock, Share2, CheckCircle } from "lucide-react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
-export default function AddStudentPage() {
-  const steps = [
+export default function EditStudentPage() {
+  const router = useRouter()
+  const params = useParams() as { id?: string }
+  const id = params?.id as string
+  const { toast } = useToast()
+
+  const steps = useMemo(() => ([
     { id: "basic", title: "Basic info", icon: User },
     { id: "credentials", title: "Login credentials", icon: Lock },
     { id: "social", title: "Social information", icon: Share2 },
     { id: "finish", title: "Finish", icon: CheckCircle },
-  ]
+  ]), [])
 
-  const router = useRouter()
-  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [biography, setBiography] = useState("")
@@ -30,6 +34,63 @@ export default function AddStudentPage() {
   const [phone, setPhone] = useState("")
   const [parentPhone, setParentPhone] = useState("")
   const [address, setAddress] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/students?id=${id}`, { cache: "no-store" })
+        const rows = await res.json()
+        const s = Array.isArray(rows) ? rows[0] : rows
+        if (s) {
+          setFirstName(s.first_name || "")
+          setLastName(s.last_name || "")
+          setBiography(s.biography || "")
+          setEmail(s.email || "")
+          setPhone(s.phone || "")
+          setParentPhone(s.parent_phone || "")
+          setAddress(s.address || "")
+          setImageUrl(s.image_url || "")
+        }
+      } catch (_) {}
+      setLoading(false)
+    }
+    if (id) load()
+  }, [id])
+
+  const handleComplete = async () => {
+    try {
+      if (password && password !== confirmPassword) {
+        toast({ title: "Passwords do not match", variant: "destructive" })
+        return
+      }
+      const res = await fetch(`/api/students?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: firstName || null,
+          last_name: lastName || null,
+          biography,
+          image_url: imageUrl || null,
+          email: email || null,
+          ...(password ? { password } : {}),
+          phone: phone || null,
+          parent_phone: parentPhone || null,
+          address,
+        }),
+      })
+      let data: any = null
+      try { data = await res.json() } catch (_) {}
+      if (!res.ok) {
+        const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to update student"))
+        throw new Error(`${res.status} ${res.statusText}: ${msg}`)
+      }
+      toast({ title: "Student updated" })
+      router.push("/admin/students")
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || String(e) || "Failed to update student", variant: "destructive" })
+    }
+  }
 
   const stepContent = [
     // Basic Info Step
@@ -82,8 +143,7 @@ export default function AddStudentPage() {
       <div className="space-y-2">
         <Label htmlFor="userImage">User image</Label>
         <div className="flex items-center gap-4">
-          <Input id="userImage" placeholder="Choose user image" readOnly />
-          <Button variant="outline">Browse</Button>
+          <Input id="userImage" placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
         </div>
       </div>
     </div>,
@@ -98,16 +158,12 @@ export default function AddStudentPage() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">
-          Password<span className="text-red-500">*</span>
-        </Label>
+        <Label htmlFor="password">Password (leave blank to keep same)</Label>
         <Input id="password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">
-          Confirm Password<span className="text-red-500">*</span>
-        </Label>
+        <Label htmlFor="confirmPassword">Confirm Password</Label>
         <Input id="confirmPassword" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
       </div>
     </div>,
@@ -140,41 +196,13 @@ export default function AddStudentPage() {
     </div>,
   ]
 
-  const handleComplete = async () => {
-    try {
-      if (password !== confirmPassword) {
-        toast({ title: "Passwords do not match", variant: "destructive" })
-        return
-      }
-      const res = await fetch("/api/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_name: firstName || null,
-          last_name: lastName || null,
-          biography,
-          email: email || null,
-          password,
-          phone: phone || null,
-          parent_phone: parentPhone,
-          address,
-        }),
-      })
-      let data: any = null
-      try {
-        data = await res.json()
-      } catch (_) {
-        // non-JSON
-      }
-      if (!res.ok) {
-        const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to create student"))
-        throw new Error(`${res.status} ${res.statusText}: ${msg}`)
-      }
-      toast({ title: "Student created" })
-      router.push("/admin/students")
-    } catch (e: any) {
-      toast({ title: "Error", description: e?.message || String(e) || "Failed to create student", variant: "destructive" })
-    }
+  if (!id) return null
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="p-6">Loading…</div>
+      </AdminLayout>
+    )
   }
 
   return (
@@ -185,4 +213,3 @@ export default function AddStudentPage() {
     </AdminLayout>
   )
 }
-
