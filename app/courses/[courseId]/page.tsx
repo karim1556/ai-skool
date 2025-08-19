@@ -128,6 +128,34 @@ async function getCourse(courseId: string): Promise<Course | null> {
 export default function CoursePage({ params }: { params: { courseId: string } }) {
   const [showVideo, setShowVideo] = useState(false);
   const [course, setCourse] = useState<Course | null>(null);
+  
+  // Detect and transform YouTube URLs to embed form
+  const getYouTubeEmbedUrl = (url: string | undefined | null): string | null => {
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      const host = u.hostname.replace(/^www\./, '');
+      if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+        // watch?v=VIDEO_ID or /shorts/VIDEO_ID
+        if (u.pathname === '/watch') {
+          const v = u.searchParams.get('v');
+          return v ? `https://www.youtube.com/embed/${v}` : null;
+        }
+        if (u.pathname.startsWith('/shorts/')) {
+          const id = u.pathname.split('/')[2];
+          return id ? `https://www.youtube.com/embed/${id}` : null;
+        }
+        if (u.pathname.startsWith('/embed/')) {
+          return url; // already embed
+        }
+      }
+      if (host === 'youtu.be') {
+        const id = u.pathname.slice(1);
+        return id ? `https://www.youtube.com/embed/${id}` : null;
+      }
+    } catch {}
+    return null;
+  };
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -347,15 +375,29 @@ export default function CoursePage({ params }: { params: { courseId: string } })
             <Card className="shadow-xl border-gray-200 overflow-hidden">
               <div className="relative aspect-video">
                 {showVideo ? (
-                  <video
-                    src={course.demo_video_url}
-                    controls
-                    autoPlay
-                    muted
-                    playsInline
-                    preload="metadata"
-                    className="w-full h-full"
-                  />
+                  (() => {
+                    const yt = getYouTubeEmbedUrl(course.demo_video_url);
+                    return yt ? (
+                      <iframe
+                        src={yt}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        title="Course demo video"
+                      />
+                    ) : (
+                      <video
+                        src={course.demo_video_url}
+                        controls
+                        autoPlay
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full"
+                      />
+                    );
+                  })()
                 ) : (
                   <>
                     <Image src={course.video_preview_image} alt={course.title} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />

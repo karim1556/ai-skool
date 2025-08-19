@@ -56,9 +56,11 @@ export async function POST(req: NextRequest) {
       imagePath = urlData.publicUrl;
     }
 
-    // Handle demo video upload
+    // Handle demo video input: prefer uploaded file when provided, otherwise use URL field
     const demoVideoFile = formData.get("demo_video_file") as File | null;
-    let demoVideoUrl = course.demo_video_url || '';
+    // If user supplied a URL in the form, capture it now (will be used only if no file is uploaded)
+    const providedDemoVideoUrl = (formData.get("demo_video_url") as string | null) || '';
+    let demoVideoUrl = '';
 
     if (demoVideoFile && demoVideoFile.size > 0) {
       const videoFileName = `videos/${Date.now()}-${sanitizeFileName(demoVideoFile.name)}`;
@@ -75,6 +77,8 @@ export async function POST(req: NextRequest) {
         .getPublicUrl(videoFileName);
 
       demoVideoUrl = videoUrlData.publicUrl;
+    } else if (providedDemoVideoUrl && providedDemoVideoUrl.trim().length > 0) {
+      demoVideoUrl = providedDemoVideoUrl.trim();
     }
 
     // Process other form fields
