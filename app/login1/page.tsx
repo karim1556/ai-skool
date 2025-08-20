@@ -16,7 +16,7 @@ export default function Login1Page() {
       {/* Subtle grid background overlay (animated) */}
       <div
         aria-hidden
-        className="animated-grid pointer-events-none absolute inset-0 opacity-[0.12]"
+        className="animated-grid pointer-events-none fixed inset-0 z-0 opacity-[0.12]"
         style={{
           backgroundImage:
             "linear-gradient(to right, rgba(0,0,0,0.6) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.6) 1px, transparent 1px)",
@@ -27,7 +27,7 @@ export default function Login1Page() {
       />
       {/* Waves restricted to grid lines (mask-based) */}
 
-      <div className="relative mx-auto flex min-h-screen max-w-7xl items-center px-6 py-12 lg:px-12">
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center px-6 py-12 lg:px-12">
         <div className="grid w-full gap-10 lg:grid-cols-2 lg:gap-16">
           {/* Left: Brand/Marketing */}
           <div className="flex flex-col justify-center">

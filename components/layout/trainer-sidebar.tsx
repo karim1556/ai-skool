@@ -29,7 +29,7 @@ import { mockTrainers } from "@/lib/mock-data"
 const allNavigationItems = [
   {
     title: "Dashboard",
-    href: "/dashboard",
+    href: "/trainer/dashboard",
     icon: LayoutDashboard,
     privilege: null, // always show
   },

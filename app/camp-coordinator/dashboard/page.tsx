@@ -3,10 +3,10 @@
 import StandardDashboard from "@/components/dashboard/StandardDashboard"
 import { BookOpen, Video, UserCheck, Users, GraduationCap, Calendar } from "lucide-react"
 import { RoleLayout } from "@/components/layout/role-layout"
-import { InstructorSidebar } from "@/components/layout/instructor-sidebar"
+import { CampCoordinatorSidebar } from "@/components/layout/camp-coordinator-sidebar"
 import { useDashboardStats } from "@/hooks/use-dashboard-stats"
 
-export default function InstructorDashboard() {
+export default function CampCoordinatorDashboard() {
   const { counts } = useDashboardStats()
 
   const stats = [
@@ -27,22 +27,22 @@ export default function InstructorDashboard() {
   const pendingCourses = counts.pendingCourses
 
   const activities = [
-    { color: "bg-blue-50 hover:bg-blue-100 text-blue-600", title: "Lecture uploaded", description: "New video added to React Course", time: "2 hours ago" },
-    { color: "bg-green-50 hover:bg-green-100 text-green-600", title: "Assignment graded", description: "Graded 15 submissions in JS Fundamentals", time: "4 hours ago" },
+    { color: "bg-blue-50 hover:bg-blue-100 text-blue-600", title: "New camp batch created", description: "Summer Camp Batch 2025-B initialized", time: "2 hours ago" },
+    { color: "bg-green-50 hover:bg-green-100 text-green-600", title: "Camp schedule updated", description: "Weekend sessions adjusted", time: "4 hours ago" },
   ]
 
   const quickActions = [
-    { label: "Create Lesson" },
-    { label: "Post Assignment" },
-    { label: "Review Submissions" },
+    { label: "Create Camp Batch" },
+    { label: "Assign Trainer" },
+    { label: "Manage Camp Schedule" },
     { label: "View Reports" },
   ]
 
   return (
-    <RoleLayout title="Aiskool LMS" subtitle="Instructor Dashboard" Sidebar={InstructorSidebar}>
+    <RoleLayout title="Aiskool LMS" subtitle="Camp Coordinator Dashboard" Sidebar={CampCoordinatorSidebar}>
       <StandardDashboard
         title="Dashboard"
-        subtitle="Instructor Panel"
+        subtitle="Camp Coordinator Panel"
         stats={stats}
         secondaryStats={secondaryStats}
         totalCourses={activeCourses + pendingCourses}
