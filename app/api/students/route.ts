@@ -16,10 +16,17 @@ async function ensureSchema() {
       phone TEXT,
       parent_phone TEXT,
       address TEXT,
+      state TEXT,
+      district TEXT,
+      school_id TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
   `;
+  // Add new columns if they don't exist
+  try { await sql`ALTER TABLE students ADD COLUMN state TEXT`; } catch {}
+  try { await sql`ALTER TABLE students ADD COLUMN district TEXT`; } catch {}
+  try { await sql`ALTER TABLE students ADD COLUMN school_id TEXT`; } catch {}
 }
 
 export async function GET(req: NextRequest) {
@@ -55,13 +62,16 @@ export async function POST(req: NextRequest) {
       phone,
       parent_phone,
       address,
+      state,
+      district,
+      school_id,
     } = body || {};
 
     const row = await db.get<{ id: string }>(
       `INSERT INTO students (
-        first_name, last_name, biography, image_url, email, password, phone, parent_phone, address
+        first_name, last_name, biography, image_url, email, password, phone, parent_phone, address, state, district, school_id
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
       ) RETURNING id`,
       [
         first_name || null,
@@ -73,6 +83,9 @@ export async function POST(req: NextRequest) {
         phone || null,
         parent_phone || null,
         address || null,
+        state || null,
+        district || null,
+        school_id || null,
       ]
     );
 
@@ -91,7 +104,7 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
     const body = await req.json();
     const allowed = [
-      'first_name','last_name','biography','image_url','email','password','phone','parent_phone','address'
+      'first_name','last_name','biography','image_url','email','password','phone','parent_phone','address','state','district','school_id'
     ];
     const fields: string[] = [];
     const values: any[] = [];

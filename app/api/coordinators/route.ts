@@ -8,6 +8,7 @@ async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS coordinators (
       id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
       school_id TEXT NOT NULL,
+      context TEXT DEFAULT 'school',
       first_name TEXT,
       last_name TEXT,
       gender TEXT,
@@ -31,6 +32,8 @@ async function ensureSchema() {
       UNIQUE (school_id)
     );
   `;
+  // Add new columns if they don't exist
+  try { await sql`ALTER TABLE coordinators ADD COLUMN context TEXT DEFAULT 'school'`; } catch {}
 }
 
 export async function PATCH(req: NextRequest) {
@@ -42,7 +45,7 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
     const body = await req.json();
     const allowed = [
-      'school_id','first_name','last_name','gender','dob','pincode','address','image_url','status','email','password',
+      'school_id','context','first_name','last_name','gender','dob','pincode','address','image_url','status','email','password',
       'highest_school','experience_years','organization','responsibilities','phone','alternate_phone','linkedin','bio'
     ];
     const fields: string[] = [];
@@ -109,6 +112,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       school_id,
+      context,
       first_name,
       last_name,
       gender,
@@ -129,25 +133,32 @@ export async function POST(req: NextRequest) {
       bio,
     } = body || {};
 
-    if (!school_id) {
+    // school_id is required for school coordinators; for other contexts, generate a placeholder id
+    let finalSchoolId = school_id;
+    const ctx = (context || 'school').toString();
+    if (!finalSchoolId && ctx === 'school') {
       return NextResponse.json({ error: 'school_id is required' }, { status: 400 });
+    }
+    if (!finalSchoolId && ctx !== 'school') {
+      finalSchoolId = `ctx_${ctx}_${Date.now()}`;
     }
 
     // Enforce 1 coordinator per school
-    const existing = await db.get(`SELECT id FROM coordinators WHERE school_id = $1`, [school_id]);
+    const existing = await db.get(`SELECT id FROM coordinators WHERE school_id = $1`, [finalSchoolId]);
     if (existing) {
       return NextResponse.json({ error: 'Coordinator already exists for this school' }, { status: 409 });
     }
 
     const row = await db.get<{ id: string }>(
       `INSERT INTO coordinators (
-        school_id, first_name, last_name, gender, dob, pincode, address, image_url, status, email, password,
+        school_id, context, first_name, last_name, gender, dob, pincode, address, image_url, status, email, password,
         highest_school, experience_years, organization, responsibilities, phone, alternate_phone, linkedin, bio
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
       ) RETURNING id`,
       [
-        school_id,
+        finalSchoolId,
+        context || 'school',
         first_name || null,
         last_name || null,
         gender || null,

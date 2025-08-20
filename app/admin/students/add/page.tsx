@@ -30,6 +30,8 @@ export default function AddStudentPage() {
   const [phone, setPhone] = useState("")
   const [parentPhone, setParentPhone] = useState("")
   const [address, setAddress] = useState("")
+  const [stateVal, setStateVal] = useState("")
+  const [district, setDistrict] = useState("")
 
   const stepContent = [
     // Basic Info Step
@@ -124,6 +126,17 @@ export default function AddStudentPage() {
         <Input id="parentPhone" placeholder="Enter parent/guardian phone" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="state">State</Label>
+          <Input id="state" placeholder="Enter state" value={stateVal} onChange={(e) => setStateVal(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="district">District</Label>
+          <Input id="district" placeholder="Enter district" value={district} onChange={(e) => setDistrict(e.target.value)} />
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="address">Address</Label>
         <Textarea id="address" placeholder="Enter address" rows={4} value={address} onChange={(e) => setAddress(e.target.value)} />
@@ -158,6 +171,8 @@ export default function AddStudentPage() {
           phone: phone || null,
           parent_phone: parentPhone,
           address,
+          state: stateVal || null,
+          district: district || null,
         }),
       })
       let data: any = null

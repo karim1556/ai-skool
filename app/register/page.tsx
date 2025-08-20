@@ -3,19 +3,13 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
-import { User, GraduationCap } from "lucide-react"
+import { User } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function RegisterPage() {
   const router = useRouter()
 
-  const handleParentRegistration = () => {
-    router.push("/register/parent")
-  }
-
-  const handleTeacherRegistration = () => {
-    router.push("/register/teacher")
-  }
+  const go = (path: string) => router.push(path)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -23,52 +17,18 @@ export default function RegisterPage() {
 
       <div className="px-4 py-16 md:px-6">
         <div className="mx-auto max-w-4xl text-center">
-          <h1 className="text-4xl font-black text-gray-900 mb-12 md:text-5xl">
-            Choose your account type to get started
+          <h1 className="text-4xl font-black text-gray-900 mb-4 md:text-5xl">
+            New to AiSkool?
           </h1>
+          <p className="text-gray-600 mb-10">Register as an online student or login if you already have an account.</p>
 
-          <div className="mb-8">
-            <Button className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-8 py-3 rounded-full text-lg transition-all duration-200 hover:scale-105 shadow-lg">
-              JOIN WITH A PARENT CODE
+          <div className="flex items-center justify-center gap-4 mb-12">
+            <Button className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold px-6 py-3 rounded-full text-lg" onClick={() => go("/register/online-student")}>
+              <User className="w-5 h-5 mr-2" /> Register here
             </Button>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 max-w-2xl mx-auto">
-            {/* Parent Account */}
-            <Card
-              className="group cursor-pointer border-2 border-gray-200 hover:border-pink-400 hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white"
-              onClick={handleParentRegistration}
-            >
-              <CardContent className="p-8 text-center">
-                <div className="mb-6">
-                  <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <div className="w-16 h-16 rounded-full bg-pink-300 flex items-center justify-center">
-                      <User className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
-                </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Parent</h3>
-                <p className="text-gray-600 font-medium">Best for use at home</p>
-              </CardContent>
-            </Card>
-
-            {/* Teacher Account */}
-            <Card
-              className="group cursor-pointer border-2 border-gray-200 hover:border-sky-400 hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white"
-              onClick={handleTeacherRegistration}
-            >
-              <CardContent className="p-8 text-center">
-                <div className="mb-6">
-                  <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-sky-400 to-sky-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <div className="w-16 h-16 rounded-full bg-sky-300 flex items-center justify-center">
-                      <GraduationCap className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
-                </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Teacher</h3>
-                <p className="text-gray-600 font-medium">Best for the classroom</p>
-              </CardContent>
-            </Card>
+            <Button variant="outline" className="px-6 py-3 rounded-full text-lg" onClick={() => go("/login")}>
+              Login
+            </Button>
           </div>
 
           <div className="mt-8">
