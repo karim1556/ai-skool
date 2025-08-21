@@ -34,10 +34,13 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
+  const schoolId = searchParams.get('schoolId');
   try {
     let rows;
     if (id) {
       rows = await db.all(`SELECT * FROM students WHERE id = $1`, [id]);
+    } else if (schoolId) {
+      rows = await db.all(`SELECT * FROM students WHERE school_id = $1 ORDER BY created_at DESC`, [schoolId]);
     } else {
       rows = await db.all(`SELECT * FROM students ORDER BY created_at DESC`);
     }

@@ -15,8 +15,6 @@ import {
 } from "@/components/ui/dialog"
 import { BookOpen, Calendar, Trophy, LogIn } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { getCurrentMockUser } from "@/lib/mock-auth"
-import { mockStudents } from "@/lib/mock-data"
 
 interface StudentDashboardProps {
   userId: string
@@ -28,15 +26,8 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
   const [sessionCode, setSessionCode] = useState("")
   const [joinSessionOpen, setJoinSessionOpen] = useState(false)
 
-  // Get current student's privileges
-  let privileges: string[] = []
-  if (typeof window !== "undefined") {
-    const user = getCurrentMockUser()
-    if (user) {
-      const student = mockStudents.find((s) => s.email === user.email)
-      if (student) privileges = student.privileges || []
-    }
-  }
+  // Temporary: show all student sections by default (migrated from mock-privileges)
+  const privileges = new Set<string>(["join_session", "view_own_progress"]) 
 
   useEffect(() => {
     fetchStudentData()
@@ -110,7 +101,7 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
           <p className="text-muted-foreground">Your learning journey</p>
         </div>
 
-        {privileges.includes("join_session") && (
+        {privileges.has("join_session") && (
           <Dialog open={joinSessionOpen} onOpenChange={setJoinSessionOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -140,7 +131,7 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
       </div>
 
       {/* Enrolled Batches */}
-      {privileges.includes("view_own_progress") && (
+      {privileges.has("view_own_progress") && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -181,7 +172,7 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
       )}
 
       {/* Available Courses */}
-      {privileges.includes("view_own_progress") && (
+      {privileges.has("view_own_progress") && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -214,7 +205,7 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
       )}
 
       {/* Quick Stats */}
-      {privileges.includes("view_own_progress") && (
+      {privileges.has("view_own_progress") && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

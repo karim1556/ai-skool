@@ -4,12 +4,13 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Calendar, ClipboardList, Building2, BarChart3, Settings, BookOpen } from "lucide-react"
+import { LayoutDashboard, Users, Calendar, ClipboardList, Building2, BarChart3, Settings, BookOpen, GraduationCap } from "lucide-react"
 
 const items = [
   { title: "Dashboard", href: "/coordinator/dashboard", icon: LayoutDashboard },
   { title: "Schools", href: "/coordinator/schools", icon: Building2 },
   { title: "Batches", href: "/coordinator/batches", icon: Calendar },
+  { title: "Trainers", href: "/coordinator/trainers", icon: GraduationCap },
   { title: "Students", href: "/coordinator/students", icon: Users },
   { title: "Assignments", href: "/coordinator/assignments", icon: ClipboardList },
   { title: "Reports", href: "/coordinator/reports", icon: BarChart3 },
