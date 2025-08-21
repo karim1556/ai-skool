@@ -3,6 +3,9 @@ import './globals.css'
 import { Header } from '@/components/ui/header'
 import { Footer } from '@/components/ui/footer'
 import ClientOnly from '@/components/ClientOnly'
+import {
+  ClerkProvider,
+} from '@clerk/nextjs'
 
 export const metadata: Metadata = {
   title: 'karims skool',
@@ -16,6 +19,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
+    <ClerkProvider>
     <html lang="en" suppressHydrationWarning>
       <body>
         <ClientOnly>
@@ -27,5 +31,6 @@ export default function RootLayout({
         </ClientOnly>
       </body>
     </html>
+    </ClerkProvider>
   )
 }
