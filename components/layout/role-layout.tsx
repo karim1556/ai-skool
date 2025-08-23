@@ -6,7 +6,7 @@ import { LogOut, ArrowLeft, Bell, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { getCurrentUser, signOut } from "@/lib/auth"
-import { UserButton } from "@clerk/nextjs"
+import { UserButton,  OrganizationSwitcher } from "@clerk/nextjs"
 
 interface RoleLayoutProps {
   children: React.ReactNode
@@ -103,6 +103,7 @@ export function RoleLayout({ children, title = "Aiskool LMS", subtitle = "Dashbo
                   <p className="text-xs text-gray-500 capitalize">{user?.role || ""}</p>
                 </div> */}
                  <UserButton/>
+                 <OrganizationSwitcher />
               </div>
               {/* <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
