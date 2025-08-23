@@ -6,6 +6,7 @@ import { LogOut, ArrowLeft, Bell, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { getCurrentUser, signOut } from "@/lib/auth"
+import { UserButton } from "@clerk/nextjs"
 
 interface RoleLayoutProps {
   children: React.ReactNode
@@ -97,18 +98,16 @@ export function RoleLayout({ children, title = "Aiskool LMS", subtitle = "Dashbo
                 <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">3</Badge>
               </Button>
               <div className="flex items-center gap-2 md:gap-3">
-                <div className="text-right">
+                {/* <div className="text-right">
                   <p className="text-xs md:text-sm font-medium">{user?.name || "User"}</p>
                   <p className="text-xs text-gray-500 capitalize">{user?.role || ""}</p>
-                </div>
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">{user?.name?.charAt(0) || "U"}</span>
-                </div>
+                </div> */}
+                 <UserButton/>
               </div>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
+              {/* <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Sign Out</span>
-              </Button>
+              </Button> */}
             </div>
           </div>
         </header>

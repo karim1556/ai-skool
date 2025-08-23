@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase"
 import { getCurrentUser } from "@/lib/auth"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Protect } from "@clerk/nextjs"
 
 export default function CoordinatorDashboard() {
   const { counts } = useDashboardStats()
@@ -157,6 +158,10 @@ export default function CoordinatorDashboard() {
   ]
 
   return (
+    <Protect
+    role="schoolcoordinator"
+    fallback={<p>Access denied</p>}
+    >
     <RoleLayout title="Aiskool LMS" subtitle="Coordinator Dashboard" Sidebar={CoordinatorSidebar}>
       <StandardDashboard
         title="Dashboard"
@@ -297,5 +302,6 @@ export default function CoordinatorDashboard() {
         <Link href="/coordinator/assign-trainer"><Button variant="secondary">Assign Trainer</Button></Link>
       </div>
     </RoleLayout>
+    </Protect>
   )
 }

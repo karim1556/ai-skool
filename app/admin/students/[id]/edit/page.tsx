@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { User, Lock, Share2, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Protect } from "@clerk/nextjs"
 
 export default function EditStudentPage() {
   const router = useRouter()
@@ -206,10 +207,12 @@ export default function EditStudentPage() {
   }
 
   return (
+    <Protect role="admin" fallback={<p>Access denied</p>}>
     <AdminLayout>
       <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </AdminLayout>
+    </Protect>
   )
 }

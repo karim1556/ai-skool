@@ -7,6 +7,7 @@ import { LogOut, ArrowLeft, Bell, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { signOutMock, getCurrentMockUser } from "@/lib/mock-auth"
 import { Badge } from "@/components/ui/badge"
+import { UserButton } from "@clerk/nextjs"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -83,9 +84,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   <p className="text-xs md:text-sm font-medium">{user?.name}</p>
                   <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
                 </div>
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">{user?.name?.charAt(0) || "A"}</span>
-                </div>
+                <UserButton/>
               </div>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />

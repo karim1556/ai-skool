@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { getCurrentUser } from "@/lib/auth"
+import { Protect } from "@clerk/nextjs"
 
 export default function CoordinatorBatchesPage() {
   const [schoolId, setSchoolId] = useState<string | null>(null)
@@ -50,6 +51,10 @@ export default function CoordinatorBatchesPage() {
   }, [])
 
   return (
+    <Protect
+    role="schoolcoordinator"
+    fallback={<p>Access denied</p>}
+    >
     <RoleLayout title="Aiskool LMS" subtitle="Batches" Sidebar={CoordinatorSidebar}>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Batches</h1>
@@ -86,5 +91,6 @@ export default function CoordinatorBatchesPage() {
         </CardContent>
       </Card>
     </RoleLayout>
+    </Protect>
   )
 }

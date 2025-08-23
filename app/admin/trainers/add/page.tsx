@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { Protect } from "@clerk/nextjs"
 
 export default function AddTrainerPage() {
   const router = useRouter()
@@ -307,10 +308,12 @@ export default function AddTrainerPage() {
   ]
 
   return (
+    <Protect role="admin" fallback={<p>Access denied</p>}>  
     <AdminLayout>
       <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </AdminLayout>
+    </Protect>
   )
 }

@@ -9,6 +9,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { ActionDropdown } from "@/components/ui/action-dropdown"
 import { Plus } from "lucide-react"
 import { mockAssignments } from "@/lib/mock-data"
+import { Protect } from "@clerk/nextjs"
 
 export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState(mockAssignments)
@@ -26,6 +27,10 @@ export default function AssignmentsPage() {
   }
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -94,5 +99,6 @@ export default function AssignmentsPage() {
         </Card>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

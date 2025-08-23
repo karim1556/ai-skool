@@ -9,6 +9,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { ActionDropdown } from "@/components/ui/action-dropdown"
 import { Calendar } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Protect } from "@clerk/nextjs"
 
 export default function EnrolHistoryPage() {
   const { toast } = useToast()
@@ -43,6 +44,10 @@ export default function EnrolHistoryPage() {
   }
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="space-y-6">
         <div>
@@ -126,5 +131,6 @@ export default function EnrolHistoryPage() {
         </Card>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

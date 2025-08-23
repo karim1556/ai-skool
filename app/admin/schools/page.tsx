@@ -10,6 +10,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { ActionDropdown } from "@/components/ui/action-dropdown"
 import { Plus } from "lucide-react"
 import Link from "next/link"
+import { Protect } from "@clerk/nextjs"
 
 type Row = {
   id: string | number
@@ -74,6 +75,7 @@ export default function SchoolsPage() {
   }
 
   return (
+    <Protect role="admin" fallback={<p>Access denied</p>}>
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -150,5 +152,6 @@ export default function SchoolsPage() {
         </Card>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

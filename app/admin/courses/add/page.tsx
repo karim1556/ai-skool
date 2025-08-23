@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, CheckCircle, PlusCircle, Trash2 } from "lucide-react"
+import { Protect } from "@clerk/nextjs"
 
 export default function AddCoursePage() {
   const router = useRouter()
@@ -419,6 +420,10 @@ export default function AddCoursePage() {
   ]
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -436,5 +441,6 @@ export default function AddCoursePage() {
         </div>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { Protect } from "@clerk/nextjs"
 
 export default function EnrolStudentPage() {
   const { toast } = useToast()
@@ -57,6 +58,10 @@ export default function EnrolStudentPage() {
   }
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="space-y-6">
         <div>
@@ -108,5 +113,6 @@ export default function EnrolStudentPage() {
         </div>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

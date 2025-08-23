@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
+import { Protect } from "@clerk/nextjs"
 
 export default function AssignTrainerPage() {
   const router = useRouter()
@@ -91,6 +92,10 @@ export default function AssignTrainerPage() {
   }
 
   return (
+    <Protect
+    role="schoolcoordinator"
+    fallback={<p>Access denied</p>}
+    >
     <RoleLayout title="Coordinator" subtitle="Assign Trainer to Batch" Sidebar={CoordinatorSidebar}>
       <div className="max-w-3xl space-y-6">
         <Card className="p-4 space-y-4">
@@ -152,5 +157,6 @@ export default function AssignTrainerPage() {
         </Card>
       </div>
     </RoleLayout>
+    </Protect>
   )
 }

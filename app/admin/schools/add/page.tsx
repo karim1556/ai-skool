@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { SchoolForm, type SchoolFormValues } from "@/components/admin/schools/school-form"
+import { Protect } from "@clerk/nextjs"
 
 export default function AddSchoolPage() {
   const router = useRouter()
@@ -44,8 +45,10 @@ export default function AddSchoolPage() {
   }
 
   return (
+    <Protect role="admin" fallback={<p>Access denied</p>}>
     <AdminLayout>
       <SchoolForm onSubmit={onSubmit} submitting={submitting} submitLabel="Save School" />
     </AdminLayout>
+    </Protect>
   )
 }

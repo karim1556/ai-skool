@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Lock, GraduationCap, Share2, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Protect } from "@clerk/nextjs"
 
 export default function CoordinatorAddTrainerPage() {
   const router = useRouter()
@@ -274,10 +275,15 @@ export default function CoordinatorAddTrainerPage() {
   ]
 
   return (
+    <Protect
+    role="schoolcoordinator"
+    fallback={<p>Access denied</p>}
+    >
     <RoleLayout title="Coordinator" subtitle="Add Trainer" Sidebar={CoordinatorSidebar}>
       <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </RoleLayout>
+    </Protect>
   )
 }

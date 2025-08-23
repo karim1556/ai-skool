@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Eye, Mail, Phone } from "lucide-react"
+import { Protect } from "@clerk/nextjs"
 
 export default function InstructorsPage() {
   const instructors = [
@@ -42,6 +43,10 @@ export default function InstructorsPage() {
   ]
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -104,5 +109,6 @@ export default function InstructorsPage() {
         </div>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

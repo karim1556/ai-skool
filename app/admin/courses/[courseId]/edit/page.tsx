@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, CheckCircle, Edit } from "lucide-react"
+import { Protect } from "@clerk/nextjs"
 
 export default function EditCoursePage() {
   const router = useRouter()
@@ -107,9 +108,14 @@ export default function EditCoursePage() {
 
   if (!courseData) {
     return (
+      <Protect
+      role="admin"
+      fallback={<p>Access denied</p>}
+      >
       <AdminLayout>
         <div>Loading...</div>
       </AdminLayout>
+      </Protect>
     )
   }
 
@@ -370,6 +376,10 @@ export default function EditCoursePage() {
   ];
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
@@ -388,5 +398,6 @@ export default function EditCoursePage() {
         </MultiStepForm>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

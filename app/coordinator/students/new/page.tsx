@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { User, Lock, Share2, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Protect } from "@clerk/nextjs"
 
 export default function CoordinatorAddStudentPage() {
   const steps = [
@@ -157,10 +158,15 @@ export default function CoordinatorAddStudentPage() {
   }
 
   return (
+    <Protect
+    role="schoolcoordinator"
+    fallback={<p>Access denied</p>}
+    >
     <RoleLayout title="Coordinator" subtitle="Add Student" Sidebar={CoordinatorSidebar}>
       <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </RoleLayout>
+    </Protect>
   )
 }

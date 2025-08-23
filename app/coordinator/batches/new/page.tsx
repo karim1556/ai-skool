@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Users, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Protect } from "@clerk/nextjs" 
 
 export default function CoordinatorAddBatchPage() {
   const router = useRouter()
@@ -238,10 +239,15 @@ export default function CoordinatorAddBatchPage() {
   }
 
   return (
+    <Protect
+    role="schoolcoordinator"
+    fallback={<p>Access denied</p>}
+    >
     <RoleLayout title="Coordinator" subtitle="Create Batch" Sidebar={CoordinatorSidebar}>
       <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </RoleLayout>
+    </Protect>
   )
 }

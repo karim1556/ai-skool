@@ -10,6 +10,7 @@ import { User, Lock, Share2, CheckCircle } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
+import { Protect } from "@clerk/nextjs"
 
 export default function AddStudentPage() {
   const steps = [
@@ -193,11 +194,13 @@ export default function AddStudentPage() {
   }
 
   return (
+    <Protect role="admin" fallback={<p>Access denied</p>}>
     <AdminLayout>
       <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </AdminLayout>
+    </Protect>
   )
 }
 

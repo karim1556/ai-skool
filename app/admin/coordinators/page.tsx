@@ -11,6 +11,7 @@ import { Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Protect } from "@clerk/nextjs"
 
 export default function CoordinatorsPage() {
   const router = useRouter()
@@ -89,6 +90,10 @@ export default function CoordinatorsPage() {
   }
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -159,6 +164,7 @@ export default function CoordinatorsPage() {
         </Card>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }
 

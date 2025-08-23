@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Protect } from "@clerk/nextjs"
 
 export default function AddBatchPage() {
   const router = useRouter()
@@ -254,11 +255,16 @@ export default function AddBatchPage() {
   }
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <MultiStepForm steps={steps} onComplete={handleComplete}>
         {stepContent}
       </MultiStepForm>
     </AdminLayout>
+    </Protect>
   )
 }
 

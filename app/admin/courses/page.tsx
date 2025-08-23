@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { Protect } from "@clerk/nextjs"
 
 export default function CoursesPage() {
   const router = useRouter()
@@ -91,6 +92,10 @@ export default function CoursesPage() {
   }
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -163,5 +168,6 @@ export default function CoursesPage() {
         </DataTable>
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

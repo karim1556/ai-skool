@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { SchoolForm, type SchoolFormValues } from "@/components/admin/schools/school-form"
+import { Protect } from "@clerk/nextjs"
 
 export default function EditSchoolPage() {
   const { id } = useParams<{ id: string }>()
@@ -107,6 +108,7 @@ export default function EditSchoolPage() {
   }
 
   return (
+    <Protect role="admin" fallback={<p>Access denied</p>}>
     <AdminLayout>
       {loading ? (
         <div className="text-gray-500">Loading...</div>
@@ -114,5 +116,6 @@ export default function EditSchoolPage() {
         <SchoolForm initial={initial} onSubmit={onSubmit} submitting={saving} submitLabel="Save Changes" />
       )}
     </AdminLayout>
+    </Protect>
   )
 }
