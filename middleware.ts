@@ -5,13 +5,10 @@ import { NextResponse } from 'next/server'
 const isInstructorRoute = createRouteMatcher(['/instructor(.*)'])
 const isTrainerRoute = createRouteMatcher(['/trainer(.*)'])
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
-<<<<<<< HEAD
-const isCampCoordinatorRoute = createRouteMatcher(['/campCoordinator(.*)'])
-=======
 const isCoordinatorRoute = createRouteMatcher(['/coordinator(.*)'])
 const isStudentRoute = createRouteMatcher(['/student(.*)'])
 const isCampCoordinatorRoute = createRouteMatcher(['/camp-coordinator(.*)'])
->>>>>>> f19ddb63bf9239caf09c7b7f2ce9ce5eefbd7cd2
+
 
 export default clerkMiddleware(async (auth, req) => {
   // Debug trace for routing in development
