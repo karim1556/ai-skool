@@ -6,41 +6,57 @@ import { CoordinatorSidebar } from "@/components/layout/coordinator-sidebar"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { getCurrentUser } from "@/lib/auth"
-import { Protect } from "@clerk/nextjs"
+import { ActionDropdown } from "@/components/ui/action-dropdown"
+import { Protect, useAuth, useOrganization } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 
 export default function CoordinatorStudentsPage() {
+  const router = useRouter()
+  const { organization, isLoaded: orgLoaded } = useOrganization()
+  const { isSignedIn, isLoaded: authLoaded } = useAuth()
   const [schoolId, setSchoolId] = useState<string | null>(null)
   const [students, setStudents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [schoolName, setSchoolName] = useState<string | null>(null)
+
+  const reload = async () => {
+    try {
+      const res = await fetch(`/api/students`, { cache: 'no-store' })
+      if (!res.ok) throw new Error('Failed to load students')
+      const data = await res.json()
+      setStudents(Array.isArray(data) ? data : [])
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load students')
+    }
+  }
 
   useEffect(() => {
+    if (!authLoaded || !orgLoaded) return
+    if (!isSignedIn || !organization?.id) return
     let active = true
     ;(async () => {
       setLoading(true)
       setError(null)
       try {
-        const cu = await getCurrentUser()
-        const email = (cu?.profile as any)?.email || cu?.user?.email
-        if (!email) throw new Error("Not logged in")
-
-        const coordRes = await fetch("/api/coordinators", { cache: "no-store" })
-        if (!coordRes.ok) throw new Error("Failed to load coordinators")
-        const coordinators = (await coordRes.json()) as any[]
-        const me = coordinators.find((c) => (c?.email || "").toLowerCase() === String(email).toLowerCase())
-        if (!me?.school_id) throw new Error("Coordinator record not found or no school assigned")
+        try { await fetch('/api/sync/me', { method: 'POST', cache: 'no-store' }) } catch {}
+        const sres = await fetch('/api/me/school', { cache: 'no-store' })
+        if (!sres.ok) throw new Error('Failed to resolve school')
+        const school = await sres.json()
+        const sid = school?.schoolId
+        if (!sid) throw new Error('No school linked to this organization')
         if (!active) return
-        setSchoolId(me.school_id)
+        setSchoolId(sid)
+        setSchoolName(school?.name ?? null)
 
-        const res = await fetch(`/api/students?schoolId=${encodeURIComponent(me.school_id)}`, { cache: "no-store" })
-        if (!res.ok) throw new Error("Failed to load students")
+        const res = await fetch(`/api/students`, { cache: 'no-store' })
+        if (!res.ok) throw new Error('Failed to load students')
         const data = await res.json()
         if (!active) return
         setStudents(Array.isArray(data) ? data : [])
       } catch (e: any) {
         if (!active) return
-        setError(e?.message || "Failed to load students")
+        setError(e?.message || 'Failed to load students')
       } finally {
         if (active) setLoading(false)
       }
@@ -48,7 +64,9 @@ export default function CoordinatorStudentsPage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [authLoaded, orgLoaded, isSignedIn, organization?.id])
+
+  const schoolDisplay = schoolName && schoolName !== 'Unnamed School' ? schoolName : (organization?.name || (schoolId ?? null))
 
   return (
     <Protect
@@ -67,21 +85,53 @@ export default function CoordinatorStudentsPage() {
         <CardHeader>
           <CardTitle>Your School Students</CardTitle>
           <CardDescription>
-            {loading ? "Loading..." : error ? error : schoolId ? `School ID: ${schoolId}` : "No school linked"}
+            {loading ? "Loading..." : error ? error : schoolDisplay ? `School: ${schoolDisplay}` : "No school linked"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {!loading && !error && (
-            <div className="divide-y rounded-md border">
-              {students.length === 0 && (
-                <div className="p-3 text-sm text-muted-foreground">No students found</div>
-              )}
-              {students.map((s) => (
-                <div key={s.id} className="p-3 text-sm">
-                  <div className="font-medium">{`${s.first_name || ""} ${s.last_name || ""}`.trim() || s.email || s.id}</div>
-                  <div className="text-xs text-muted-foreground">{s.email || ""}</div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Name</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Email</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Phone</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.length === 0 && (
+                    <tr><td className="py-3 px-4 text-sm text-muted-foreground" colSpan={5}>No students found</td></tr>
+                  )}
+                  {students.map((s, idx) => (
+                    <tr key={s.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4">{idx + 1}</td>
+                      <td className="py-3 px-4 font-medium">{`${s.first_name || ""} ${s.last_name || ""}`.trim() || s.email || s.id}</td>
+                      <td className="py-3 px-4">{s.email || "—"}</td>
+                      <td className="py-3 px-4">{s.phone ? String(s.phone) : "—"}</td>
+                      <td className="py-3 px-4 text-right">
+                        <ActionDropdown
+                          onView={() => router.push(`/coordinator/students/${s.id}`)}
+                          onEdit={() => router.push(`/coordinator/students/${s.id}/edit`)}
+                          onDelete={async () => {
+                            const ok = confirm('Delete this student?')
+                            if (!ok) return
+                            const res = await fetch(`/api/students?id=${encodeURIComponent(s.id)}`, { method: 'DELETE' })
+                            if (res.ok) {
+                              reload()
+                            } else {
+                              const j = await res.json().catch(() => ({} as any))
+                              alert(j?.error || 'Failed to delete')
+                            }
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

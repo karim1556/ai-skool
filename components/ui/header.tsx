@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info } from "lucide-react"
+import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 import { useState } from "react"
 
 export function Header() {
@@ -132,6 +133,13 @@ export function Header() {
 
         {/* Right Side Actions */}
         <div className="flex items-center space-x-3">
+          {/* Org Switcher + User when signed in */}
+          <SignedIn>
+            <div className="hidden md:flex items-center gap-3">
+              <OrganizationSwitcher />
+              <UserButton />
+            </div>
+          </SignedIn>
           {/* Shopping Cart */}
           <Link href="/cart">
             <Button
@@ -148,22 +156,24 @@ export function Header() {
             </Button>
           </Link>
 
-          {/* Login/Register - Desktop */}
-          <div className="hidden md:flex items-center space-x-3">
-            <Link href="/login">
-              <Button
-                variant="outline"
-                className="rounded-full border-2 border-pink-400 px-6 py-2.5 text-sm font-semibold text-pink-500 hover:bg-pink-50 bg-transparent transition-all duration-200 hover:scale-105"
-              >
-                LOG IN
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button className="rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white hover:from-pink-600 hover:to-purple-700 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl">
-                REGISTER
-              </Button>
-            </Link>
-          </div>
+          {/* Login/Register - Desktop (only when signed out) */}
+          <SignedOut>
+            <div className="hidden md:flex items-center space-x-3">
+              <Link href="/login">
+                <Button
+                  variant="outline"
+                  className="rounded-full border-2 border-pink-400 px-6 py-2.5 text-sm font-semibold text-pink-500 hover:bg-pink-50 bg-transparent transition-all duration-200 hover:scale-105"
+                >
+                  LOG IN
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button className="rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white hover:from-pink-600 hover:to-purple-700 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl">
+                  REGISTER
+                </Button>
+              </Link>
+            </div>
+          </SignedOut>
 
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

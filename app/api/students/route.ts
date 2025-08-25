@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, sql } from '@/lib/db';
+import { auth } from '@clerk/nextjs/server'
 
 export const dynamic = 'force-dynamic';
 
@@ -34,15 +35,17 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  const schoolId = searchParams.get('schoolId');
+  const { orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
+  const schoolRow = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
+  if (!schoolRow?.id) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
+  const schoolId = schoolRow.id
   try {
     let rows;
     if (id) {
-      rows = await db.all(`SELECT * FROM students WHERE id = $1`, [id]);
-    } else if (schoolId) {
-      rows = await db.all(`SELECT * FROM students WHERE school_id = $1 ORDER BY created_at DESC`, [schoolId]);
+      rows = await db.all(`SELECT * FROM students WHERE id = $1 AND school_id = $2`, [id, schoolId]);
     } else {
-      rows = await db.all(`SELECT * FROM students ORDER BY created_at DESC`);
+      rows = await db.all(`SELECT * FROM students WHERE school_id = $1 ORDER BY created_at DESC`, [schoolId]);
     }
     return NextResponse.json(rows);
   } catch (e: any) {
@@ -67,8 +70,12 @@ export async function POST(req: NextRequest) {
       address,
       state,
       district,
-      school_id,
     } = body || {};
+
+    const { orgId } = await auth()
+    if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
+    const schoolRow = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
+    if (!schoolRow?.id) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
 
     const row = await db.get<{ id: string }>(
       `INSERT INTO students (
@@ -88,7 +95,7 @@ export async function POST(req: NextRequest) {
         address || null,
         state || null,
         district || null,
-        school_id || null,
+        schoolRow.id,
       ]
     );
 
@@ -118,7 +125,11 @@ export async function PATCH(req: NextRequest) {
       }
     }
     if (fields.length === 0) return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
-    await db.run(`UPDATE students SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${fields.length + 1}`, [...values, id]);
+    const { orgId } = await auth()
+    if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
+    const schoolRow = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
+    if (!schoolRow?.id) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
+    await db.run(`UPDATE students SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${fields.length + 1} AND school_id = $${fields.length + 2}`, [...values, id, schoolRow.id]);
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to update student' }, { status: 500 });
@@ -132,7 +143,11 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
-    await db.run(`DELETE FROM students WHERE id = $1`, [id]);
+    const { orgId } = await auth()
+    if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
+    const schoolRow = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
+    if (!schoolRow?.id) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
+    await db.run(`DELETE FROM students WHERE id = $1 AND school_id = $2`, [id, schoolRow.id]);
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to delete student' }, { status: 500 });

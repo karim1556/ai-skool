@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Protect } from "@clerk/nextjs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function TrainersPage() {
   const router = useRouter()
@@ -28,22 +29,34 @@ export default function TrainersPage() {
     status?: string | null
   }>>([])
   const [schoolNameById, setSchoolNameById] = useState<Record<string, string>>({})
+  const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>("")
 
   useEffect(() => {
-    const load = async () => {
+    const loadInitial = async () => {
       try {
-        const [rowsRes, schoolsRes] = await Promise.all([
-          fetch("/api/trainers", { cache: "no-store" }),
-          fetch("/api/schools", { cache: "no-store" }),
-        ])
-        const [rows, schools] = await Promise.all([rowsRes.json(), schoolsRes.json()])
+        const schoolsRes = await fetch("/api/schools", { cache: "no-store" })
+        const schools = await schoolsRes.json()
         if (Array.isArray(schools)) {
           const map: Record<string, string> = {}
           for (const s of schools) {
             if (s?.id) map[s.id] = s.name ?? s.id
           }
           setSchoolNameById(map)
+          setSchools(schools)
         }
+      } catch (_) {}
+    }
+    loadInitial()
+  }, [])
+
+  // Load trainers when selectedSchoolId changes (or initial when not selected)
+  useEffect(() => {
+    const loadTrainers = async () => {
+      try {
+        const url = selectedSchoolId ? `/api/trainers?schoolId=${selectedSchoolId}` : `/api/trainers`
+        const rowsRes = await fetch(url, { cache: "no-store" })
+        const rows = await rowsRes.json()
         if (Array.isArray(rows)) {
           const mapped = rows.map((r: any) => ({
             id: r.id,
@@ -57,11 +70,15 @@ export default function TrainersPage() {
             status: r.status ?? null,
           }))
           setTrainers(mapped)
+        } else {
+          setTrainers([])
         }
-      } catch (_) {}
+      } catch (_) {
+        setTrainers([])
+      }
     }
-    load()
-  }, [])
+    loadTrainers()
+  }, [selectedSchoolId])
 
   const handleView = (id: string) => {
     console.log("View trainer:", id)
@@ -75,7 +92,8 @@ export default function TrainersPage() {
     const ok = typeof window !== 'undefined' ? window.confirm('Are you sure you want to delete this trainer?') : true
     if (!ok) return
     try {
-      const res = await fetch(`/api/trainers?id=${id}`, { method: 'DELETE' })
+      const schoolParam = selectedSchoolId ? `&schoolId=${selectedSchoolId}` : ''
+      const res = await fetch(`/api/trainers?id=${id}${schoolParam}`, { method: 'DELETE' })
       let data: any = null
       try { data = await res.json() } catch (_) {}
       if (!res.ok) {
@@ -98,7 +116,7 @@ export default function TrainersPage() {
             <h1 className="text-3xl font-bold">Trainer</h1>
           </div>
           <Button asChild>
-            <Link href="/admin/trainers/add">
+            <Link href={selectedSchoolId ? `/admin/trainers/add?schoolId=${selectedSchoolId}` : "/admin/trainers/add"}>
               <Plus className="h-4 w-4 mr-2" />
               Add Trainer
             </Link>
@@ -110,6 +128,20 @@ export default function TrainersPage() {
             <CardTitle>TRAINER</CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex items-center gap-3">
+              <div className="w-72">
+                <Select value={selectedSchoolId} onValueChange={setSelectedSchoolId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by school" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schools.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name || s.id}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <DataTable data={trainers} searchFields={["name", "email", "phone", "institute"]} title="Trainers">
               {(paginatedTrainers) => (
                 <div className="overflow-x-auto">

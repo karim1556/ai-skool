@@ -25,12 +25,31 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const allowed = new Set([
     "name","tagline","description","logo_url","banner_url","website","email","phone",
     "address_line1","address_line2","city","state","country","postal_code",
-    "principal","established_year","student_count","accreditation","social_links",
+    "principal","established_year","student_count","accreditation","social_links","clerk_org_id",
     "banner_focal_x","banner_focal_y"
   ]);
 
   // Helper to persist
   const persist = async (data: Record<string, any>) => {
+    // Normalize clerk_org_id if provided and enforce uniqueness
+    if (Object.prototype.hasOwnProperty.call(data, 'clerk_org_id')) {
+      let orgVal = data['clerk_org_id'];
+      if (typeof orgVal === 'string') {
+        orgVal = orgVal.trim();
+        if (orgVal === '') orgVal = null;
+      }
+      // If binding (non-null), ensure no other school is already bound
+      if (orgVal != null) {
+        const existing = await db.get<{ id: string }>(
+          'SELECT id FROM schools WHERE clerk_org_id = $1 AND id <> $2',
+          [orgVal, params.id]
+        );
+        if (existing?.id) {
+          return NextResponse.json({ error: 'This Clerk organization is already bound to another school.' }, { status: 409 });
+        }
+      }
+      data['clerk_org_id'] = orgVal;
+    }
     const sets: string[] = [];
     const values: any[] = [];
     let idx = 1;

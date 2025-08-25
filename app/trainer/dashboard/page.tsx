@@ -1,72 +1,171 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import StandardDashboard from "@/components/dashboard/StandardDashboard"
 import { BookOpen, Video, UserCheck, Users, GraduationCap, Calendar } from "lucide-react"
 import { RoleLayout } from "@/components/layout/role-layout"
 import { TrainerSidebar } from "@/components/layout/trainer-sidebar"
 import { useDashboardStats } from "@/hooks/use-dashboard-stats"
-import { supabase } from "@/lib/supabase"
-import { getCurrentUser } from "@/lib/auth"
+import { OrganizationSwitcher, useAuth, useOrganization, useUser } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 
 export default function TrainerDashboard() {
   const { counts } = useDashboardStats()
-  const [activeSessions, setActiveSessions] = useState<number>(0)
-  const [myBatches, setMyBatches] = useState<number>(0)
+  const { isSignedIn, isLoaded: authLoaded } = useAuth()
+  const { organization, isLoaded: orgLoaded } = useOrganization()
+  const { user, isLoaded: userLoaded } = useUser()
+  const router = useRouter()
 
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [schoolId, setSchoolId] = useState<string | null>(null)
+  const [schoolName, setSchoolName] = useState<string | null>(null)
+  const [trainers, setTrainers] = useState<any[]>([])
+  const [students, setStudents] = useState<any[]>([])
+  const [batches, setBatches] = useState<any[]>([])
+
+  // One-time sync
   useEffect(() => {
-    let mounted = true
+    if (!authLoaded || !orgLoaded) return
+    if (!isSignedIn || !organization?.id) return
+    let done = false
     ;(async () => {
-      const data = await getCurrentUser()
-      const trainerId = data?.user?.id
-      if (!trainerId) return
-      const { count } = await supabase
-        .from("sessions")
-        .select("id", { count: "exact", head: true })
-        .eq("trainer_id", trainerId)
-        .eq("status", "active")
-      if (mounted) setActiveSessions(count ?? 0)
-
-      // My Batches count
-      const { count: batchesCount } = await supabase
-        .from("batches")
-        .select("id", { count: "exact", head: true })
-        .eq("trainer_id", trainerId)
-      if (mounted) setMyBatches(batchesCount ?? 0)
+      if (done) return
+      try { await fetch('/api/sync/me', { method: 'POST', cache: 'no-store' }) } catch {}
+      done = true
     })()
-    return () => {
-      mounted = false
-    }
-  }, [])
+  }, [authLoaded, orgLoaded, isSignedIn, organization?.id])
+
+  // Load school-scoped data
+  useEffect(() => {
+    if (!authLoaded || !orgLoaded || !userLoaded) return
+    if (!isSignedIn || !organization?.id) return
+    let active = true
+    ;(async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        try { await fetch('/api/sync/me', { method: 'POST', cache: 'no-store' }) } catch {}
+        const schoolRes = await fetch('/api/me/school', { cache: 'no-store' })
+        if (!schoolRes.ok) throw new Error('Failed to resolve school')
+        const school = await schoolRes.json()
+        const sid = school?.schoolId
+        if (!sid) throw new Error('No school linked to this organization')
+        if (!active) return
+        setSchoolId(sid)
+        setSchoolName(school?.name ?? null)
+
+        const [bRes, tRes, sRes] = await Promise.all([
+          fetch(`/api/batches?schoolId=${encodeURIComponent(sid)}`, { cache: 'no-store' }),
+          fetch(`/api/trainers?schoolId=${encodeURIComponent(sid)}`, { cache: 'no-store' }),
+          fetch(`/api/students?schoolId=${encodeURIComponent(sid)}`, { cache: 'no-store' }),
+        ])
+        if (!bRes.ok) throw new Error('Failed to load batches')
+        if (!tRes.ok) throw new Error('Failed to load trainers')
+        if (!sRes.ok) throw new Error('Failed to load students')
+        const [bjson, tjson, sjson] = await Promise.all([bRes.json(), tRes.json(), sRes.json()])
+        if (!active) return
+        setBatches(Array.isArray(bjson) ? bjson : [])
+        setTrainers(Array.isArray(tjson) ? tjson : [])
+        setStudents(Array.isArray(sjson) ? sjson : [])
+      } catch (e:any) {
+        if (!active) return
+        setError(e?.message || 'Failed to load trainer data')
+      } finally {
+        if (active) setLoading(false)
+      }
+    })()
+    return () => { active = false }
+  }, [authLoaded, orgLoaded, userLoaded, isSignedIn, organization?.id])
+
+  // Identify current trainer record by email match
+  const myTrainer = useMemo(() => {
+    const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase()
+    if (!email) return null
+    return trainers.find((t:any) => (t.email || '').toLowerCase() === email) || null
+  }, [trainers, user?.primaryEmailAddress?.emailAddress])
+
+  // Filter my batches by membership in batch_trainers
+  const myTrainerId = myTrainer?.id as string | undefined
+  const myBatchesList = useMemo(() => {
+    if (!myTrainerId) return [] as any[]
+    return batches.filter((b:any) => {
+      const ids = b.trainer_ids ? String(b.trainer_ids).split(',').filter(Boolean) : []
+      return ids.includes(myTrainerId)
+    })
+  }, [batches, myTrainerId])
+
+  const schoolDisplay = schoolName && schoolName !== 'Unnamed School' ? schoolName : (organization?.name || (schoolId ?? null))
 
   const stats = [
-    { label: "Courses", value: counts.courses, icon: <BookOpen className="h-8 w-8" />, hint: "+2 from last month" },
-    { label: "Lessons", value: counts.lessons, icon: <Video className="h-8 w-8" />, hint: "+12 from last week" },
-    { label: "Enrollments", value: counts.enrollments, icon: <UserCheck className="h-8 w-8" />, hint: "+5 yesterday" },
-    { label: "Students", value: counts.students, icon: <Users className="h-8 w-8" />, hint: "+8 last week" },
+    { label: "My Batches", value: myBatchesList.length, icon: <Calendar className="h-8 w-8" /> },
+    { label: "Students", value: students.length, icon: <Users className="h-8 w-8" /> },
+    { label: "Courses", value: counts.courses, icon: <BookOpen className="h-8 w-8" /> },
+    { label: "Lessons", value: counts.lessons, icon: <Video className="h-8 w-8" /> },
   ]
 
   const secondaryStats = [
-    { label: "Trainers", value: counts.trainers, icon: <GraduationCap className="h-8 w-8" /> },
-    { label: "Active Sessions", value: activeSessions, icon: <Calendar className="h-8 w-8" /> },
-    { label: "My Batches", value: myBatches, icon: <Users className="h-8 w-8" /> },
     { label: "Assignments", value: counts.assignments, icon: <Calendar className="h-8 w-8" /> },
+    { label: "Trainers", value: trainers.length, icon: <GraduationCap className="h-8 w-8" /> },
   ]
 
   const activeCourses = counts.activeCourses
   const pendingCourses = counts.pendingCourses
 
   const activities = [
-    { color: "bg-blue-50 hover:bg-blue-100 text-blue-600", title: "New assignment posted", description: "React Components assignment added to Web Dev batch", time: "2 hours ago" },
-    { color: "bg-green-50 hover:bg-green-100 text-green-600", title: "Batch attendance updated", description: "Attendance marked for Web Dev Batch 2024-A", time: "4 hours ago" },
+    { color: "bg-blue-50 hover:bg-blue-100 text-blue-600", title: "Welcome", description: schoolDisplay ? `School: ${schoolDisplay}` : "", time: "" },
   ]
 
+  // Build message students handler: collect emails of students in my batches
+  const messageStudents = () => {
+    const myId = myTrainerId
+    if (!myId) return
+    const allowedIds = new Set<string>()
+    for (const b of batches) {
+      const tids = b.trainer_ids ? String(b.trainer_ids).split(',').filter(Boolean) : []
+      if (tids.includes(myId)) {
+        const sids = b.student_ids ? String(b.student_ids).split(',').filter(Boolean) : []
+        sids.forEach((id:string) => allowedIds.add(id))
+      }
+    }
+    const emails = students.filter((s:any) => allowedIds.has(s.id)).map((s:any) => s.email).filter(Boolean)
+    const mailto = `mailto:?bcc=${encodeURIComponent(emails.join(','))}&subject=${encodeURIComponent('Message from Trainer')}`
+    window.location.href = mailto
+  }
+
   const quickActions = [
-    { label: "Create Session" },
-    { label: "Post Assignment" },
-    { label: "Grade Submissions" },
-    { label: "Message Students" },
+    { label: "Create Session", onClick: () => router.push('/trainer/sessions/new') },
+    { label: "Post Assignment", onClick: () => router.push('/trainer/assignments/new') },
+    { label: "Grade Submissions", onClick: () => router.push('/trainer/grade') },
+    { label: "Message Students", onClick: messageStudents },
   ]
+
+  // Loading / auth states
+  if (!authLoaded || !orgLoaded || !userLoaded) {
+    return (
+      <RoleLayout title="Aiskool LMS" subtitle="Trainer Dashboard" Sidebar={TrainerSidebar}>
+        <div className="p-6">Loading...</div>
+      </RoleLayout>
+    )
+  }
+  if (!isSignedIn) {
+    return (
+      <RoleLayout title="Aiskool LMS" subtitle="Trainer Dashboard" Sidebar={TrainerSidebar}>
+        <div className="p-6">Please sign in to continue.</div>
+      </RoleLayout>
+    )
+  }
+  if (!organization) {
+    return (
+      <RoleLayout title="Aiskool LMS" subtitle="Trainer Dashboard" Sidebar={TrainerSidebar}>
+        <div className="p-6">
+          <p className="mb-3">Please select an organization to continue.</p>
+          <OrganizationSwitcher />
+        </div>
+      </RoleLayout>
+    )
+  }
 
   return (
     <RoleLayout title="Aiskool LMS" subtitle="Trainer Dashboard" Sidebar={TrainerSidebar}>
