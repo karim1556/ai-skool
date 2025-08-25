@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { getDb, Database } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
 
 export const dynamic = 'force-dynamic'
 
-async function ensureSchema(db:any) {
-  await db.exec(`
+async function ensureSchema(db: Database) {
+  await db.run(`
     CREATE TABLE IF NOT EXISTS submissions (
       id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
       assignment_id UUID NOT NULL,
@@ -19,7 +19,7 @@ async function ensureSchema(db:any) {
     );
   `)
 }
-async function getSchoolId(db:any, orgId:string) {
+async function getSchoolId(db: Database, orgId:string) {
   const row = await db.get<{ id:string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
   return row?.id || null
 }
@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
   const assignmentId = searchParams.get('assignmentId')
   const batchId = searchParams.get('batchId')
   const trainerId = searchParams.get('trainerId')
+  const studentId = searchParams.get('studentId')
   const onlyUngraded = searchParams.get('onlyUngraded') === 'true'
   const { orgId } = await auth()
   if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
@@ -41,6 +42,7 @@ export async function GET(req: NextRequest) {
     if (assignmentId) { where.push('sub.assignment_id = $'+(params.length+1)); params.push(assignmentId) }
     if (batchId) { where.push('a.batch_id = $'+(params.length+1)); params.push(batchId) }
     if (onlyUngraded) { where.push('sub.grade IS NULL') }
+    if (studentId) { where.push('sub.student_id = $'+(params.length+1)); params.push(studentId) }
     if (trainerId) { where.push('a.trainer_id = $'+(params.length+1)); params.push(trainerId) }
     const rows = await db.all(
       `SELECT sub.*, a.batch_id, a.title AS assignment_title, s.first_name, s.last_name, s.email
@@ -68,7 +70,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { assignment_id, student_id, content_url } = body || {}
     if (!assignment_id || !student_id) return NextResponse.json({ error: 'assignment_id and student_id are required' }, { status: 400 })
-    const owns = await db.get(`SELECT a.id FROM trainer_assignments a INNER JOIN batches b ON b.id = a.batch_id WHERE a.id = $1 AND b.school_id = $2`, [assignment_id, schoolId])
+    const owns = await db.get<{ id: string }>(`SELECT a.id FROM trainer_assignments a INNER JOIN batches b ON b.id = a.batch_id WHERE a.id = $1 AND b.school_id = $2`, [assignment_id, schoolId])
     if (!owns?.id) return NextResponse.json({ error: 'Assignment not in your school' }, { status: 403 })
     const row = await db.get<{ id:string }>(
       `INSERT INTO submissions (assignment_id, student_id, content_url)
@@ -91,7 +93,7 @@ export async function PATCH(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
-    const owns = await db.get(
+    const owns = await db.get<{ id: string }>(
       `SELECT sub.id FROM submissions sub INNER JOIN trainer_assignments a ON a.id = sub.assignment_id INNER JOIN batches b ON b.id = a.batch_id WHERE sub.id = $1 AND b.school_id = $2`,
       [id, schoolId]
     )
@@ -119,8 +121,8 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
-    const owns = await db.get(
-      `SELECT sub.id FROM submissions sub INNER JOIN assignments a ON a.id = sub.assignment_id INNER JOIN batches b ON b.id = a.batch_id WHERE sub.id = $1 AND b.school_id = $2`,
+    const owns = await db.get<{ id: string }>(
+      `SELECT sub.id FROM submissions sub INNER JOIN trainer_assignments a ON a.id = sub.assignment_id INNER JOIN batches b ON b.id = a.batch_id WHERE sub.id = $1 AND b.school_id = $2`,
       [id, schoolId]
     )
     if (!owns?.id) return NextResponse.json({ error: 'Submission not in your school' }, { status: 403 })

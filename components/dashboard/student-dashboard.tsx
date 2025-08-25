@@ -13,8 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { BookOpen, Calendar, Trophy, LogIn } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { BookOpen, Calendar, Trophy, LogIn, Video, Megaphone } from "lucide-react"
 
 interface StudentDashboardProps {
   userId: string
@@ -25,6 +24,10 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
   const [sessionCode, setSessionCode] = useState("")
   const [joinSessionOpen, setJoinSessionOpen] = useState(false)
+  const [liveSessions, setLiveSessions] = useState<any[]>([])
+  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([])
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [joinedSessionIds, setJoinedSessionIds] = useState<Set<string>>(new Set())
 
   // Temporary: show all student sections by default (migrated from mock-privileges)
   const privileges = new Set<string>(["join_session", "view_own_progress"]) 
@@ -35,62 +38,69 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
 
   const fetchStudentData = async () => {
     try {
-      // Fetch enrolled batches
-      const { data: enrollments } = await supabase
-        .from("batch_enrollments")
-        .select(`
-          *,
-          batch:batches(
-            *,
-            course:courses(title),
-            trainer:profiles!trainer_id(full_name)
-          )
-        `)
-        .eq("student_id", userId)
-        .eq("is_approved", true)
+      // Fetch enrolled batches via internal API
+      const enrRes = await fetch(`/api/batch-enrolments?studentClerkId=${userId}`)
+      const enrollments = await enrRes.json()
+      const enrArray = Array.isArray(enrollments) ? enrollments : []
+      setEnrolledBatches(enrArray)
 
-      // Fetch available courses
-      const { data: courses } = await supabase.from("courses").select("*").limit(6)
+      // Fetch live and upcoming sessions for all batches
+      const batchIds: string[] = enrArray.map((e: any) => e.batch_id)
+      const liveLists = await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}&activeOnly=true`).then(r => r.json())))
+      const upcomingLists = await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}&upcomingOnly=true`).then(r => r.json())))
+      const live = liveLists.flat()
+      setLiveSessions(live)
+      setUpcomingSessions(upcomingLists.flat())
 
-      setEnrolledBatches(enrollments || [])
-      setAvailableCourses(courses || [])
+      // Derive joined sessions for current user
+      try {
+        const joined = new Set<string>()
+        await Promise.all(
+          live.map(async (s:any) => {
+            const res = await fetch(`/api/session-attendance?sessionId=${s.id}`)
+            const js = await res.json()
+            if (res.ok) {
+              const me = (js || []).find((row:any) => row.student_id === userId)
+              if (me?.present) joined.add(s.id)
+            }
+          })
+        )
+        setJoinedSessionIds(joined)
+      } catch (e) {
+        console.error('Failed to load attendance statuses', e)
+      }
+
+      // Fetch announcements per batch
+      const annLists = await Promise.all(batchIds.map((id) => fetch(`/api/announcements?batchId=${id}`).then(r => r.json())))
+      setAnnouncements(annLists.flat())
     } catch (error) {
       console.error("Error fetching student data:", error)
     }
   }
 
+  // Record attendance and open meeting link for a specific session
+  const joinMeeting = async (session: any) => {
+    try {
+      await fetch('/api/session-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: session.id, student_id: userId, present: true })
+      })
+      if (session.meeting_url) {
+        window.open(session.meeting_url, '_blank')
+      }
+      // refresh lists
+      fetchStudentData()
+    } catch (error) {
+      console.error('Failed to join meeting', error)
+      alert('Failed to join meeting')
+    }
+  }
+
+  // Optional: session code flow (disabled until backend supports codes)
   const joinSession = async () => {
     if (!sessionCode.trim()) return
-
-    try {
-      // Find active session with this code
-      const { data: session } = await supabase
-        .from("sessions")
-        .select("*")
-        .eq("session_code", sessionCode.toUpperCase())
-        .eq("status", "active")
-        .single()
-
-      if (!session) {
-        alert("Invalid or inactive session code")
-        return
-      }
-
-      // Record attendance
-      await supabase.from("attendance").upsert({
-        session_id: session.id,
-        student_id: userId,
-        login_time: new Date().toISOString(),
-        is_present: true,
-      })
-
-      setJoinSessionOpen(false)
-      setSessionCode("")
-      alert("Successfully joined session!")
-    } catch (error) {
-      console.error("Error joining session:", error)
-      alert("Failed to join session")
-    }
+    alert('Joining by code is not available yet. Please use the Join button on a live session.')
   }
 
   return (
@@ -128,6 +138,90 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
             </DialogContent>
           </Dialog>
         )}
+
+      {/* Live Sessions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Video className="h-5 w-5" /> Live Sessions
+          </CardTitle>
+          <CardDescription>Join sessions that are currently active</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {liveSessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No live sessions</p>
+          ) : (
+            <div className="divide-y">
+              {liveSessions.map((s) => (
+                <div key={s.id} className="py-3 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-medium">{s.title || 'Session'}</div>
+                    <div className="text-sm text-muted-foreground">Starts: {s.starts_at || ''} • Ends: {s.ends_at || ''}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {joinedSessionIds.has(s.id) ? (
+                      <Badge variant="secondary">Joined</Badge>
+                    ) : (
+                      <Badge variant="outline">Not joined</Badge>
+                    )}
+                    <Button size="sm" onClick={() => joinMeeting(s)}>Join</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Upcoming Sessions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" /> Upcoming Sessions
+          </CardTitle>
+          <CardDescription>Scheduled sessions you can plan for</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {upcomingSessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No upcoming sessions</p>
+          ) : (
+            <div className="space-y-2">
+              {upcomingSessions.map((s) => (
+                <div key={s.id} className="text-sm">
+                  <span className="font-medium">{s.title || 'Session'}</span> — {s.starts_at || ''}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Announcements */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Megaphone className="h-5 w-5" /> Announcements
+          </CardTitle>
+          <CardDescription>Messages from your trainers</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {announcements.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No announcements</p>
+          ) : (
+            <div className="space-y-3">
+              {announcements
+                .sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice(0,10)
+                .map((a) => (
+                <div key={a.id}>
+                  <div className="font-medium">{a.title || 'Announcement'}</div>
+                  <div className="text-sm text-muted-foreground">{a.body}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
       </div>
 
       {/* Enrolled Batches */}
@@ -145,27 +239,23 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
               <p className="text-sm text-muted-foreground">No enrolled courses yet</p>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                {enrolledBatches.map((enrollment) => (
-                  <Card key={enrollment.id}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{enrollment.batch.course?.title}</CardTitle>
-                      <CardDescription>
-                        Batch: {enrollment.batch.name} • Trainer: {enrollment.batch.trainer?.full_name}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <Badge variant={enrollment.batch.status === "active" ? "default" : "secondary"}>
-                          {enrollment.batch.status}
-                        </Badge>
-                        <Button size="sm" variant="outline">
-                          View Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              {(Array.isArray(enrolledBatches) ? enrolledBatches : []).map((enrollment:any) => (
+                <Card key={enrollment.id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{enrollment.batch_name || 'Batch'}</CardTitle>
+                    <CardDescription>Batch ID: {enrollment.batch_id}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary">Enrolled</Badge>
+                      <Button size="sm" variant="outline">
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
             )}
           </CardContent>
         </Card>

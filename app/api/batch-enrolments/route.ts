@@ -21,17 +21,23 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const batchId = searchParams.get('batchId')
   const studentId = searchParams.get('studentId')
+  const studentClerkId = searchParams.get('studentClerkId')
   try {
+    const where: string[] = []
+    const params: any[] = []
+    if (batchId) { where.push(`bs.batch_id = $${params.length+1}`); params.push(batchId) }
+    if (studentId) { where.push(`bs.student_id = $${params.length+1}`); params.push(studentId) }
+    if (studentClerkId) { where.push(`s.clerk_user_id = $${params.length+1}`); params.push(studentClerkId) }
     const rows = await db.all(
       `SELECT bs.id, bs.batch_id, bs.student_id, bs.added_at,
               b.name as batch_name,
-              s.first_name, s.last_name, s.email
+              s.first_name, s.last_name, s.email, s.clerk_user_id
        FROM batch_students bs
        LEFT JOIN batches b ON b.id = bs.batch_id
        LEFT JOIN students s ON s.id = bs.student_id
-       ${batchId ? 'WHERE bs.batch_id = $1' : studentId ? 'WHERE bs.student_id = $1' : ''}
+       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
        ORDER BY bs.added_at DESC`,
-      batchId ? [batchId] : studentId ? [studentId] : []
+      params
     )
     return NextResponse.json(rows)
   } catch (e: any) {

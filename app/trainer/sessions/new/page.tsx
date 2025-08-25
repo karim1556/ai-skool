@@ -1,6 +1,5 @@
-import { useAuth, useOrganization, useUser } from "@clerk/nextjs"
 "use client"
-
+import { useAuth, useOrganization, useUser } from "@clerk/nextjs"
 import { useEffect, useMemo, useState } from "react"
 import { RoleLayout } from "@/components/layout/role-layout"
 import { TrainerSidebar } from "@/components/layout/trainer-sidebar"
@@ -24,6 +23,9 @@ export default function NewSessionPage() {
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [notes, setNotes] = useState("")
+  const [meetingUrl, setMeetingUrl] = useState("")
+  const [startsAt, setStartsAt] = useState("") // HTML datetime-local value
+  const [endsAt, setEndsAt] = useState("") // HTML datetime-local value
 
   const [batches, setBatches] = useState<any[]>([])
   const [trainers, setTrainers] = useState<any[]>([])
@@ -36,10 +38,10 @@ export default function NewSessionPage() {
       try {
         await fetch('/api/sync/me', { method: 'POST' })
         const schoolRes = await fetch('/api/me/school'); const school = await schoolRes.json()
-        if (!school?.id) throw new Error('No school context')
+        if (!school?.schoolId) throw new Error('No school context')
         const [bRes, tRes] = await Promise.all([
-          fetch(`/api/batches?schoolId=${school.id}`),
-          fetch(`/api/trainers?schoolId=${school.id}`)
+          fetch(`/api/batches?schoolId=${school.schoolId}`),
+          fetch(`/api/trainers?schoolId=${school.schoolId}`)
         ])
         const [bjs, tjs] = await Promise.all([bRes.json(), tRes.json()])
         if (!active) return
@@ -75,6 +77,9 @@ export default function NewSessionPage() {
           notes,
           session_date: date || null,
           session_time: time || null,
+          meeting_url: meetingUrl || null,
+          starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
         })
       })
       const js = await res.json()
@@ -121,6 +126,20 @@ export default function NewSessionPage() {
               <div className="grid gap-2">
                 <Label htmlFor="time">Time</Label>
                 <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="meeting">Meeting Link</Label>
+              <Input id="meeting" value={meetingUrl} onChange={(e) => setMeetingUrl(e.target.value)} placeholder="https://meet.google.com/..." />
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="startsAt">Starts At</Label>
+                <Input id="startsAt" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="endsAt">Ends At</Label>
+                <Input id="endsAt" type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
               </div>
             </div>
             <div className="grid gap-2">

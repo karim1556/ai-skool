@@ -27,10 +27,10 @@ export default function TrainerSessionsPage() {
       try {
         await fetch('/api/sync/me', { method: 'POST' })
         const schoolRes = await fetch('/api/me/school'); const school = await schoolRes.json()
-        if (!school?.id) throw new Error('No school context')
+        if (!school?.schoolId) throw new Error('No school context')
         const [bRes, tRes] = await Promise.all([
-          fetch(`/api/batches?schoolId=${school.id}`),
-          fetch(`/api/trainers?schoolId=${school.id}`)
+          fetch(`/api/batches?schoolId=${school.schoolId}`),
+          fetch(`/api/trainers?schoolId=${school.schoolId}`)
         ])
         const [bjs, tjs] = await Promise.all([bRes.json(), tRes.json()])
         const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase()
