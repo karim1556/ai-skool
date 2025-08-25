@@ -1,12 +1,11 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LogOut, ArrowLeft, Bell, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { getCurrentUser, signOut } from "@/lib/auth"
-import { UserButton,  OrganizationSwitcher } from "@clerk/nextjs"
+import { UserButton, OrganizationSwitcher, useUser, useOrganization } from "@clerk/nextjs"
 
 interface RoleLayoutProps {
   children: React.ReactNode
@@ -17,39 +16,14 @@ interface RoleLayoutProps {
 
 export function RoleLayout({ children, title = "Aiskool LMS", subtitle = "Dashboard", Sidebar }: RoleLayoutProps) {
   const router = useRouter()
-  const [user, setUser] = useState<{ name?: string; role?: string } | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { isLoaded: userLoaded } = useUser()
+  const { organization, isLoaded: orgLoaded } = useOrganization()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        const data = await getCurrentUser()
-        if (!mounted) return
-        if (data?.profile) {
-          setUser({ name: (data.profile as any).full_name || data.profile.email, role: (data.profile as any).role })
-        } else {
-          setUser(null)
-        }
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  const handleSignOut = () => {
-    ;(async () => {
-      await signOut()
-      router.push("/")
-    })()
-  }
+  const loading = !userLoaded || !orgLoaded
 
   const handleBackToRoleSelector = () => {
-    router.push("/login")
+    router.push("/")
   }
 
   if (loading) return null

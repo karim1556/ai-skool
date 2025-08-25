@@ -12,11 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Users, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Protect } from "@clerk/nextjs" 
+import { Protect, useOrganization } from "@clerk/nextjs" 
 
 export default function CoordinatorAddBatchPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { organization, isLoaded: orgLoaded } = useOrganization()
   const [name, setName] = useState("")
   const [schoolId, setSchoolId] = useState<string>("")
   const [courseId, setCourseId] = useState<string>("")
@@ -34,6 +35,7 @@ export default function CoordinatorAddBatchPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
+    if (!orgLoaded) return
     const load = async () => {
       try {
         const [schRes, crsRes, stdRes] = await Promise.all([
@@ -42,13 +44,17 @@ export default function CoordinatorAddBatchPage() {
           fetch("/api/students"),
         ])
         const [sch, crs, std] = await Promise.all([schRes.json(), crsRes.json(), stdRes.json()])
-        setSchools(Array.isArray(sch) ? sch : [])
+        const mappedSchools = (Array.isArray(sch) ? sch : []).map((s:any) => ({
+          id: s.id,
+          name: (s.name && s.name !== 'Unnamed School') ? s.name : (organization?.name || s.id)
+        }))
+        setSchools(mappedSchools)
         setCourses(Array.isArray(crs) ? crs : [])
         setStudents(Array.isArray(std) ? std : [])
       } catch (_) {}
     }
     load()
-  }, [])
+  }, [orgLoaded, organization?.name])
 
   useEffect(() => {
     const loadTrainers = async () => {

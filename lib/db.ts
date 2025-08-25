@@ -1,7 +1,7 @@
 import postgres from 'postgres';
 
 // Define the interface for our database operations for better compatibility.
-interface Database {
+export interface Database {
   get<T>(query: string, params?: any[]): Promise<T | null>;
   all<T>(query: string, params?: any[]): Promise<T[]>;
   run(query: string, params?: any[]): Promise<void>;

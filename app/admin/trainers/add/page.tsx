@@ -11,12 +11,13 @@ import { User, Lock, GraduationCap, Share2, CheckCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Protect } from "@clerk/nextjs"
 
 export default function AddTrainerPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
   const [coordinators, setCoordinators] = useState<Array<{ id: string; first_name: string; last_name: string }>>([])
   const [schoolId, setSchoolId] = useState<string>("")
@@ -47,10 +48,15 @@ export default function AddTrainerPage() {
         const res = await fetch("/api/schools")
         const data = await res.json()
         setSchools(Array.isArray(data) ? data : [])
+        // preselect from URL if present and exists
+        const sp = searchParams?.get("schoolId")
+        if (sp && Array.isArray(data) && data.some((s: any) => s.id === sp)) {
+          setSchoolId(sp)
+        }
       } catch (_) {}
     }
     loadSchools()
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     const loadCoordinators = async () => {
@@ -82,11 +88,11 @@ export default function AddTrainerPage() {
         toast({ title: "Passwords do not match", variant: "destructive" })
         return
       }
-      const res = await fetch("/api/trainers", {
+      const postUrl = schoolId ? `/api/trainers?schoolId=${encodeURIComponent(schoolId)}` : "/api/trainers"
+      const res = await fetch(postUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          school_id: schoolId || null,
           coordinator_id: coordinatorId || null,
           first_name: firstName || null,
           last_name: lastName || null,

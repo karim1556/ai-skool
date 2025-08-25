@@ -34,6 +34,18 @@ const allNavigationItems = [
     privilege: null, // always show
   },
   {
+    title: "Sessions",
+    href: "/trainer/sessions",
+    icon: Calendar,
+    privilege: null,
+  },
+  {
+    title: "New Session",
+    href: "/trainer/sessions/new",
+    icon: Calendar,
+    privilege: null,
+  },
+  {
     title: "Courses",
     href: "/trainer/courses",
     icon: BookOpen,
@@ -50,6 +62,18 @@ const allNavigationItems = [
     href: "/trainer/assignments",
     icon: ClipboardList,
     privilege: "approve_assignments",
+  },
+  {
+    title: "New Assignment",
+    href: "/trainer/assignments/new",
+    icon: ClipboardList,
+    privilege: null,
+  },
+  {
+    title: "Grade",
+    href: "/trainer/grade",
+    icon: GraduationCap,
+    privilege: null,
   },
   {
     title: "Students",

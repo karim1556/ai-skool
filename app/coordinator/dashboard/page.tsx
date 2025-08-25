@@ -11,14 +11,17 @@ import { supabase } from "@/lib/supabase"
 import { getCurrentUser } from "@/lib/auth"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Protect } from "@clerk/nextjs"
+import { OrganizationSwitcher, useOrganization, useAuth } from "@clerk/nextjs"
 
 export default function CoordinatorDashboard() {
+  const { organization, isLoaded: orgLoaded } = useOrganization()
+  const { isSignedIn, orgRole, isLoaded: authLoaded } = useAuth()
   const { counts } = useDashboardStats()
   const [pendingEnrollments, setPendingEnrollments] = useState<number>(0)
   const [pendingBatches, setPendingBatches] = useState<any[]>([])
   const [enrollRequests, setEnrollRequests] = useState<any[]>([])
   const [schoolId, setSchoolId] = useState<string | null>(null)
+  const [schoolName, setSchoolName] = useState<string | null>(null)
   const [myBatches, setMyBatches] = useState<any[]>([])
   const [myTrainers, setMyTrainers] = useState<any[]>([])
   const [myStudents, setMyStudents] = useState<any[]>([])
@@ -63,36 +66,52 @@ export default function CoordinatorDashboard() {
     }
   }, [])
 
-  // Determine logged-in coordinator's school and load scoped data from local APIs
+  // One-time sync of my Clerk org/user into local DB without webhooks
   useEffect(() => {
+    if (!authLoaded || !orgLoaded) return
+    if (!isSignedIn || !organization?.id) return
+    let done = false
+    ;(async () => {
+      if (done) return
+      try {
+        await fetch('/api/sync/me', { method: 'POST', cache: 'no-store' })
+      } catch {}
+      done = true
+    })()
+    // no cleanup needed
+  }, [authLoaded, orgLoaded, isSignedIn, organization?.id])
+
+  // Determine school by Clerk org and load scoped data from local APIs
+  useEffect(() => {
+    if (!authLoaded || !orgLoaded) return
+    if (!isSignedIn || !organization?.id) return
     let active = true
     ;(async () => {
       setScopedLoading(true)
       setScopedError(null)
       try {
-        // 1) Get current user email
-        const cu = await getCurrentUser()
-        const email = (cu?.profile as any)?.email || cu?.user?.email
-        if (!email) throw new Error("Not logged in or email missing")
+        // Ensure DB is synced for current user/org before lookups
+        try { await fetch('/api/sync/me', { method: 'POST', cache: 'no-store' }) } catch {}
 
-        // 2) Find coordinator row matching email (local SQLite API)
-        const coordRes = await fetch("/api/coordinators", { cache: "no-store" })
-        if (!coordRes.ok) throw new Error("Failed to load coordinators")
-        const coordinators = (await coordRes.json()) as any[]
-        const me = coordinators.find((c) => (c?.email || "").toLowerCase() === String(email).toLowerCase())
-        if (!me?.school_id) throw new Error("Coordinator record not found or no school assigned")
+        // Resolve current school by orgId
+        const schoolRes = await fetch('/api/me/school', { cache: 'no-store' })
+        if (!schoolRes.ok) throw new Error('Failed to resolve school')
+        const school = await schoolRes.json()
+        const sid = school?.schoolId
+        if (!sid) throw new Error('No school linked to this organization')
         if (!active) return
-        setSchoolId(me.school_id)
+        setSchoolId(sid)
+        setSchoolName(school?.name ?? null)
 
-        // 3) Load school-scoped entities
+        // Load school-scoped entities
         const [batchesRes, trainersRes, studentsRes] = await Promise.all([
-          fetch(`/api/batches?schoolId=${encodeURIComponent(me.school_id)}`, { cache: "no-store" }),
-          fetch(`/api/trainers?schoolId=${encodeURIComponent(me.school_id)}`, { cache: "no-store" }),
-          fetch(`/api/students?schoolId=${encodeURIComponent(me.school_id)}`, { cache: "no-store" }),
+          fetch(`/api/batches?schoolId=${encodeURIComponent(sid)}`, { cache: 'no-store' }),
+          fetch(`/api/trainers?schoolId=${encodeURIComponent(sid)}`, { cache: 'no-store' }),
+          fetch(`/api/students?schoolId=${encodeURIComponent(sid)}`, { cache: 'no-store' }),
         ])
-        if (!batchesRes.ok) throw new Error("Failed to load batches")
-        if (!trainersRes.ok) throw new Error("Failed to load trainers")
-        if (!studentsRes.ok) throw new Error("Failed to load students")
+        if (!batchesRes.ok) throw new Error('Failed to load batches')
+        if (!trainersRes.ok) throw new Error('Failed to load trainers')
+        if (!studentsRes.ok) throw new Error('Failed to load students')
         const [batches, trainers, students] = await Promise.all([batchesRes.json(), trainersRes.json(), studentsRes.json()])
         if (!active) return
         setMyBatches(Array.isArray(batches) ? batches : [])
@@ -100,7 +119,7 @@ export default function CoordinatorDashboard() {
         setMyStudents(Array.isArray(students) ? students : [])
       } catch (e: any) {
         if (!active) return
-        setScopedError(e?.message || "Failed to load your school data")
+        setScopedError(e?.message || 'Failed to load your school data')
       } finally {
         if (active) setScopedLoading(false)
       }
@@ -108,7 +127,7 @@ export default function CoordinatorDashboard() {
     return () => {
       active = false
     }
-  }, [])
+  }, [authLoaded, orgLoaded, isSignedIn, organization?.id])
 
   const approveBatch = async (batchId: string | number) => {
     await supabase.from("batches").update({ is_approved: true, approved_at: new Date().toISOString() }).eq("id", batchId)
@@ -127,18 +146,24 @@ export default function CoordinatorDashboard() {
     setPendingEnrollments((c) => Math.max(0, c - 1))
   }
 
+  // Compute a friendly school name display
+  const schoolDisplay = schoolName && schoolName !== 'Unnamed School'
+    ? schoolName
+    : (organization?.name || (schoolId ?? null))
+
+  // Primary dashboard stats (fallback to global counts if scoped data not ready)
   const stats = [
-    { label: "Courses", value: counts.courses, icon: <BookOpen className="h-8 w-8" />, hint: "+2 from last month" },
-    { label: "Lessons", value: counts.lessons, icon: <Video className="h-8 w-8" />, hint: "+12 from last week" },
+    { label: "Students", value: myStudents.length || counts.students, icon: <Users className="h-8 w-8" />, hint: myStudents.length ? `${myStudents.length} in your school` : undefined },
+    { label: "Trainers", value: myTrainers.length || counts.trainers, icon: <GraduationCap className="h-8 w-8" />, hint: myTrainers.length ? `${myTrainers.length} in your school` : undefined },
+    { label: "Batches", value: myBatches.length, icon: <Calendar className="h-8 w-8" />, hint: myBatches.length ? `${myBatches.length} active/total` : undefined },
     { label: "Enrollments", value: counts.enrollments, icon: <UserCheck className="h-8 w-8" />, hint: "+5 yesterday" },
-    { label: "Students", value: counts.students, icon: <Users className="h-8 w-8" />, hint: "+8 last week" },
   ]
 
   const secondaryStats = [
-    { label: "Trainers", value: counts.trainers, icon: <GraduationCap className="h-8 w-8" /> },
     { label: "Pending Enrollments", value: pendingEnrollments, icon: <UserCheck className="h-8 w-8" /> },
     { label: "Pending Batches", value: pendingBatches.length, icon: <Calendar className="h-8 w-8" /> },
-    { label: "Schools", value: counts.schools, icon: <BookOpen className="h-8 w-8" /> },
+    { label: "Courses", value: counts.courses, icon: <BookOpen className="h-8 w-8" /> },
+    { label: "Lessons", value: counts.lessons, icon: <Video className="h-8 w-8" /> },
   ]
 
   const activeCourses = counts.activeCourses
@@ -157,11 +182,56 @@ export default function CoordinatorDashboard() {
     { label: "View Reports" },
   ]
 
+  // Wait for Clerk to load to avoid false negatives
+  if (!authLoaded || !orgLoaded) {
+    return (
+      <RoleLayout title="Aiskool LMS" subtitle="Coordinator Dashboard" Sidebar={CoordinatorSidebar}>
+        <div className="p-6">Loading...</div>
+      </RoleLayout>
+    )
+  }
+
+  // If not signed in, show minimal message (middleware should already route)
+  if (!isSignedIn) {
+    return (
+      <RoleLayout title="Aiskool LMS" subtitle="Coordinator Dashboard" Sidebar={CoordinatorSidebar}>
+        <div className="p-6">Please sign in to continue.</div>
+      </RoleLayout>
+    )
+  }
+
+  // If no active organization, prompt user to select one
+  if (!organization) {
+    return (
+      <RoleLayout title="Aiskool LMS" subtitle="Coordinator Dashboard" Sidebar={CoordinatorSidebar}>
+        <div className="p-6">
+          <p className="mb-3">Please select an organization to continue.</p>
+          <OrganizationSwitcher />
+        </div>
+      </RoleLayout>
+    )
+  }
+
+  // Normalize role: remove 'org:' prefix, lowercase, strip spaces/hyphens/underscores
+  const canonical = (role?: string | null) => (role || '')
+    .toLowerCase()
+    .replace(/^org:/, '')
+    .replace(/[\s_-]/g, '')
+  const r = canonical(orgRole)
+  const allowed = new Set(['schoolcoordinator', 'coordinator'])
+  if (!r || !allowed.has(r)) {
+    return (
+      <RoleLayout title="Aiskool LMS" subtitle="Coordinator Dashboard" Sidebar={CoordinatorSidebar}>
+        <div className="p-6 space-y-2">
+          <div>Access denied</div>
+          <div className="text-sm text-muted-foreground">Detected role: <code>{orgRole ?? 'none'}</code></div>
+          <div className="text-sm text-muted-foreground">Organization: <code>{organization?.name ?? 'none'}</code></div>
+        </div>
+      </RoleLayout>
+    )
+  }
+
   return (
-    <Protect
-    role="schoolcoordinator"
-    fallback={<p>Access denied</p>}
-    >
     <RoleLayout title="Aiskool LMS" subtitle="Coordinator Dashboard" Sidebar={CoordinatorSidebar}>
       <StandardDashboard
         title="Dashboard"
@@ -181,7 +251,7 @@ export default function CoordinatorDashboard() {
           <CardHeader>
             <CardTitle>Your School Overview</CardTitle>
             <CardDescription>
-              {scopedLoading ? "Loading..." : scopedError ? scopedError : schoolId ? `School ID: ${schoolId}` : "No school linked"}
+              {scopedLoading ? "Loading..." : scopedError ? scopedError : schoolDisplay ? `School: ${schoolDisplay}` : "No school linked"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -302,6 +372,5 @@ export default function CoordinatorDashboard() {
         <Link href="/coordinator/assign-trainer"><Button variant="secondary">Assign Trainer</Button></Link>
       </div>
     </RoleLayout>
-    </Protect>
   )
 }

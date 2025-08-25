@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, sql } from '@/lib/db';
+import { auth } from '@clerk/nextjs/server'
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,12 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  const schoolId = searchParams.get('schoolId');
+  // Derive school from Clerk organization
+  const { orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
+  const schoolRow = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
+  if (!schoolRow?.id) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
+  const schoolId = schoolRow.id
 
   try {
     let rows;
@@ -56,26 +62,20 @@ export async function GET(req: NextRequest) {
                 (SELECT string_agg(student_id::text, ',') FROM batch_students WHERE batch_id = b.id) AS student_ids,
                 (SELECT COUNT(*) FROM batch_students WHERE batch_id = b.id) AS student_count
          FROM batches b
-         WHERE b.id = $1`,
-        [id]
-      );
-    } else if (schoolId) {
-      rows = await db.all(
-        `SELECT b.*,
-                (SELECT COUNT(*) FROM batch_students WHERE batch_id = b.id) AS student_count,
-                (SELECT COUNT(*) FROM batch_trainers WHERE batch_id = b.id) AS trainer_count
-         FROM batches b
-         WHERE b.school_id = $1
-         ORDER BY b.created_at DESC`,
-        [schoolId]
+         WHERE b.id = $1 AND b.school_id = $2`,
+        [id, schoolId]
       );
     } else {
       rows = await db.all(
         `SELECT b.*,
                 (SELECT COUNT(*) FROM batch_students WHERE batch_id = b.id) AS student_count,
-                (SELECT COUNT(*) FROM batch_trainers WHERE batch_id = b.id) AS trainer_count
+                (SELECT COUNT(*) FROM batch_trainers WHERE batch_id = b.id) AS trainer_count,
+                (SELECT string_agg(trainer_id::text, ',') FROM batch_trainers WHERE batch_id = b.id) AS trainer_ids,
+                (SELECT string_agg(student_id::text, ',') FROM batch_students WHERE batch_id = b.id) AS student_ids
          FROM batches b
-         ORDER BY b.created_at DESC`
+         WHERE b.school_id = $1
+         ORDER BY b.created_at DESC`,
+        [schoolId]
       );
     }
     return NextResponse.json(rows);
@@ -90,7 +90,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       name,
-      school_id,
       course_id,
       start_date,
       end_date,
@@ -106,10 +105,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 });
     }
 
+    const { orgId } = await auth()
+    if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
+    const schoolRow = await sql`SELECT id FROM schools WHERE clerk_org_id = ${orgId}`
+    const derivedSchoolId = schoolRow?.[0]?.id as string | undefined
+    if (!derivedSchoolId) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
+
     const result = await sql.begin(async (trx) => {
       const inserted = await trx`
         INSERT INTO batches (name, school_id, course_id, start_date, end_date, max_students, status, schedule, description)
-        VALUES (${name}, ${school_id || null}, ${course_id || null}, ${start_date || null}, ${end_date || null}, ${Number.isFinite(+max_students) ? +max_students : null}, ${status || 'pending'}, ${schedule || null}, ${description || null})
+        VALUES (${name}, ${derivedSchoolId}, ${course_id || null}, ${start_date || null}, ${end_date || null}, ${Number.isFinite(+max_students) ? +max_students : null}, ${status || 'pending'}, ${schedule || null}, ${description || null})
         RETURNING id
       `;
       const batchId = inserted[0]?.id as string;
@@ -153,7 +158,6 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const {
       name,
-      school_id,
       course_id,
       start_date,
       end_date,
@@ -165,6 +169,15 @@ export async function PATCH(req: NextRequest) {
       studentIds,
     } = body || {};
 
+    const { orgId } = await auth()
+    if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
+    const schoolRow = await sql`SELECT id FROM schools WHERE clerk_org_id = ${orgId}`
+    const derivedSchoolId = schoolRow?.[0]?.id as string | undefined
+    if (!derivedSchoolId) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
+    // Ensure this batch belongs to the current school
+    const owner = await sql`SELECT id FROM batches WHERE id = ${id} AND school_id = ${derivedSchoolId}`
+    if (!owner?.[0]?.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     await sql.begin(async (trx) => {
       const sets: string[] = [];
       const vals: any[] = [];
@@ -173,7 +186,6 @@ export async function PATCH(req: NextRequest) {
         vals.push(value);
       }
       if (name !== undefined) add('name', name || null);
-      if (school_id !== undefined) add('school_id', school_id || null);
       if (course_id !== undefined) add('course_id', course_id || null);
       if (start_date !== undefined) add('start_date', start_date || null);
       if (end_date !== undefined) add('end_date', end_date || null);
@@ -214,6 +226,13 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    const { orgId } = await auth()
+    if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
+    const schoolRow = await sql`SELECT id FROM schools WHERE clerk_org_id = ${orgId}`
+    const derivedSchoolId = schoolRow?.[0]?.id as string | undefined
+    if (!derivedSchoolId) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
+    const owner = await sql`SELECT id FROM batches WHERE id = ${id} AND school_id = ${derivedSchoolId}`
+    if (!owner?.[0]?.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     await sql.begin(async (trx) => {
       await trx`DELETE FROM batch_students WHERE batch_id = ${id}`;

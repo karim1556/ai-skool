@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
+import { auth } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +38,16 @@ async function ensureTable() {
   // Add new focal point columns if missing (ignore errors if they already exist)
   try { await db.run(`ALTER TABLE schools ADD COLUMN banner_focal_x int`); } catch {}
   try { await db.run(`ALTER TABLE schools ADD COLUMN banner_focal_y int`); } catch {}
+  // Add Clerk organization binding column if missing
+  try { await db.run(`ALTER TABLE schools ADD COLUMN clerk_org_id text UNIQUE`); } catch {}
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   await ensureTable();
   const db = getDb();
-  const rows = await db.all("SELECT * FROM schools ORDER BY created_at DESC");
+  const { orgId } = await auth();
+  if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 });
+  const rows = await db.all("SELECT * FROM schools WHERE clerk_org_id = $1 ORDER BY created_at DESC", [orgId]);
   return NextResponse.json(rows);
 }
 
@@ -51,6 +56,8 @@ export async function POST(req: NextRequest) {
   const db = getDb();
 
   try {
+    const { orgId } = await auth();
+    if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 });
     const formData = await req.formData();
 
     const name = (formData.get("name") as string || "").trim();
@@ -142,9 +149,9 @@ export async function POST(req: NextRequest) {
         name, tagline, description, logo_url, banner_url, website, email, phone,
         address_line1, address_line2, city, state, country, postal_code,
         principal, established_year, student_count, accreditation, social_links,
-        banner_focal_x, banner_focal_y
+        banner_focal_x, banner_focal_y, clerk_org_id
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
       ) RETURNING id`,
       [
         values.name,
@@ -167,7 +174,8 @@ export async function POST(req: NextRequest) {
         values.accreditation,
         social_links,
         banner_focal_x,
-        banner_focal_y
+        banner_focal_y,
+        orgId
       ]
     );
 
@@ -175,5 +183,37 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Create school failed", err);
     return NextResponse.json({ error: "Failed to create school" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  await ensureTable();
+  const db = getDb();
+  try {
+    const { orgId } = await auth();
+    if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 });
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    const body = await req.json();
+    const allowed = [
+      'name','tagline','description','logo_url','banner_url','website','email','phone','address_line1','address_line2','city','state','country','postal_code','principal','established_year','student_count','accreditation','social_links','banner_focal_x','banner_focal_y'
+    ];
+    const fields: string[] = [];
+    const values: any[] = [];
+    for (const key of allowed) {
+      if (key in body) {
+        fields.push(`${key} = $${fields.length + 1}`);
+        values.push(body[key]);
+      }
+    }
+    if (fields.length === 0) return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
+    // Ensure the school belongs to the same org
+    const row = await db.get<{ id: string }>(`SELECT id FROM schools WHERE id = $1 AND clerk_org_id = $2`, [id, orgId]);
+    if (!row?.id) return NextResponse.json({ error: 'School not found for this organization' }, { status: 404 });
+    await db.run(`UPDATE schools SET ${fields.join(', ')}, created_at = created_at WHERE id = $${fields.length + 1}`, [...values, id]);
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || 'Failed to update school' }, { status: 500 });
   }
 }
