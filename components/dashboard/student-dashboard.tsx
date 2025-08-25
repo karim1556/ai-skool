@@ -28,6 +28,7 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [joinedSessionIds, setJoinedSessionIds] = useState<Set<string>>(new Set())
+  const [myStudentId, setMyStudentId] = useState<string | null>(null)
 
   // Temporary: show all student sections by default (migrated from mock-privileges)
   const privileges = new Set<string>(["join_session", "view_own_progress"]) 
@@ -38,16 +39,20 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
 
   const fetchStudentData = async () => {
     try {
+      // Ensure user, school, and role are synced in DB and org is selected
+      await fetch('/api/sync/me', { method: 'POST' })
       // Fetch enrolled batches via internal API
       const enrRes = await fetch(`/api/batch-enrolments?studentClerkId=${userId}`)
       const enrollments = await enrRes.json()
       const enrArray = Array.isArray(enrollments) ? enrollments : []
       setEnrolledBatches(enrArray)
+      const sid = enrArray[0]?.student_id || null
+      setMyStudentId(sid)
 
       // Fetch live and upcoming sessions for all batches
       const batchIds: string[] = enrArray.map((e: any) => e.batch_id)
-      const liveLists = await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}&activeOnly=true`).then(r => r.json())))
-      const upcomingLists = await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}&upcomingOnly=true`).then(r => r.json())))
+      const liveLists = batchIds.length ? await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}&activeOnly=true`).then(r => r.json()))) : []
+      const upcomingLists = batchIds.length ? await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}&upcomingOnly=true`).then(r => r.json()))) : []
       const live = liveLists.flat()
       setLiveSessions(live)
       setUpcomingSessions(upcomingLists.flat())
@@ -55,23 +60,25 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
       // Derive joined sessions for current user
       try {
         const joined = new Set<string>()
-        await Promise.all(
-          live.map(async (s:any) => {
-            const res = await fetch(`/api/session-attendance?sessionId=${s.id}`)
-            const js = await res.json()
-            if (res.ok) {
-              const me = (js || []).find((row:any) => row.student_id === userId)
-              if (me?.present) joined.add(s.id)
-            }
-          })
-        )
+        if (sid) {
+          await Promise.all(
+            live.map(async (s:any) => {
+              const res = await fetch(`/api/session-attendance?sessionId=${s.id}`)
+              const js = await res.json()
+              if (res.ok) {
+                const me = (js || []).find((row:any) => row.student_id === sid)
+                if (me?.present) joined.add(s.id)
+              }
+            })
+          )
+        }
         setJoinedSessionIds(joined)
       } catch (e) {
         console.error('Failed to load attendance statuses', e)
       }
 
       // Fetch announcements per batch
-      const annLists = await Promise.all(batchIds.map((id) => fetch(`/api/announcements?batchId=${id}`).then(r => r.json())))
+      const annLists = batchIds.length ? await Promise.all(batchIds.map((id) => fetch(`/api/announcements?batchId=${id}`).then(r => r.json()))) : []
       setAnnouncements(annLists.flat())
     } catch (error) {
       console.error("Error fetching student data:", error)
@@ -81,10 +88,15 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
   // Record attendance and open meeting link for a specific session
   const joinMeeting = async (session: any) => {
     try {
+      const sid = myStudentId
+      if (!sid) {
+        alert('Your student profile is not linked to this organization. Please refresh or contact support.')
+        return
+      }
       await fetch('/api/session-attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: session.id, student_id: userId, present: true })
+        body: JSON.stringify({ session_id: session.id, student_id: sid, present: true })
       })
       if (session.meeting_url) {
         window.open(session.meeting_url, '_blank')

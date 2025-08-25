@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { getDb, sql } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -27,10 +28,25 @@ export async function GET(req: NextRequest) {
     const params: any[] = []
     if (batchId) { where.push(`bs.batch_id = $${params.length+1}`); params.push(batchId) }
     if (studentId) { where.push(`bs.student_id = $${params.length+1}`); params.push(studentId) }
-    if (studentClerkId) { where.push(`s.clerk_user_id = $${params.length+1}`); params.push(studentClerkId) }
+    if (studentClerkId) {
+      // Try to match by clerk_user_id OR by email of current user (for legacy records not linked yet)
+      let email: string | null = null
+      try {
+        const u = await currentUser()
+        const primaryEmail = u?.emailAddresses?.find(e => e.id === u?.primaryEmailAddressId) || u?.emailAddresses?.[0]
+        email = primaryEmail?.emailAddress || null
+      } catch {}
+      if (email) {
+        where.push(`(s.clerk_user_id = $${params.length+1} OR lower(s.email) = lower($${params.length+2}))`)
+        params.push(studentClerkId, email)
+      } else {
+        where.push(`s.clerk_user_id = $${params.length+1}`)
+        params.push(studentClerkId)
+      }
+    }
     const rows = await db.all(
       `SELECT bs.id, bs.batch_id, bs.student_id, bs.added_at,
-              b.name as batch_name,
+              b.name as batch_name, b.school_id as school_id,
               s.first_name, s.last_name, s.email, s.clerk_user_id
        FROM batch_students bs
        LEFT JOIN batches b ON b.id = bs.batch_id

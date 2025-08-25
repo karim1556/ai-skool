@@ -21,10 +21,7 @@ export default function StudentSubmissionsPage() {
   const [contentUrl, setContentUrl] = useState("")
   const [saving, setSaving] = useState(false)
 
-  const studentId = useMemo(() => {
-    // Student ID is from our DB, not Clerk; we expect batch-enrolments API to be keyed by Clerk userId
-    return user?.id || ''
-  }, [user?.id])
+  const [studentId, setStudentId] = useState<string>('')
 
   useEffect(() => {
     let active = true
@@ -34,11 +31,14 @@ export default function StudentSubmissionsPage() {
       try {
         // Ensure DB entities exist for this user/org
         await fetch('/api/sync/me', { method: 'POST' })
-        const enrRes = await fetch(`/api/batch-enrolments?studentId=${studentId}`)
+        // Resolve internal student UUID via Clerk user id
+        const enrRes = await fetch(`/api/batch-enrolments?studentClerkId=${user?.id}`)
         const enrJs = await enrRes.json()
         if (!enrRes.ok) throw new Error(enrJs?.error || 'Failed to load enrollments')
         const batchIds: string[] = (enrJs || []).map((e:any) => e.batch_id)
         setEnrollments(enrJs || [])
+        const sid = (enrJs || [])[0]?.student_id || ''
+        setStudentId(sid)
 
         // Load assignments for these batches
         const lists = await Promise.all(batchIds.map(id => fetch(`/api/assignments?batchId=${id}`).then(r => r.json())))
@@ -49,7 +49,7 @@ export default function StudentSubmissionsPage() {
         const dedup = Object.values(byId)
 
         // Load my submissions for these assignments
-        const mySubLists = await Promise.all(dedup.map(a => fetch(`/api/submissions?assignmentId=${a.id}&studentId=${studentId}`).then(r => r.json())))
+        const mySubLists = await Promise.all(dedup.map(a => fetch(`/api/submissions?assignmentId=${a.id}&studentId=${sid}`).then(r => r.json())))
         const subMap: Record<string, any> = {}
         mySubLists.forEach((arr:any[]) => {
           (arr || []).forEach((s:any) => { subMap[s.assignment_id] = s })

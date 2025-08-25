@@ -15,6 +15,7 @@ export default function StudentSessionsPage() {
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([])
   const [enrollments, setEnrollments] = useState<any[]>([])
   const [joined, setJoined] = useState<Set<string>>(new Set())
+  const [studentId, setStudentId] = useState<string>("")
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !userId) return
@@ -25,6 +26,8 @@ export default function StudentSessionsPage() {
         const enr = await enrRes.json()
         const enrArr = Array.isArray(enr) ? enr : []
         setEnrollments(enrArr)
+        const sid = enrArr[0]?.student_id || ""
+        setStudentId(sid)
         const batchIds = enrArr.map((e:any)=>e.batch_id)
         const liveLists = await Promise.all(batchIds.map((id:string)=>fetch(`/api/sessions?batchId=${id}&activeOnly=true`).then(r=>r.json())))
         const upcomingLists = await Promise.all(batchIds.map((id:string)=>fetch(`/api/sessions?batchId=${id}&upcomingOnly=true`).then(r=>r.json())))
@@ -33,14 +36,16 @@ export default function StudentSessionsPage() {
         setUpcomingSessions(upcomingLists.flat())
         // load joined flags
         const j = new Set<string>()
-        await Promise.all(live.map(async (s:any)=>{
-          const res = await fetch(`/api/session-attendance?sessionId=${s.id}`)
-          const js = await res.json()
-          if (res.ok) {
-            const me = (js||[]).find((row:any)=>row.student_id===userId)
-            if (me?.present) j.add(s.id)
-          }
-        }))
+        if (sid) {
+          await Promise.all(live.map(async (s:any)=>{
+            const res = await fetch(`/api/session-attendance?sessionId=${s.id}`)
+            const js = await res.json()
+            if (res.ok) {
+              const me = (js||[]).find((row:any)=>row.student_id===sid)
+              if (me?.present) j.add(s.id)
+            }
+          }))
+        }
         setJoined(j)
       } catch (e) {
         console.error(e)
@@ -50,9 +55,10 @@ export default function StudentSessionsPage() {
 
   const joinMeeting = async (session:any) => {
     try {
+      if (!studentId) { alert('Student profile not linked. Refresh and ensure org selected.'); return }
       await fetch('/api/session-attendance', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: session.id, student_id: userId, present: true })
+        body: JSON.stringify({ session_id: session.id, student_id: studentId, present: true })
       })
       if (session.meeting_url) window.open(session.meeting_url, '_blank')
     } catch (e) {

@@ -11,7 +11,7 @@ const items = [
   { title: "My Courses", href: "/student/courses", icon: BookOpen },
   { title: "My Batches", href: "/student/batches", icon: Calendar },
   { title: "Sessions", href: "/student/sessions", icon: Calendar },
-  { title: "Assignments", href: "/student/submissions", icon: ClipboardList },
+  { title: "Assignments", href: "/student/assignments", icon: ClipboardList },
   { title: "Progress", href: "/student/progress", icon: BarChart3 },
   { title: "Profile", href: "/student/profile", icon: UserCircle },
   { title: "Settings", href: "/student/settings", icon: Settings },
