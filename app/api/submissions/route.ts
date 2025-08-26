@@ -98,13 +98,31 @@ export async function PATCH(req: NextRequest) {
       [id, schoolId]
     )
     if (!owns?.id) return NextResponse.json({ error: 'Submission not in your school' }, { status: 403 })
+    // Resolve the assignment trainer UUID to stamp graded_by correctly (UUID type)
+    const tRow = await db.get<{ trainer_id: string }>(
+      `SELECT a.trainer_id FROM submissions sub INNER JOIN trainer_assignments a ON a.id = sub.assignment_id WHERE sub.id = $1`,
+      [id]
+    )
     const body = await req.json()
     const allowed = ['content_url','grade','feedback']
     const fields:string[]=[]; const values:any[]=[]
-    for (const k of allowed) { if (k in body) { fields.push(`${k} = $${fields.length+1}`); values.push(body[k]) } }
-    if ('grade' in body || 'feedback' in body) { fields.push(`graded_at = NOW()`); fields.push(`graded_by = $${fields.length}`); values.push(userId || null) }
+    for (const k of allowed) {
+      if (k in body) {
+        fields.push(`${k} = $${values.length + 1}`)
+        values.push(body[k])
+      }
+    }
+    if ('grade' in body || 'feedback' in body) {
+      fields.push(`graded_at = NOW()`)
+      if (tRow?.trainer_id) {
+        fields.push(`graded_by = $${values.length + 1}`)
+        values.push(tRow.trainer_id)
+      } else {
+        fields.push(`graded_by = NULL`)
+      }
+    }
     if (fields.length===0) return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 })
-    await db.run(`UPDATE submissions SET ${fields.join(', ')} WHERE id = $${fields.length+1}`, [...values, id])
+    await db.run(`UPDATE submissions SET ${fields.join(', ')} WHERE id = $${values.length + 1}`,[...values, id])
     return NextResponse.json({ success: true })
   } catch (e:any) {
     return NextResponse.json({ error: e.message || 'Failed to update submission' }, { status: 500 })

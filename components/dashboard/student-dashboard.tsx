@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { BookOpen, Calendar, Trophy, LogIn, Video, Megaphone } from "lucide-react"
+import { BookOpen, Calendar, Trophy, LogIn, Video, Megaphone, ClipboardList } from "lucide-react"
 
 interface StudentDashboardProps {
   userId: string
@@ -29,6 +29,8 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [joinedSessionIds, setJoinedSessionIds] = useState<Set<string>>(new Set())
   const [myStudentId, setMyStudentId] = useState<string | null>(null)
+  const [assignments, setAssignments] = useState<any[]>([])
+  const [mySubmissions, setMySubmissions] = useState<any[]>([])
 
   // Temporary: show all student sections by default (migrated from mock-privileges)
   const privileges = new Set<string>(["join_session", "view_own_progress"]) 
@@ -49,13 +51,25 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
       const sid = enrArray[0]?.student_id || null
       setMyStudentId(sid)
 
-      // Fetch live and upcoming sessions for all batches
+      // Fetch sessions for all batches (unfiltered) and classify on client
       const batchIds: string[] = enrArray.map((e: any) => e.batch_id)
-      const liveLists = batchIds.length ? await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}&activeOnly=true`).then(r => r.json()))) : []
-      const upcomingLists = batchIds.length ? await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}&upcomingOnly=true`).then(r => r.json()))) : []
-      const live = liveLists.flat()
+      const sessionLists = batchIds.length ? await Promise.all(batchIds.map((id) => fetch(`/api/sessions?batchId=${id}`).then(r => r.json()))) : []
+      const allSessions = sessionLists.flat()
+      const now = new Date()
+      const live = allSessions.filter((s:any) => s.starts_at && s.ends_at && new Date(s.starts_at) <= now && now <= new Date(s.ends_at))
+      const upcoming = allSessions.filter((s:any) => {
+        if (s.starts_at) return new Date(s.starts_at) > now
+        if (s.session_date) {
+          const d = new Date(s.session_date)
+          // consider same-day or future as upcoming if time window missing
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          const day = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+          return day >= today
+        }
+        return false
+      })
       setLiveSessions(live)
-      setUpcomingSessions(upcomingLists.flat())
+      setUpcomingSessions(upcoming)
 
       // Derive joined sessions for current user
       try {
@@ -80,6 +94,19 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
       // Fetch announcements per batch
       const annLists = batchIds.length ? await Promise.all(batchIds.map((id) => fetch(`/api/announcements?batchId=${id}`).then(r => r.json()))) : []
       setAnnouncements(annLists.flat())
+
+      // Fetch assignments per batch
+      const assignLists = batchIds.length ? await Promise.all(batchIds.map((id) => fetch(`/api/assignments?batchId=${id}`).then(r => r.json()))) : []
+      setAssignments(assignLists.flat())
+
+      // Fetch my submissions
+      if (sid) {
+        const subRes = await fetch(`/api/submissions?studentId=${sid}`)
+        const subJs = await subRes.json()
+        if (subRes.ok) setMySubmissions(Array.isArray(subJs) ? subJs : [])
+      } else {
+        setMySubmissions([])
+      }
     } catch (error) {
       console.error("Error fetching student data:", error)
     }
@@ -165,10 +192,20 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
           ) : (
             <div className="divide-y">
               {liveSessions.map((s) => (
-                <div key={s.id} className="py-3 flex items-center justify-between gap-4">
-                  <div>
+                <div key={s.id} className="py-3 flex items-start justify-between gap-4">
+                  <div className="space-y-1">
                     <div className="font-medium">{s.title || 'Session'}</div>
-                    <div className="text-sm text-muted-foreground">Starts: {s.starts_at || ''} • Ends: {s.ends_at || ''}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {s.starts_at && <span>Starts: {s.starts_at}</span>}
+                      {s.ends_at && <span> • Ends: {s.ends_at}</span>}
+                      {!s.starts_at && s.session_date && (
+                        <span>On: {s.session_date}{s.session_time ? ` at ${s.session_time}` : ''}</span>
+                      )}
+                    </div>
+                    {s.notes && <div className="text-sm text-muted-foreground line-clamp-2">{s.notes}</div>}
+                    {s.meeting_url && (
+                      <a className="text-xs text-primary" href={s.meeting_url} target="_blank" rel="noreferrer">Open meeting link</a>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {joinedSessionIds.has(s.id) ? (
@@ -200,7 +237,15 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
             <div className="space-y-2">
               {upcomingSessions.map((s) => (
                 <div key={s.id} className="text-sm">
-                  <span className="font-medium">{s.title || 'Session'}</span> — {s.starts_at || ''}
+                  <div className="font-medium">{s.title || 'Session'}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {s.starts_at ? (
+                      <>Starts: {s.starts_at}</>
+                    ) : (
+                      <>On: {s.session_date || ''}{s.session_time ? ` at ${s.session_time}` : ''}</>
+                    )}
+                  </div>
+                  {s.notes && <div className="text-xs text-muted-foreground line-clamp-2">{s.notes}</div>}
                 </div>
               ))}
             </div>
@@ -235,6 +280,44 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
         </CardContent>
       </Card>
       </div>
+
+      {/* My Assignments */}
+      {privileges.has("view_own_progress") && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" /> My Assignments
+            </CardTitle>
+            <CardDescription>Assignments across your enrolled batches</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {assignments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No assignments yet</p>
+            ) : (
+              <div className="space-y-3">
+                {assignments.slice(0, 10).map((a: any) => {
+                  const sub = mySubmissions.find((s: any) => s.assignment_id === a.id)
+                  return (
+                    <div key={a.id} className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{a.title || 'Assignment'}</div>
+                        <div className="text-sm text-muted-foreground">Batch: {a.batch_id}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {sub ? (
+                          <Badge variant="secondary">Submitted{sub.grade !== undefined && sub.grade !== null ? ` • Grade: ${sub.grade}` : ''}</Badge>
+                        ) : (
+                          <Badge variant="outline">Not submitted</Badge>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Enrolled Batches */}
       {privileges.has("view_own_progress") && (
