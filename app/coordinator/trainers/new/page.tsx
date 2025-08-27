@@ -13,13 +13,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Lock, GraduationCap, Share2, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { Protect } from "@clerk/nextjs"
+import { Protect, useOrganization } from "@clerk/nextjs"
 
 export default function CoordinatorAddTrainerPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { organization } = useOrganization()
 
   const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
+  const [schoolName, setSchoolName] = useState<string>("")
   const [coordinators, setCoordinators] = useState<Array<{ id: string; first_name: string; last_name: string }>>([])
   const [schoolId, setSchoolId] = useState<string>("")
   const [coordinatorId, setCoordinatorId] = useState<string>("")
@@ -42,17 +44,32 @@ export default function CoordinatorAddTrainerPage() {
   const [linkedin, setLinkedin] = useState("")
   const [twitter, setTwitter] = useState("")
   const [bio, setBio] = useState("")
+  const [hasVerified, setHasVerified] = useState<boolean>(false)
 
   useEffect(() => {
-    const loadSchools = async () => {
+    const init = async () => {
       try {
-        const res = await fetch("/api/schools")
-        const data = await res.json()
-        setSchools(Array.isArray(data) ? data : [])
-      } catch (_) {}
+        try { await fetch('/api/sync/me', { method: 'POST', cache: 'no-store' }) } catch {}
+        const sres = await fetch('/api/me/school', { cache: 'no-store' })
+        const s = sres.ok ? await sres.json() : null
+        if (s?.schoolId) {
+          setSchoolId(s.schoolId)
+          setSchoolName(s?.name || organization?.name || '')
+        }
+        // pre-load trainers to decide if verified exists
+        const tres = await fetch('/api/trainers', { cache: 'no-store' })
+        const tdata = tres.ok ? await tres.json() : []
+        setHasVerified(Array.isArray(tdata) && tdata.some((t:any) => String(t.status||'').toLowerCase()==='verified'))
+        // optional: load all schools list (for dropdown if needed)
+        try {
+          const res = await fetch('/api/schools', { cache: 'no-store' })
+          const data = await res.json()
+          setSchools(Array.isArray(data) ? data : [])
+        } catch {}
+      } catch {}
     }
-    loadSchools()
-  }, [])
+    init()
+  }, [organization?.name])
 
   useEffect(() => {
     const loadCoordinators = async () => {
@@ -64,7 +81,11 @@ export default function CoordinatorAddTrainerPage() {
       try {
         const res = await fetch(`/api/coordinators?schoolId=${schoolId}`)
         const data = await res.json()
-        setCoordinators(Array.isArray(data) ? data : [])
+        const list = Array.isArray(data) ? data : []
+        setCoordinators(list)
+        if (!coordinatorId && list.length > 0) {
+          setCoordinatorId(list[0].id)
+        }
       } catch (_) {}
     }
     loadCoordinators()
@@ -132,11 +153,11 @@ export default function CoordinatorAddTrainerPage() {
         <Label htmlFor="school">School</Label>
         <Select value={schoolId} onValueChange={setSchoolId}>
           <SelectTrigger>
-            <SelectValue placeholder="Choose School" />
+            <SelectValue placeholder="Choose School">{schoolName || "Choose School"}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {schools.map((s) => (
-              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              <SelectItem key={s.id} value={s.id}>{s.name || organization?.name || 'School'}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -273,6 +294,22 @@ export default function CoordinatorAddTrainerPage() {
       </div>
     </div>,
   ]
+
+  if (hasVerified) {
+    return (
+      <Protect role="schoolcoordinator" fallback={<p>Access denied</p>}>
+        <RoleLayout title="Coordinator" subtitle="Add Trainer" Sidebar={CoordinatorSidebar}>
+          <div className="max-w-2xl mx-auto p-6 border rounded-md bg-muted/10">
+            <h2 className="text-lg font-semibold mb-2">A verified trainer already exists</h2>
+            <p className="text-sm text-muted-foreground mb-4">Unverify or delete the existing trainer to add another verified trainer for this school.</p>
+            <div className="flex gap-2">
+              <Button onClick={() => router.push('/coordinator/trainers')}>Go to Trainers</Button>
+            </div>
+          </div>
+        </RoleLayout>
+      </Protect>
+    )
+  }
 
   return (
     <Protect

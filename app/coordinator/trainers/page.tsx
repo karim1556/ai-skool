@@ -70,7 +70,9 @@ export default function CoordinatorTrainersPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Trainers</h1>
         <div className="flex gap-2">
-          <Link href="/coordinator/trainers/new"><Button>Add Trainer</Button></Link>
+          {!(trainers || []).some((t:any) => String(t.status || '').toLowerCase() === 'verified') && (
+            <Link href="/coordinator/trainers/new"><Button>Add Trainer</Button></Link>
+          )}
         </div>
       </div>
 
@@ -92,12 +94,13 @@ export default function CoordinatorTrainersPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Email</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Phone</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Specialization</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {trainers.length === 0 && (
-                    <tr><td className="py-3 px-4 text-sm text-muted-foreground" colSpan={6}>No trainers found</td></tr>
+                    <tr><td className="py-3 px-4 text-sm text-muted-foreground" colSpan={7}>No trainers found</td></tr>
                   )}
                   {trainers.map((t, idx) => (
                     <tr key={t.id} className="border-b hover:bg-gray-50">
@@ -106,22 +109,49 @@ export default function CoordinatorTrainersPage() {
                       <td className="py-3 px-4">{t.email || "—"}</td>
                       <td className="py-3 px-4">{t.phone ? String(t.phone) : "—"}</td>
                       <td className="py-3 px-4">{t.specialization || "—"}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${String(t.status||'').toLowerCase()==='verified' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          {t.status ? String(t.status) : '—'}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-right">
-                        <ActionDropdown
-                          onView={() => router.push(`/coordinator/trainers/${t.id}`)}
-                          onEdit={() => router.push(`/coordinator/trainers/${t.id}/edit`)}
-                          onDelete={async () => {
-                            const ok = confirm('Delete this trainer?')
-                            if (!ok) return
-                            const res = await fetch(`/api/trainers?id=${encodeURIComponent(t.id)}`, { method: 'DELETE' })
-                            if (res.ok) {
-                              reload()
-                            } else {
-                              const j = await res.json().catch(() => ({} as any))
-                              alert(j?.error || 'Failed to delete')
-                            }
-                          }}
-                        />
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              const newStatus = String(t.status || '').toLowerCase() === 'verified' ? 'unverified' : 'verified'
+                              const res = await fetch(`/api/trainers?id=${encodeURIComponent(t.id)}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: newStatus })
+                              })
+                              if (res.ok) {
+                                reload()
+                              } else {
+                                const j = await res.json().catch(() => ({} as any))
+                                alert(j?.error || 'Failed to update status')
+                              }
+                            }}
+                          >
+                            {String(t.status || '').toLowerCase() === 'verified' ? 'Unverify' : 'Verify'}
+                          </Button>
+                          <ActionDropdown
+                            onView={() => router.push(`/coordinator/trainers/${t.id}`)}
+                            onEdit={() => router.push(`/coordinator/trainers/${t.id}/edit`)}
+                            onDelete={async () => {
+                              const ok = confirm('Delete this trainer?')
+                              if (!ok) return
+                              const res = await fetch(`/api/trainers?id=${encodeURIComponent(t.id)}`, { method: 'DELETE' })
+                              if (res.ok) {
+                                reload()
+                              } else {
+                                const j = await res.json().catch(() => ({} as any))
+                                alert(j?.error || 'Failed to delete')
+                              }
+                            }}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -64,12 +64,6 @@ const allNavigationItems = [
     privilege: "approve_assignments",
   },
   {
-    title: "New Assignment",
-    href: "/trainer/assignments/new",
-    icon: ClipboardList,
-    privilege: null,
-  },
-  {
     title: "Grade",
     href: "/trainer/grade",
     icon: GraduationCap,

@@ -59,6 +59,7 @@ async function ensureSchema() {
   `
   try { await sql`ALTER TABLE trainers ADD COLUMN IF NOT EXISTS clerk_user_id TEXT`; } catch {}
   try { await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_trainers_clerk_user_id ON trainers(clerk_user_id)`; } catch {}
+  try { await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_trainers_one_per_school ON trainers(school_id)`; } catch {}
 
   // Students
   await sql`
@@ -194,16 +195,34 @@ export async function POST(req: NextRequest) {
       }
     }
     if (!linked) {
-      await sql`
-        INSERT INTO trainers (school_id, status, clerk_user_id, first_name, last_name, email)
-        VALUES (${schoolId}, 'verified', ${userId}, ${firstName}, ${lastName}, ${email})
-        ON CONFLICT (clerk_user_id) DO UPDATE SET
-          school_id = EXCLUDED.school_id,
-          first_name = COALESCE(EXCLUDED.first_name, trainers.first_name),
-          last_name = COALESCE(EXCLUDED.last_name, trainers.last_name),
-          email = COALESCE(EXCLUDED.email, trainers.email),
-          updated_at = NOW();
-      `
+      // Check if a trainer already exists for this school
+      const schoolTrainer = await db.get<{ id: string, clerk_user_id: string | null }>(`SELECT id, clerk_user_id FROM trainers WHERE school_id = $1 LIMIT 1`, [schoolId])
+      if (schoolTrainer?.id) {
+        // If the existing trainer is unclaimed, attach current user; otherwise do not create another trainer
+        if (!schoolTrainer.clerk_user_id) {
+          await db.run(
+            `UPDATE trainers SET first_name = COALESCE($1, first_name), last_name = COALESCE($2, last_name), email = COALESCE($3, email), clerk_user_id = $4, status = COALESCE(status, 'verified'), updated_at = NOW() WHERE id = $5`,
+            [firstName, lastName, email, userId, schoolTrainer.id]
+          )
+          linked = true
+        } else {
+          // Another trainer already exists and is linked; do not create/link a new one
+          linked = false
+        }
+      } else {
+        // No trainer exists for this school; create one and link
+        await sql`
+          INSERT INTO trainers (school_id, status, clerk_user_id, first_name, last_name, email)
+          VALUES (${schoolId}, 'verified', ${userId}, ${firstName}, ${lastName}, ${email})
+          ON CONFLICT (clerk_user_id) DO UPDATE SET
+            school_id = EXCLUDED.school_id,
+            first_name = COALESCE(EXCLUDED.first_name, trainers.first_name),
+            last_name = COALESCE(EXCLUDED.last_name, trainers.last_name),
+            email = COALESCE(EXCLUDED.email, trainers.email),
+            updated_at = NOW();
+        `
+        linked = true
+      }
     }
   } else if (role === 'student') {
     let linked = false

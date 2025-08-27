@@ -49,11 +49,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const db = getDb(); await ensureSchema(db)
-  const { orgId } = await auth()
+  const { orgId, userId } = await auth()
   if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
   const schoolId = await getSchoolId(db, orgId)
   if (!schoolId) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
   try {
+    // Only coordinators can create assignments
+    const coord = await db.get<{ id: string }>(
+      `SELECT id FROM coordinators WHERE school_id = $1 AND clerk_user_id = $2`,
+      [schoolId, userId]
+    )
+    if (!coord?.id) return NextResponse.json({ error: 'Only coordinators can create assignments' }, { status: 403 })
     const body = await req.json()
     const { batch_id, trainer_id, title, instructions, due_date } = body || {}
     if (!batch_id || !trainer_id) return NextResponse.json({ error: 'batch_id and trainer_id are required' }, { status: 400 })

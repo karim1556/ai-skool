@@ -82,7 +82,6 @@ export default function TrainerAssignmentsPage() {
     <RoleLayout title="Aiskool LMS" subtitle="Trainer Assignments" Sidebar={TrainerSidebar}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Assignments</h2>
-        <Button asChild><Link href="/trainer/assignments/new">New Assignment</Link></Button>
       </div>
       <Card>
         <CardHeader>

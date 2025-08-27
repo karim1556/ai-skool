@@ -89,39 +89,14 @@ export default function NewAssignmentPage() {
     <RoleLayout title="Aiskool LMS" subtitle="Post Assignment" Sidebar={TrainerSidebar}>
       <Card className="max-w-2xl">
         <CardHeader>
-          <CardTitle>New Assignment</CardTitle>
+          <CardTitle>Assignment Creation Disabled</CardTitle>
           <CardDescription>
-            {error ? <span className="text-destructive">{error}</span> : 'Create an assignment for a batch'}
+            Assignment creation is restricted to coordinators. Trainers can view assignments and grade submissions only.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Build a Todo App" />
-            </div>
-            <div className="grid gap-2">
-              <Label>Batch</Label>
-              <Select value={batchId} onValueChange={setBatchId}>
-                <SelectTrigger id="batch"><SelectValue placeholder="Select batch" /></SelectTrigger>
-                <SelectContent>
-                  {batches.filter((b:any) => String(b.trainer_ids || '').split(',').includes(myTrainer?.id || '')).map((b:any) => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="due">Due Date</Label>
-              <Input id="due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="instructions">Instructions</Label>
-              <Textarea id="instructions" value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="What should students do?" />
-            </div>
-            <div>
-              <Button onClick={onCreate} disabled={loading}>Post Assignment</Button>
-            </div>
+          <div className="text-sm text-muted-foreground">
+            If you need a new assignment, please contact your coordinator to create it.
           </div>
         </CardContent>
       </Card>
