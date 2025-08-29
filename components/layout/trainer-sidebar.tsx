@@ -52,6 +52,12 @@ const allNavigationItems = [
     privilege: "manage_courses",
   },
   {
+    title: "My Levels",
+    href: "/trainer/levels",
+    icon: FolderTree,
+    privilege: null,
+  },
+  {
     title: "Batches",
     href: "/trainer/batches",
     icon: Calendar,

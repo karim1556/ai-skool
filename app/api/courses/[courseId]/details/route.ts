@@ -70,8 +70,9 @@ export async function GET(request: Request, { params }: { params: { courseId: st
 
     // 3. For each section, fetch all of its content
     for (const section of sections) {
-      const lessons = await db.all<SectionContent>(
-        `SELECT id, title, 'lesson' as type FROM lessons WHERE section_id = $1`,
+      // Include content and file_url for lessons so clients can render without extra fetches
+      const lessons = await db.all<any>(
+        `SELECT id, title, content, file_url, 'lesson' as type FROM lessons WHERE section_id = $1`,
         [section.id]
       );
       const quizzes = await db.all<SectionContent>(

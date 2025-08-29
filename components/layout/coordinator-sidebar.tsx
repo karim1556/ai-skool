@@ -11,6 +11,7 @@ const items = [
   { title: "Schools", href: "/coordinator/schools", icon: Building2 },
   { title: "Batches", href: "/coordinator/batches", icon: Calendar },
   { title: "Trainers", href: "/coordinator/trainers", icon: GraduationCap },
+  { title: "Levels", href: "/coordinator/levels", icon: BookOpen },
   { title: "Students", href: "/coordinator/students", icon: Users },
   { title: "Assignments", href: "/coordinator/assignments", icon: ClipboardList },
   { title: "Reports", href: "/coordinator/reports", icon: BarChart3 },

@@ -28,6 +28,7 @@ import {
   Award,
   InfinityIcon,
 } from "lucide-react";
+import { useAuth, useOrganization, useUser } from "@clerk/nextjs";
 // Define the types based on your API response
 interface Instructor {
   name: string;
@@ -130,6 +131,12 @@ export default function CoursePage({ params }: { params: { courseId: string } })
   const [showVideo, setShowVideo] = useState(false);
   const [course, setCourse] = useState<Course | null>(null);
   const [courseLevels, setCourseLevels] = useState<any[]>([]);
+  const [hasAssignedAccess, setHasAssignedAccess] = useState<boolean>(false);
+  const [hasTrainerAccess, setHasTrainerAccess] = useState<boolean>(false);
+  const [hasStudentAccess, setHasStudentAccess] = useState<boolean>(false);
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const { user, isLoaded: userLoaded } = useUser();
+  const { organization, isLoaded: orgLoaded } = useOrganization();
   
   // Detect and transform YouTube URLs to embed form
   const getYouTubeEmbedUrl = (url: string | undefined | null): string | null => {
@@ -182,6 +189,80 @@ export default function CoursePage({ params }: { params: { courseId: string } })
     };
     fetchLevels();
   }, [params.courseId]);
+
+  // Determine if current user should have free access through assigned levels
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        setHasAssignedAccess(false);
+        setHasTrainerAccess(false);
+        setHasStudentAccess(false);
+        if (!authLoaded || !userLoaded || !orgLoaded) return;
+        if (!isSignedIn) return;
+        if (!organization?.id) return;
+        if (!courseLevels || courseLevels.length === 0) return;
+
+        // resolve school context
+        try { await fetch('/api/sync/me', { method: 'POST', cache: 'no-store' }) } catch {}
+        const schoolRes = await fetch('/api/me/school', { cache: 'no-store' });
+        const school = schoolRes.ok ? await schoolRes.json() : null;
+        const sid = school?.schoolId || null;
+
+        const courseLevelIds = new Set((courseLevels || []).map((l:any) => Number(l.id)));
+
+        // 1) Trainer path: match current user as trainer by email
+        let trainerHas = false;
+        if (sid) {
+          try {
+            const trRes = await fetch(`/api/trainers?schoolId=${encodeURIComponent(sid)}`, { cache: 'no-store' });
+            const tr = await trRes.json();
+            if (trRes.ok && Array.isArray(tr)) {
+              const myEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
+              const mine = tr.find((t:any) => (t.email || '').toLowerCase() === (myEmail || ''));
+              if (mine?.id) {
+                const lvRes = await fetch(`/api/trainers/${mine.id}/levels`, { cache: 'no-store' });
+                const lv = await lvRes.json();
+                if (lvRes.ok && Array.isArray(lv)) {
+                  trainerHas = lv.some((l:any) => courseLevelIds.has(Number(l.id)));
+                }
+              }
+            }
+          } catch {}
+        }
+
+        // 2) Student path: get enrolments by Clerk user id -> batches -> levels
+        let studentHas = false;
+        try {
+          const enrRes = await fetch(`/api/batch-enrolments?studentClerkId=${encodeURIComponent(user?.id || '')}`, { cache: 'no-store' });
+          const enrolments = await enrRes.json();
+          if (enrRes.ok && Array.isArray(enrolments)) {
+            const batchIds: string[] = [...new Set(enrolments.map((e:any) => e.batch_id).filter(Boolean))];
+            for (const bid of batchIds) {
+              try {
+                const blRes = await fetch(`/api/batches/${bid}/levels`, { cache: 'no-store' });
+                const bl = await blRes.json();
+                if (blRes.ok && Array.isArray(bl)) {
+                  if (bl.some((l:any) => courseLevelIds.has(Number(l.id)))) {
+                    studentHas = true; break;
+                  }
+                }
+              } catch {}
+            }
+          }
+        } catch {}
+
+        if (!active) return;
+        setHasAssignedAccess(Boolean(trainerHas || studentHas));
+        setHasTrainerAccess(Boolean(trainerHas));
+        setHasStudentAccess(Boolean(studentHas));
+      } catch {
+        if (!active) return;
+        setHasAssignedAccess(false);
+      }
+    })();
+    return () => { active = false };
+  }, [authLoaded, userLoaded, orgLoaded, isSignedIn, organization?.id, user?.id, user?.primaryEmailAddress?.emailAddress, JSON.stringify(courseLevels)]);
 
   // Autoplay demo video as soon as course data (and demo_video_url) is available
   useEffect(() => {
@@ -441,16 +522,30 @@ export default function CoursePage({ params }: { params: { courseId: string } })
               </div>
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-baseline gap-3">
-                  <span className="text-4xl font-bold text-gray-900">₹{course.price.toLocaleString()}</span>
-                  {course.original_price && course.price < course.original_price && (
-                    <span className="text-xl text-gray-400 line-through">₹{course.original_price.toLocaleString()}</span>
+                  {hasAssignedAccess ? (
+                    <span className="text-lg font-semibold text-green-600">Included via assigned level</span>
+                  ) : (
+                    <>
+                      <span className="text-4xl font-bold text-gray-900">₹{course.price.toLocaleString()}</span>
+                      {course.original_price && course.price < course.original_price && (
+                        <span className="text-xl text-gray-400 line-through">₹{course.original_price.toLocaleString()}</span>
+                      )}
+                    </>
                   )}
                 </div>
-                {discount > 0 && (
+                {!hasAssignedAccess && discount > 0 && (
                   <p className="text-lg font-semibold text-green-600">{discount}% off</p>
                 )}
-                <Button size="lg" className="w-full text-lg py-6 font-semibold">Add to Cart</Button>
-                <Button size="lg" variant="outline" className="w-full text-lg py-6 font-semibold">Buy Now</Button>
+                {hasAssignedAccess ? (
+                  <Link href={hasTrainerAccess ? `/trainer/learn/course/${course.id}` : `/student/learn/course/${course.id}`}>
+                    <Button size="lg" className="w-full text-lg py-6 font-semibold">Open Course</Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Button size="lg" className="w-full text-lg py-6 font-semibold">Add to Cart</Button>
+                    <Button size="lg" variant="outline" className="w-full text-lg py-6 font-semibold">Buy Now</Button>
+                  </>
+                )}
                 <p className="text-center text-xs text-gray-500">30-Day Money-Back Guarantee</p>
                 <div className="pt-4 space-y-3 border-t">
                   <h4 className="font-semibold">This course includes:</h4>

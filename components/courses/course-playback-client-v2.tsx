@@ -45,8 +45,27 @@ interface CoursePlaybackClientProps {
 export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientProps) {
   const router = useRouter();
   const [curriculum, setCurriculum] = useState(course.curriculum);
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(course.curriculum[0]?.lessons[0] || null);
-  const [videoUrl, setVideoUrl] = useState<string | undefined>(course.curriculum[0]?.lessons[0]?.video_url);
+
+  // Helper to pick first playable lesson (has content or a media URL)
+  const pickFirstPlayableLesson = (curr: Section[]): Lesson | null => {
+    for (const section of curr || []) {
+      for (const lesson of section.lessons || []) {
+        const url =
+          (lesson as any).file_url ||
+          (lesson as any).signed_url ||
+          (lesson as any).content_url ||
+          (lesson as any).fileUrl ||
+          (lesson as any).videoUrl ||
+          lesson.video_url ||
+          (lesson as any).url;
+        if (lesson.content || (typeof url === 'string' && url.length > 0)) return lesson as any;
+      }
+    }
+    return curr?.[0]?.lessons?.[0] || null;
+  };
+
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(pickFirstPlayableLesson(course.curriculum));
+  const [videoUrl, setVideoUrl] = useState<string | undefined>(pickFirstPlayableLesson(course.curriculum || [])?.video_url);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -54,6 +73,42 @@ export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientP
       setVideoUrl(activeLesson.video_url);
     }
   }, [activeLesson]);
+
+  // Hydrate lesson details if missing media/content
+  useEffect(() => {
+    const hydrate = async () => {
+      if (!activeLesson) return;
+      const url = (activeLesson as any).file_url || activeLesson.video_url || (activeLesson as any).signed_url || (activeLesson as any).content_url;
+      const hasPlayable = Boolean(activeLesson.content) || Boolean(url);
+      if (hasPlayable) return;
+      try {
+        const res = await fetch(`/api/lessons/${activeLesson.id}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const enriched: any = {
+          ...activeLesson,
+          content: data?.content ?? activeLesson.content,
+          video_url: data?.video_url || data?.file_url || data?.signed_url || data?.url || activeLesson.video_url,
+          type: (activeLesson as any).type || (data?.type as any) || 'lesson',
+        };
+        setActiveLesson(enriched);
+        // Also patch into curriculum copy for consistency
+        setCurriculum((prev) => prev.map((sec) => ({
+          ...sec,
+          lessons: sec.lessons.map((lsn: any) => lsn.id === activeLesson.id ? enriched : lsn)
+        })) as any);
+      } catch {}
+    };
+    hydrate();
+  }, [activeLesson?.id]);
+
+  // When curriculum updates (e.g., after mapping), ensure a playable lesson is selected
+  useEffect(() => {
+    const firstPlayable = pickFirstPlayableLesson(curriculum as any);
+    if (firstPlayable && (!activeLesson || activeLesson.id !== firstPlayable.id)) {
+      setActiveLesson(firstPlayable);
+    }
+  }, [curriculum]);
 
   const handleSelectLesson = (lesson: Lesson) => {
     setIsLoading(true);
@@ -191,21 +246,25 @@ const DocumentViewer = ({ lesson }: { lesson: Lesson }) => {
     });
   }, [lesson]);
 
-  const fileUrl = (lesson as any).file_url || lesson.video_url || '';
-  
-  // Check if this is a video
-  const isVideo = fileUrl && 
-                 typeof fileUrl === 'string' && 
-                 (fileUrl.endsWith('.mp4') || 
-                  fileUrl.includes('video') ||
-                  (lesson as any).type === 'video_file');
+  const fileUrl =
+    (lesson as any).file_url ||
+    lesson.video_url ||
+    (lesson as any).signed_url ||
+    (lesson as any).content_url ||
+    (lesson as any).fileUrl ||
+    (lesson as any).videoUrl ||
+    (lesson as any).url ||
+    '';
 
-  // Check if this is a PDF document
-  const isPdf = fileUrl && 
-               typeof fileUrl === 'string' && 
-               (fileUrl.endsWith('.pdf') || 
+  // Check if this is a PDF document (prefer strict check first)
+  const isPdf = fileUrl &&
+               typeof fileUrl === 'string' &&
+               (fileUrl.toLowerCase().endsWith('.pdf') ||
                 (lesson as any).type === 'document' ||
                 lesson.type === 'assignment');
+
+  // Treat any non-PDF URL as a playable video, even if it lacks extension
+  const isVideo = !!fileUrl && typeof fileUrl === 'string' && !isPdf;
 
   if (isVideo && fileUrl) {
     console.log('Rendering video player with URL:', fileUrl);
