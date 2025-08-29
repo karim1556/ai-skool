@@ -19,6 +19,10 @@ export default function CoordinatorStudentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [schoolName, setSchoolName] = useState<string | null>(null)
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ inserted:number, skipped:number, errors:{ line:number, error:string }[] } | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number>(0)
 
   const reload = async () => {
     try {
@@ -68,6 +72,40 @@ export default function CoordinatorStudentsPage() {
 
   const schoolDisplay = schoolName && schoolName !== 'Unnamed School' ? schoolName : (organization?.name || (schoolId ?? null))
 
+  const onImport = async () => {
+    if (!csvFile) return alert('Please select a CSV file');
+    setImporting(true)
+    setImportResult(null)
+    setUploadProgress(0)
+    try {
+      const fd = new FormData()
+      fd.append('file', csvFile)
+      // Use XHR to get upload progress events
+      const xhr = new XMLHttpRequest()
+      const done: any = await new Promise((resolve, reject) => {
+        xhr.open('POST', '/api/students/import')
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const p = Math.round((e.loaded / e.total) * 100)
+            setUploadProgress(p)
+          }
+        }
+        xhr.onload = () => resolve({ status: xhr.status, body: xhr.responseText })
+        xhr.onerror = () => reject(new Error('Network error during upload'))
+        xhr.send(fd)
+      })
+      const data = (() => { try { return JSON.parse(done.body) } catch { return null } })()
+      if (done.status < 200 || done.status >= 300) throw new Error(data?.error || 'Import failed')
+      setImportResult({ inserted: data.inserted || 0, skipped: data.skipped || 0, errors: Array.isArray(data.errors) ? data.errors : [] })
+      await reload()
+      setCsvFile(null)
+    } catch (e:any) {
+      setImportResult({ inserted: 0, skipped: 0, errors: [{ line: 0, error: e?.message || 'Import failed' }] })
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <Protect
     role="schoolcoordinator"
@@ -78,6 +116,16 @@ export default function CoordinatorStudentsPage() {
         <h1 className="text-xl font-semibold">Students</h1>
         <div className="flex gap-2">
           <Link href="/coordinator/students/new"><Button>Add Student</Button></Link>
+          <Link href="/api/students/import/template"><Button variant="outline">Download CSV template</Button></Link>
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+              className="block text-sm"
+            />
+            <Button onClick={onImport} disabled={importing || !csvFile}>{importing ? 'Importing...' : 'Import CSV'}</Button>
+          </div>
         </div>
       </div>
 
@@ -89,6 +137,29 @@ export default function CoordinatorStudentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {importResult && (
+            <div className="mb-4 p-3 border rounded-md bg-gray-50">
+              <div className="text-sm">Import summary: <strong>{importResult.inserted}</strong> inserted, <strong>{importResult.skipped}</strong> skipped.</div>
+              {importResult.errors?.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-sm font-medium">Errors:</div>
+                  <ul className="list-disc list-inside text-sm text-red-600">
+                    {importResult.errors.map((e, idx) => (
+                      <li key={idx}>Line {e.line}: {e.error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          {importing && (
+            <div className="mb-4">
+              <div className="text-sm mb-1">Uploading: {uploadProgress}%</div>
+              <div className="h-2 w-full bg-gray-200 rounded">
+                <div className="h-2 bg-blue-600 rounded" style={{ width: `${uploadProgress}%` }} />
+              </div>
+            </div>
+          )}
           {!loading && !error && (
             <div className="overflow-x-auto">
               <table className="w-full">
