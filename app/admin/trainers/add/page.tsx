@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { User, Lock, GraduationCap, Share2, CheckCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Protect } from "@clerk/nextjs"
 
-export default function AddTrainerPage() {
+function AddTrainerContent() {
   const router = useRouter()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -315,11 +315,19 @@ export default function AddTrainerPage() {
 
   return (
     <Protect role="admin" fallback={<p>Access denied</p>}>  
-    <AdminLayout>
-      <MultiStepForm steps={steps} onComplete={handleComplete}>
-        {stepContent}
-      </MultiStepForm>
-    </AdminLayout>
+      <AdminLayout>
+        <MultiStepForm steps={steps} onComplete={handleComplete}>
+          {stepContent}
+        </MultiStepForm>
+      </AdminLayout>
     </Protect>
+  )
+}
+
+export default function AddTrainerPage() {
+  return (
+    <Suspense fallback={<div className="p-4">Loading...</div>}>
+      <AddTrainerContent />
+    </Suspense>
   )
 }
