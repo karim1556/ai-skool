@@ -101,7 +101,13 @@ export async function GET(req: NextRequest) {
     step = 'fetchCourseDetails'
     // Build absolute URL from the current request to avoid relative URL issues in Node fetch
     const detailsUrl = new URL(`/api/courses/${courseId}/details`, req.url).toString()
-    const detailsRes: Response = await fetch(detailsUrl, { cache: 'no-store' })
+    // Forward cookies to preserve auth/session in internal fetches on Vercel
+    const detailsRes: Response = await fetch(detailsUrl, {
+      cache: 'no-store',
+      headers: {
+        cookie: req.headers.get('cookie') || '',
+      },
+    })
     if (!detailsRes.ok) {
       const txt = await detailsRes.text().catch(()=> '')
       return NextResponse.json({ error: 'Failed to load course details', step, info: txt?.slice(0,500) }, { status: 500 })
