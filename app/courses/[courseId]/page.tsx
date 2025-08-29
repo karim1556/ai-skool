@@ -106,11 +106,8 @@ interface Course {
 
 async function getCourse(courseId: string): Promise<Course | null> {
   try {
-    // Construct the absolute URL for the API endpoint
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const url = new URL(`/api/courses/${courseId}/details`, baseUrl);
-
-    const response = await fetch(url.toString(), {
+    // Use relative URL so it works on any deployment origin (browser will include cookies)
+    const response = await fetch(`/api/courses/${courseId}/details`, {
       cache: 'no-store', // Ensure fresh data is fetched every time
     });
 
