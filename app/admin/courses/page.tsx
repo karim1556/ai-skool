@@ -20,21 +20,28 @@ export default function CoursesPage() {
     status: "all",
     instructor: "all",
     price: "all",
+    levelId: "all" as string | "all",
   })
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await fetch("/api/courses")
-        const data = await res.json()
-        setCourses(Array.isArray(data) ? data : [])
+        if (filters.levelId && filters.levelId !== 'all') {
+          const res = await fetch(`/api/levels/${filters.levelId}/courses`)
+          const data = await res.json()
+          setCourses(Array.isArray(data) ? data : [])
+        } else {
+          const res = await fetch("/api/courses")
+          const data = await res.json()
+          setCourses(Array.isArray(data) ? data : [])
+        }
       } catch (error) {
         console.error("Error fetching courses:", error)
         setCourses([])
       }
     }
     fetchCourses()
-  }, [])
+  }, [filters.levelId])
 
   // Calculate stats
   const stats = useMemo(
@@ -119,6 +126,7 @@ export default function CoursesPage() {
                     <th className="text-left p-4 font-medium">#</th>
                     <th className="text-left p-4 font-medium">Title</th>
                     <th className="text-left p-4 font-medium">Category</th>
+                    <th className="text-left p-4 font-medium">Level</th>
                     <th className="text-left p-4 font-medium">Lesson and section</th>
                     <th className="text-left p-4 font-medium">Enrolled student</th>
                     <th className="text-left p-4 font-medium">Price</th>
@@ -137,6 +145,13 @@ export default function CoursesPage() {
                       </td>
                       <td className="p-4">
                         <Badge variant="secondary">{course.category}</Badge>
+                      </td>
+                      <td className="p-4">
+                        {course.level ? (
+                          <Badge variant="outline">{course.level}</Badge>
+                        ) : (
+                          <span className="text-gray-400 text-sm">—</span>
+                        )}
                       </td>
                       <td className="p-4">
                         <div className="text-sm">

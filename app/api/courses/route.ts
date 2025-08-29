@@ -37,6 +37,10 @@ export async function POST(req: NextRequest) {
     const course: { [key: string]: any } = {};
     let imagePath = '/placeholder.svg?height=200&width=300';
 
+    // Optional association with a level
+    const rawLevelId = formData.get("level_id") as string | null;
+    const levelId = rawLevelId ? parseInt(rawLevelId, 10) : null;
+
     // Handle image upload
     const imageFile = formData.get("image") as File | null;
     if (imageFile && imageFile.size > 0) {
@@ -174,10 +178,18 @@ export async function POST(req: NextRequest) {
       throw new Error('Course creation failed: No result returned from database.');
     }
 
+    // After inserting the course, if a level was provided, create the mapping
+    if (levelId && Number.isFinite(levelId)) {
+      await db.run(
+        "INSERT INTO level_courses (level_id, course_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [levelId, result.id]
+      );
+    }
+
     // Correctly get the ID from the returned row object
-    return NextResponse.json({ 
+    return NextResponse.json({
       id: result.id,
-      success: true 
+      success: true
     });
   } catch (error) {
     console.error('Error creating course:', error);

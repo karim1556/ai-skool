@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Filter, Star } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 interface CourseFilterProps {
   onFilterChange?: (filters: any) => void
@@ -13,6 +13,7 @@ export function CourseFilter({ onFilterChange }: CourseFilterProps) {
   const [selectedCategory, setSelectedCategory] = useState("All category")
   const [selectedPrice, setSelectedPrice] = useState("All")
   const [selectedLevel, setSelectedLevel] = useState("All")
+  const [levels, setLevels] = useState<any[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState("All")
   const [selectedRating, setSelectedRating] = useState("All")
 
@@ -21,6 +22,7 @@ export function CourseFilter({ onFilterChange }: CourseFilterProps) {
       category: type === "category" ? value : selectedCategory,
       price: type === "price" ? value : selectedPrice,
       level: type === "level" ? value : selectedLevel,
+      levelId: type === "level" ? value : selectedLevel,
       language: type === "language" ? value : selectedLanguage,
       rating: type === "rating" ? value : selectedRating,
     }
@@ -33,6 +35,23 @@ export function CourseFilter({ onFilterChange }: CourseFilterProps) {
 
     onFilterChange?.(filters)
   }
+
+  // Fetch levels when category changes (skip when All category)
+  useEffect(() => {
+    const fetchLevels = async () => {
+      try {
+        if (!selectedCategory || selectedCategory === 'All category') { setLevels([]); setSelectedLevel('All'); return; }
+        const res = await fetch(`/api/levels?category=${encodeURIComponent(selectedCategory)}`)
+        const data = await res.json()
+        setLevels(Array.isArray(data) ? data : [])
+        setSelectedLevel('All')
+      } catch (e) {
+        console.error('Failed to fetch levels', e)
+        setLevels([])
+      }
+    }
+    fetchLevels()
+  }, [selectedCategory])
 
   return (
     <Card className="w-full max-w-sm">
@@ -94,21 +113,32 @@ export function CourseFilter({ onFilterChange }: CourseFilterProps) {
 
         <Separator className="my-4" />
 
-        {/* Level */}
+        {/* Level (dynamic by category) */}
         <div className="mb-6">
           <h4 className="font-semibold mb-3 text-gray-900">Level</h4>
           <div className="space-y-2">
-            {["All", "Beginner", "Intermediate", "Advanced"].map((level) => (
-              <label key={level} className="flex items-center space-x-2 cursor-pointer">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="radio"
+                name="level"
+                value="All"
+                checked={selectedLevel === "All"}
+                onChange={(e) => handleFilterChange("level", e.target.value)}
+                className="w-4 h-4 text-blue-600"
+              />
+              <span className="text-sm text-gray-700">All</span>
+            </label>
+            {levels.map((lvl) => (
+              <label key={lvl.id} className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="radio"
                   name="level"
-                  value={level}
-                  checked={selectedLevel === level}
+                  value={String(lvl.id)}
+                  checked={selectedLevel === String(lvl.id)}
                   onChange={(e) => handleFilterChange("level", e.target.value)}
                   className="w-4 h-4 text-blue-600"
                 />
-                <span className="text-sm text-gray-700">{level}</span>
+                <span className="text-sm text-gray-700">{lvl.name}</span>
               </label>
             ))}
           </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -22,6 +22,7 @@ import {
   BarChart3,
   ChevronDown,
   ChevronRight,
+  Layers,
 } from "lucide-react"
 
 const navigationItems = [
@@ -117,6 +118,23 @@ const navigationItems = [
 export function AdminSidebar() {
   const pathname = usePathname()
   const [openItems, setOpenItems] = useState<string[]>(["Dashboard"])
+  const [levelsOpen, setLevelsOpen] = useState<boolean>(false)
+  const [levels, setLevels] = useState<Array<{ id: number; name: string }>>([])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/levels', { cache: 'no-store' })
+        const data = await res.json()
+        if (!cancelled && Array.isArray(data)) {
+          setLevels(data.map((l: any) => ({ id: Number(l.id), name: String(l.name) })))
+        }
+      } catch {}
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   const toggleItem = (title: string) => {
     setOpenItems((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
@@ -201,6 +219,59 @@ export function AdminSidebar() {
               )}
             </div>
           ))}
+
+          {/* Dynamic Levels Section */}
+          <div>
+            <Collapsible open={levelsOpen} onOpenChange={setLevelsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-between text-left font-normal",
+                    levelsOpen && "bg-blue-50 text-blue-700",
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Layers className="h-4 w-4" />
+                    <span>Levels</span>
+                  </div>
+                  {levelsOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1 ml-6 mt-1">
+                <Link href="/admin/levels">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "w-full justify-start font-normal text-gray-600 hover:text-gray-900",
+                      pathname === '/admin/levels' && "bg-blue-50 text-blue-700",
+                    )}
+                  >
+                    <span>Levels</span>
+                  </Button>
+                </Link>
+                {levels.map((lvl) => (
+                  <Link key={lvl.id} href={`/admin/levels/${lvl.id}`}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "w-full justify-start font-normal text-gray-600 hover:text-gray-900",
+                        pathname === `/admin/levels/${lvl.id}` && "bg-blue-50 text-blue-700",
+                      )}
+                    >
+                      <span>{lvl.name}</span>
+                    </Button>
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         </div>
       </div>
     </div>

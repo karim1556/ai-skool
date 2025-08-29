@@ -13,11 +13,14 @@ import Link from "next/link"
 export default function CoursesPage() {
   const router = useRouter()
   const [allCourses, setAllCourses] = useState<any[]>([])
+  const [levels, setLevels] = useState<any[]>([])
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [catalogType, setCatalogType] = useState<"courses" | "levels">("courses")
   const [filters, setFilters] = useState({
     category: "All category",
     price: "All",
     level: "All",
+    levelId: "All" as string | "All",
     language: "All",
     rating: "All",
   })
@@ -25,19 +28,37 @@ export default function CoursesPage() {
 
   useEffect(() => {
     const fetchCourses = async () => {
-      const res = await fetch("/api/courses")
-      const data = await res.json()
-      setAllCourses(data)
+      // If a specific level is selected, fetch courses by level
+      if (filters.levelId && filters.levelId !== 'All') {
+        const res = await fetch(`/api/levels/${filters.levelId}/courses`)
+        const data = await res.json()
+        setAllCourses(Array.isArray(data) ? data : [])
+      } else {
+        const res = await fetch("/api/courses")
+        const data = await res.json()
+        setAllCourses(Array.isArray(data) ? data : [])
+      }
     }
-    fetchCourses()
-  }, [])
+    if (catalogType === 'courses') fetchCourses()
+  }, [filters.levelId, catalogType])
+
+  // Fetch levels when in Levels mode
+  useEffect(() => {
+    const fetchLevels = async () => {
+      const res = await fetch('/api/levels', { cache: 'no-store' })
+      const data = await res.json()
+      setLevels(Array.isArray(data) ? data : [])
+    }
+    if (catalogType === 'levels') fetchLevels()
+  }, [catalogType])
 
   const filteredCourses = useMemo(() => {
     return allCourses.filter((course) => {
       if (filters.category !== "All category" && course.category !== filters.category) return false
       if (filters.price === "Free" && !course.is_free) return false
       if (filters.price === "Paid" && course.is_free) return false
-      if (filters.level !== "All" && course.level !== filters.level) return false
+      // When fetching by levelId we already filtered, otherwise allow optional text-level filter
+      if ((!filters.levelId || filters.levelId === 'All') && filters.level !== "All" && course.level !== filters.level) return false
       if (filters.language !== "All" && course.language !== filters.language) return false
       if (filters.rating !== "All" && course.rating < Number.parseInt(filters.rating)) return false
       return true
@@ -64,6 +85,7 @@ export default function CoursesPage() {
       category: "All category",
       price: "All",
       level: "All",
+      levelId: "All",
       language: "All",
       rating: "All",
     })
@@ -140,17 +162,102 @@ export default function CoursesPage() {
     );
   }
 
+  const LevelCard = ({ level }: { level: any }) => {
+    const onAddToCart = (e: React.MouseEvent) => {
+      e.preventDefault()
+      router.push('/cart')
+    }
+    const onView = (e: React.MouseEvent) => {
+      // allow navigation
+      e.stopPropagation()
+    }
+    const hasDiscount = typeof level.original_price === 'number' && typeof level.price === 'number' && level.original_price > level.price
+    return (
+      <Link href={`/levels/${level.id}`}>
+        <Card className="overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 h-full flex flex-col">
+          <div className="w-full h-48 bg-gray-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {level.thumbnail ? (
+              <img src={level.thumbnail} alt={level.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No thumbnail</div>
+            )}
+          </div>
+          <div className="p-5 flex flex-col flex-grow">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-gray-900">{level.name}</h3>
+              {level.category && <Badge variant="secondary">{level.category}</Badge>}
+            </div>
+            {level.description && (
+              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{level.description}</p>
+            )}
+            <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
+              <div>
+                {level.is_free ? (
+                  <span className="text-xl font-bold text-green-600">Free</span>
+                ) : (
+                  <div className="flex items-baseline gap-2">
+                    {typeof level.price === 'number' && (
+                      <span className="text-xl font-bold text-pink-600">₹{level.price}</span>
+                    )}
+                    {hasDiscount && (
+                      <span className="text-sm text-gray-400 line-through">₹{level.original_price}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={onAddToCart}>
+                  <ShoppingCart className="h-4 w-4" />
+                </Button>
+                <Button size="sm" onClick={onView} className="bg-gradient-to-r from-purple-500 to-blue-500 text-white">
+                  View Courses
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </Link>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 py-8">
         <header className="mb-8">
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Our Courses</h1>
-          <p className="mt-2 text-lg text-gray-600">Explore our wide range of courses and find the perfect one for you.</p>
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+            {catalogType === 'courses' ? 'Our Courses' : 'Our Levels'}
+          </h1>
+          <p className="mt-2 text-lg text-gray-600">
+            {catalogType === 'courses'
+              ? 'Explore our wide range of courses and find the perfect one for you.'
+              : 'Browse levels and discover grouped courses by difficulty.'}
+          </p>
         </header>
 
         <div className="flex justify-between items-center mb-6">
-          <p className="text-sm text-gray-600 font-medium">Showing {filteredCourses.length} of {allCourses.length} courses</p>
+          <p className="text-sm text-gray-600 font-medium">
+            {catalogType === 'courses'
+              ? <>Showing {filteredCourses.length} of {allCourses.length} courses</>
+              : <>Showing {levels.length} levels</>}
+          </p>
           <div className="flex items-center gap-2">
+            <div className="flex items-center bg-gray-100 rounded-md overflow-hidden">
+              <Button
+                variant={catalogType === 'courses' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setCatalogType('courses')}
+              >
+                Courses
+              </Button>
+              <Button
+                variant={catalogType === 'levels' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setCatalogType('levels')}
+              >
+                Levels
+              </Button>
+            </div>
             <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" onClick={() => setViewMode("grid")}>
               <Grid className="h-5 w-5" />
             </Button>
@@ -171,7 +278,7 @@ export default function CoursesPage() {
           </aside>
 
           <main className="lg:col-span-3">
-            {filteredCourses.length === 0 ? (
+            {catalogType === 'courses' && filteredCourses.length === 0 ? (
               <div className="text-center py-24 bg-gray-50 rounded-lg">
                 <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900">No Courses Found</h3>
@@ -180,12 +287,20 @@ export default function CoursesPage() {
                   Clear All Filters
                 </Button>
               </div>
-            ) : (
+            ) : catalogType === 'courses' ? (
               <div
                 className={`grid ${viewMode === "grid" ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8' : 'space-y-6'}`}
               >
                 {filteredCourses.map((course) => (
                   <CourseCard key={course.id} course={course} isListView={viewMode === "list"} />
+                ))}
+              </div>
+            ) : (
+              <div
+                className={`grid ${viewMode === "grid" ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8' : 'space-y-6'}`}
+              >
+                {levels.map((lvl) => (
+                  <LevelCard key={lvl.id} level={lvl} />
                 ))}
               </div>
             )}

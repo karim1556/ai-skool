@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/layout/admin-layout"
 import { MultiStepForm } from "@/components/forms/multi-step-form"
@@ -40,7 +40,27 @@ export default function AddCoursePage() {
     demo_video_file: null as File | null,
     attachments: [] as { title: string; file: File | null }[],
     external_links: [] as { title: string; url: string }[],
+    level_id: '' as string | '',
   })
+
+  // Levels fetched from API, optionally filtered by category
+  const [levels, setLevels] = useState<any[]>([])
+
+  // Fetch levels initially and when category changes
+  useEffect(() => {
+    const fetchLevels = async () => {
+      try {
+        const qs = courseData.category ? `?category=${encodeURIComponent(courseData.category)}` : ''
+        const res = await fetch(`/api/levels${qs}`)
+        const data = await res.json()
+        setLevels(Array.isArray(data) ? data : [])
+      } catch (e) {
+        console.error('Failed to fetch levels', e)
+        setLevels([])
+      }
+    }
+    fetchLevels()
+  }, [courseData.category])
 
   const handleInputChange = (field: string, value: any) => {
     setCourseData(prev => ({ ...prev, [field]: value }))
@@ -156,6 +176,21 @@ export default function AddCoursePage() {
             value={courseData.category}
             onChange={(e) => handleInputChange("category", e.target.value)}
           />
+        </div>
+        <div>
+          <Label htmlFor="level_id">Level (from Levels table)</Label>
+          <Select value={courseData.level_id} onValueChange={(value) => handleInputChange("level_id", value)}>
+            <SelectTrigger>
+              <SelectValue placeholder={levels.length ? "Select level" : "No levels found"} />
+            </SelectTrigger>
+            <SelectContent>
+              {levels.map((l) => (
+                <SelectItem key={l.id} value={String(l.id)}>
+                  {l.category ? `${l.category} - ` : ''}{l.name} {l.level_order ? `(Order ${l.level_order})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label htmlFor="level">Level</Label>

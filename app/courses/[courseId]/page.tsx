@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,7 @@ async function getCourse(courseId: string): Promise<Course | null> {
 export default function CoursePage({ params }: { params: { courseId: string } }) {
   const [showVideo, setShowVideo] = useState(false);
   const [course, setCourse] = useState<Course | null>(null);
+  const [courseLevels, setCourseLevels] = useState<any[]>([]);
   
   // Detect and transform YouTube URLs to embed form
   const getYouTubeEmbedUrl = (url: string | undefined | null): string | null => {
@@ -167,6 +169,18 @@ export default function CoursePage({ params }: { params: { courseId: string } })
       }
     };
     fetchCourse();
+  }, [params.courseId]);
+
+  // Fetch levels for this course
+  useEffect(() => {
+    const fetchLevels = async () => {
+      try {
+        const res = await fetch(`/api/courses/${params.courseId}/levels`, { cache: 'no-store' });
+        const data = await res.json();
+        setCourseLevels(Array.isArray(data) ? data : []);
+      } catch {}
+    };
+    fetchLevels();
   }, [params.courseId]);
 
   // Autoplay demo video as soon as course data (and demo_video_url) is available
@@ -214,7 +228,7 @@ export default function CoursePage({ params }: { params: { courseId: string } })
           <div className="lg:col-span-2 space-y-4">
             <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">{course.title}</h1>
             <p className="text-xl text-gray-300">{course.tagline}</p>
-            <div className="flex items-center gap-4 pt-2">
+            <div className="flex items-center gap-4 pt-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-yellow-400 text-lg">{numericRating.toFixed(1)}</span>
                 <div className="flex">
@@ -225,6 +239,15 @@ export default function CoursePage({ params }: { params: { courseId: string } })
               </div>
               {typeof course.reviews_count === 'number' && <span className="text-gray-400">({course.reviews_count.toLocaleString()} ratings)</span>}
               {typeof course.enrolled_students_count === 'number' && <span className="text-gray-400">{course.enrolled_students_count.toLocaleString()} students</span>}
+              {courseLevels.length > 0 && (
+                <div className="flex items-center gap-2">
+                  {courseLevels.map((lvl) => (
+                    <Link key={lvl.id} href={`/levels/${lvl.id}`}>
+                      <Badge variant="secondary">{lvl.name}</Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
             {course.instructor && (
               <div className="flex items-center gap-2 pt-2">
