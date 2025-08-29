@@ -46,6 +46,7 @@ export default function TrainerCoursePlaybackPage() {
 
   const [course, setCourse] = useState<ApiCourse | null>(null);
   const [courseLevels, setCourseLevels] = useState<any[]>([]);
+  const [trainerIdDb, setTrainerIdDb] = useState<string | null>(null);
 
   // Load course and levels
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function TrainerCoursePlaybackPage() {
         const schoolRes = await fetch('/api/me/school', { cache: 'no-store' });
         const school = schoolRes.ok ? await schoolRes.json() : null;
         const sid = school?.schoolId;
-        let allowed = false;
+        let allowed = false; let resolvedTrainerId: string | null = null;
         if (sid) {
           const trRes = await fetch(`/api/trainers?schoolId=${encodeURIComponent(sid)}`, { cache: 'no-store' });
           const tr = await trRes.json();
@@ -96,12 +97,14 @@ export default function TrainerCoursePlaybackPage() {
               const lv = await lvRes.json();
               if (lvRes.ok && Array.isArray(lv)) {
                 allowed = lv.some((l:any) => courseLevelIds.has(Number(l.id)));
+                if (allowed) resolvedTrainerId = String(mine.id);
               }
             }
           }
         }
         if (!active) return;
         setAuthorized(Boolean(allowed));
+        setTrainerIdDb(resolvedTrainerId);
       } catch (e:any) {
         if (!active) return;
         setError(e?.message || 'Authorization failed');
@@ -174,7 +177,12 @@ export default function TrainerCoursePlaybackPage() {
 
   return (
     <div className="min-h-screen">
-      <CoursePlaybackClientV2 course={playbackCourse as any} />
+      <CoursePlaybackClientV2
+        course={playbackCourse as any}
+        role="trainer"
+        courseId={id}
+        trainerId={trainerIdDb || undefined}
+      />
     </div>
   );
 }

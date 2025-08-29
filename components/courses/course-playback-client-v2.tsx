@@ -39,10 +39,15 @@ interface Course {
 
 interface CoursePlaybackClientProps {
   course: Course;
+  role?: 'student' | 'trainer';
+  courseId?: string; // convenience (can be derived from course.id)
+  studentId?: string;
+  trainerId?: string;
+  batchId?: string; // required for students
 }
 
 // This component is now fully type-safe and handles all UI logic.
-export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientProps) {
+export default function CoursePlaybackClientV2({ course, role = 'student', courseId, studentId, trainerId, batchId }: CoursePlaybackClientProps) {
   const router = useRouter();
   const [curriculum, setCurriculum] = useState(course.curriculum);
 
@@ -67,6 +72,37 @@ export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientP
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(pickFirstPlayableLesson(course.curriculum));
   const [videoUrl, setVideoUrl] = useState<string | undefined>(pickFirstPlayableLesson(course.curriculum || [])?.video_url);
   const [isLoading, setIsLoading] = useState(false);
+  const resolvedCourseId = String(courseId || course.id);
+
+  // Fetch existing completed lessons and mark them in local state
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set('courseId', resolvedCourseId);
+        params.set('role', role);
+        if (role === 'student') {
+          if (!studentId || !batchId) return; // can't fetch without identifiers
+          params.set('studentId', studentId);
+          params.set('batchId', batchId);
+        } else {
+          if (!trainerId) return;
+          params.set('trainerId', trainerId);
+        }
+        const res = await fetch(`/api/progress/lessons?${params.toString()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const completedIds: Set<string> = new Set((data?.completedLessonIds || []).map((x: any) => String(x)));
+        if (!active) return;
+        setCurriculum((prev) => prev.map((sec) => ({
+          ...sec,
+          lessons: sec.lessons.map((lsn) => ({ ...lsn, completed: completedIds.has(String(lsn.id)) }))
+        })));
+      } catch {}
+    })();
+    return () => { active = false };
+  }, [resolvedCourseId, role, studentId, trainerId, batchId]);
 
   useEffect(() => {
     if (activeLesson?.type === 'lesson') {
@@ -117,19 +153,51 @@ export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientP
     setTimeout(() => setIsLoading(false), 300);
   };
 
-  const handleToggleCompletion = (lessonId: string, sectionId: string) => {
-    const newCurriculum = curriculum.map(section => {
-      if (section.id === sectionId) {
+  const handleToggleCompletion = async (lessonId: string, sectionId: string) => {
+    // Optimistic UI update
+    setCurriculum((prev) => prev.map((section) => {
+      if (section.id !== sectionId) return section;
+      return {
+        ...section,
+        lessons: section.lessons.map((lesson) => lesson.id === lessonId ? { ...lesson, completed: !lesson.completed } : lesson)
+      };
+    }));
+
+    // Persist
+    const section = curriculum.find((s) => s.id === sectionId);
+    const lesson = section?.lessons.find((l) => l.id === lessonId);
+    const newCompleted = !(lesson?.completed);
+    try {
+      const payload: any = {
+        course_id: resolvedCourseId,
+        section_id: sectionId,
+        lesson_id: lessonId,
+        completed: newCompleted,
+        role,
+      };
+      if (role === 'student') {
+        if (!studentId || !batchId) return;
+        payload.student_id = studentId;
+        payload.batch_id = batchId;
+      } else {
+        if (!trainerId) return;
+        payload.trainer_id = trainerId;
+      }
+      await fetch('/api/progress/lessons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      // Revert on error
+      setCurriculum((prev) => prev.map((section) => {
+        if (section.id !== sectionId) return section;
         return {
           ...section,
-          lessons: section.lessons.map(lesson =>
-            lesson.id === lessonId ? { ...lesson, completed: !lesson.completed } : lesson
-          ),
+          lessons: section.lessons.map((l) => l.id === lessonId ? { ...l, completed: !newCompleted } : l)
         };
-      }
-      return section;
-    });
-    setCurriculum(newCurriculum);
+      }));
+    }
   };
 
   const { totalLessons, completedLessons, progress } = useMemo(() => {
@@ -164,7 +232,7 @@ export default function CoursePlaybackClientV2({ course }: CoursePlaybackClientP
     }
   };
 
-const QuizPlayer = ({ lesson }: { lesson: Lesson }) => {
+const QuizPlayer = ({ lesson, ctx }: { lesson: Lesson, ctx: { courseId: string; role: 'student'|'trainer'; studentId?: string; trainerId?: string; batchId?: string; sectionId?: string } }) => {
   const router = useRouter();
   return (
     <div className="w-full h-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
@@ -178,8 +246,16 @@ const QuizPlayer = ({ lesson }: { lesson: Lesson }) => {
         <CardContent className="text-center px-6 pb-6">
           <p className="text-gray-600 dark:text-gray-300 mb-6">You are about to start the quiz. Review your notes and get ready to test your knowledge!</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-             <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-transform transform hover:scale-105" onClick={() => router.push(`/quizzes/${lesson.id}`)}>
-                Start Quiz
+             <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-transform transform hover:scale-105" onClick={() => {
+               const params = new URLSearchParams();
+               params.set('courseId', ctx.courseId);
+               params.set('role', ctx.role);
+               if (ctx.sectionId) params.set('sectionId', ctx.sectionId);
+               if (ctx.role === 'student') { if (ctx.studentId) params.set('studentId', ctx.studentId); if (ctx.batchId) params.set('batchId', ctx.batchId); }
+               else { if (ctx.trainerId) params.set('trainerId', ctx.trainerId); }
+               router.push(`/quizzes/${lesson.id}?${params.toString()}`)
+             }}>
+               Start Quiz
              </Button>
           </div>
         </CardContent>
@@ -389,9 +465,16 @@ const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLes
         </div>
         <div className="flex-1 overflow-y-auto">
             <Accordion type="multiple" defaultValue={curriculum.map((s: any) => s.id)} className="w-full">
-                {curriculum.map((section: any) => (
+                {curriculum.map((section: any) => {
+                  const sectionCompleted = section.lessons.length > 0 && section.lessons.every((l:any)=>l.completed)
+                  return (
                     <AccordionItem value={section.id} key={section.id}>
-                        <AccordionTrigger className="px-4 py-3 font-semibold text-sm hover:bg-gray-100 dark:hover:bg-gray-800">{section.title}</AccordionTrigger>
+                        <AccordionTrigger className="px-4 py-3 font-semibold text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+                          <div className="flex items-center gap-2">
+                            <span>{section.title}</span>
+                            {sectionCompleted && <span className="ml-2 text-xs rounded-full bg-green-100 text-green-700 px-2 py-0.5">Completed</span>}
+                          </div>
+                        </AccordionTrigger>
                         <AccordionContent className="pb-0">
                             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                                 {section.lessons.map((lesson: any) => (
@@ -408,7 +491,8 @@ const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLes
                             </ul>
                         </AccordionContent>
                     </AccordionItem>
-                ))}
+                  )
+                })}
             </Accordion>
         </div>
     </div>
@@ -432,7 +516,7 @@ const CourseSidebar = ({ title, curriculum, activeLesson, progress, completedLes
               </div>
             </div>
           ) : activeLesson.type === 'quiz' ? (
-            <QuizPlayer lesson={activeLesson} />
+            <QuizPlayer lesson={activeLesson} ctx={{ courseId: resolvedCourseId, role, studentId, trainerId, batchId, sectionId: (curriculum.find(s=>s.lessons.some(l=>l.id===activeLesson.id))?.id) }} />
           ) : activeLesson.type === 'assignment' ? (
             <AssignmentViewer lesson={activeLesson} />
           ) : (

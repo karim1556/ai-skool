@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -31,6 +31,7 @@ interface Quiz {
 export default function QuizPlaybackPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const quizId = params.quizId as string;
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -77,6 +78,33 @@ export default function QuizPlaybackPage() {
       const data = await response.json();
       setResults(data);
       toast.success('Quiz submitted successfully!');
+
+      // Persist attempt to progress API if context is provided
+      const courseId = searchParams.get('courseId') || undefined;
+      const sectionId = searchParams.get('sectionId') || undefined;
+      const role = (searchParams.get('role') as 'student'|'trainer'|null) || null;
+      const studentId = searchParams.get('studentId') || undefined;
+      const trainerId = searchParams.get('trainerId') || undefined;
+      const batchId = searchParams.get('batchId') || undefined;
+      if (courseId && role) {
+        const payload: any = {
+          course_id: courseId,
+          section_id: sectionId || 'unknown',
+          quiz_id: quizId,
+          role,
+          score: Number(data?.score ?? 0),
+          max_score: Number(data?.total ?? 0) || 0,
+        };
+        if (role === 'student') { payload.student_id = studentId; payload.batch_id = batchId; }
+        else { payload.trainer_id = trainerId; }
+        try {
+          await fetch('/api/progress/quizzes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } catch {}
+      }
     } catch (error) {
       toast.error('There was an error submitting your quiz.');
     } finally {

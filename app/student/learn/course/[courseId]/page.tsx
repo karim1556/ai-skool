@@ -45,6 +45,8 @@ export default function StudentCoursePlaybackPage() {
 
   const [course, setCourse] = useState<ApiCourse | null>(null);
   const [courseLevels, setCourseLevels] = useState<any[]>([]);
+  const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
+  const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
 
   // Load course meta and its levels
   useEffect(() => {
@@ -82,20 +84,33 @@ export default function StudentCoursePlaybackPage() {
         const enrRes = await fetch(`/api/batch-enrolments?studentClerkId=${encodeURIComponent(user?.id || '')}`, { cache: 'no-store' });
         const enrolments = await enrRes.json();
         if (!enrRes.ok) throw new Error(enrolments?.error || 'Failed to load enrolments');
-        const batchIds: string[] = [...new Set((Array.isArray(enrolments)?enrolments:[]).map((e:any) => e.batch_id).filter(Boolean))];
+        const enrols = Array.isArray(enrolments) ? enrolments : [];
+        const batchIds: string[] = [...new Set(enrols.map((e:any) => e.batch_id).filter(Boolean))];
+        const batchToStudent = new Map<string, string>();
+        for (const e of enrols) {
+          if (e.batch_id && e.student_id) batchToStudent.set(String(e.batch_id), String(e.student_id));
+        }
 
-        let allowed = false;
+        let allowed = false; let chosenBatch: string | null = null;
         for (const bid of batchIds) {
           try {
             const blRes = await fetch(`/api/batches/${bid}/levels`, { cache: 'no-store' });
             const bl = await blRes.json();
             if (blRes.ok && Array.isArray(bl)) {
-              if (bl.some((l:any) => courseLevelIds.has(Number(l.id)))) { allowed = true; break; }
+              if (bl.some((l:any) => courseLevelIds.has(Number(l.id)))) { allowed = true; chosenBatch = String(bid); break; }
             }
           } catch {}
         }
         if (!active) return;
         setAuthorized(allowed);
+        if (allowed && chosenBatch) {
+          setActiveBatchId(chosenBatch);
+          const sid = batchToStudent.get(String(chosenBatch)) || null;
+          setActiveStudentId(sid);
+        } else {
+          setActiveBatchId(null);
+          setActiveStudentId(null);
+        }
       } catch (e:any) {
         if (!active) return;
         setError(e?.message || 'Authorization failed');
@@ -202,7 +217,13 @@ export default function StudentCoursePlaybackPage() {
 
   return (
     <div className="min-h-screen">
-      <CoursePlaybackClientV2 course={playbackCourse as any} />
+      <CoursePlaybackClientV2
+        course={playbackCourse as any}
+        role="student"
+        courseId={id}
+        studentId={activeStudentId || undefined}
+        batchId={activeBatchId || undefined}
+      />
     </div>
   );
 }
