@@ -3,14 +3,14 @@
 import { RoleLayout } from "@/components/layout/role-layout"
 import { TrainerSidebar } from "@/components/layout/trainer-sidebar"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { useAuth, useOrganization, useUser } from "@clerk/nextjs"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useSearchParams } from "next/navigation"
 
-export default function GradeSubmissionsPage() {
+function GradeSubmissionsContent() {
   const { isSignedIn, isLoaded: authLoaded } = useAuth()
   const { organization, isLoaded: orgLoaded } = useOrganization()
   const { user, isLoaded: userLoaded } = useUser()
@@ -96,6 +96,14 @@ export default function GradeSubmissionsPage() {
         </CardContent>
       </Card>
     </RoleLayout>
+  )
+}
+
+export default function GradeSubmissionsPage() {
+  return (
+    <Suspense fallback={<div className="p-4">Loading...</div>}>
+      <GradeSubmissionsContent />
+    </Suspense>
   )
 }
 
