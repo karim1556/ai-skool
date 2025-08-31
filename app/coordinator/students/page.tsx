@@ -23,6 +23,7 @@ export default function CoordinatorStudentsPage() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ inserted:number, skipped:number, errors:{ line:number, error:string }[] } | null>(null)
   const [uploadProgress, setUploadProgress] = useState<number>(0)
+  const [inviteImport, setInviteImport] = useState<boolean>(false)
 
   const reload = async () => {
     try {
@@ -83,7 +84,7 @@ export default function CoordinatorStudentsPage() {
       // Use XHR to get upload progress events
       const xhr = new XMLHttpRequest()
       const done: any = await new Promise((resolve, reject) => {
-        xhr.open('POST', '/api/students/import')
+        xhr.open('POST', `/api/students/import${inviteImport ? '?invite=true' : ''}`)
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
             const p = Math.round((e.loaded / e.total) * 100)
@@ -124,7 +125,15 @@ export default function CoordinatorStudentsPage() {
               onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
               className="block text-sm"
             />
-            <Button onClick={onImport} disabled={importing || !csvFile}>{importing ? 'Importing...' : 'Import CSV'}</Button>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={inviteImport}
+                onChange={(e) => setInviteImport(e.target.checked)}
+              />
+              <span>Invite mode</span>
+            </label>
+            <Button onClick={onImport} disabled={importing || !csvFile}>{importing ? 'Importing...' : inviteImport ? 'Import & Invite' : 'Import CSV'}</Button>
           </div>
         </div>
       </div>

@@ -34,6 +34,7 @@ export default function CoordinatorAddStudentPage() {
   const [address, setAddress] = useState("")
   const [stateVal, setStateVal] = useState("")
   const [district, setDistrict] = useState("")
+  const [invite, setInvite] = useState(false)
 
   const stepContent = [
     // Basic Info Step
@@ -77,12 +78,25 @@ export default function CoordinatorAddStudentPage() {
         <Input id="email" type="email" placeholder="Enter email address" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={invite}
+            onChange={(e) => setInvite(e.target.checked)}
+          />
+          <span>Invite student via email (recommended)</span>
+        </label>
+        <p className="text-xs text-muted-foreground">
+          When invited, the student receives an email from Clerk to set their password. We will add them as invited.
+        </p>
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="password">Password<span className="text-red-500">*</span></Label>
-        <Input id="password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input id="password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={invite} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirm Password<span className="text-red-500">*</span></Label>
-        <Input id="confirmPassword" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+        <Input id="confirmPassword" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={invite} />
       </div>
     </div>,
 
@@ -124,7 +138,7 @@ export default function CoordinatorAddStudentPage() {
 
   const handleComplete = async () => {
     try {
-      if (password !== confirmPassword) {
+      if (!invite && password !== confirmPassword) {
         toast({ title: "Passwords do not match", variant: "destructive" })
         return
       }
@@ -136,12 +150,13 @@ export default function CoordinatorAddStudentPage() {
           last_name: lastName || null,
           biography,
           email: email || null,
-          password,
+          ...(invite ? {} : { password }),
           phone: phone || null,
           parent_phone: parentPhone,
           address,
           state: stateVal || null,
           district: district || null,
+          invite,
         }),
       })
       let data: any = null
@@ -150,7 +165,7 @@ export default function CoordinatorAddStudentPage() {
         const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to create student"))
         throw new Error(`${res.status} ${res.statusText}: ${msg}`)
       }
-      toast({ title: "Student created" })
+      toast({ title: invite ? "Invitation sent" : "Student created" })
       router.push("/coordinator/dashboard")
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || String(e) || "Failed to create student", variant: "destructive" })

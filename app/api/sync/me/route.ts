@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
       const existing = await db.get<{ id: string }>(`SELECT id FROM students WHERE lower(email) = lower($1)`, [email])
       if (existing?.id) {
         await db.run(
-          `UPDATE students SET school_id = $1, first_name = COALESCE($2, first_name), last_name = COALESCE($3, last_name), email = COALESCE($4, email), clerk_user_id = $5, status = COALESCE(status, 'verified'), updated_at = NOW() WHERE id = $6`,
+          `UPDATE students SET school_id = $1, first_name = COALESCE($2, first_name), last_name = COALESCE($3, last_name), email = COALESCE($4, email), clerk_user_id = $5, status = 'verified', updated_at = NOW() WHERE id = $6`,
           [schoolId, firstName, lastName, email, userId, existing.id]
         )
         linked = true

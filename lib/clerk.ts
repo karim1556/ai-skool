@@ -41,10 +41,46 @@ export async function setUserPassword(userId: string, password: string) {
   await clerkFetch(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ password }) });
 }
 
-export async function addUserToOrganization(opts: { organizationId: string; userId: string; role?: string; }) {
+export async function addUserToOrganization(opts: { organizationId: string; userId: string; role?: string; roleId?: string; }) {
   const body: any = { user_id: opts.userId }
+  if (opts.roleId) body.role_id = opts.roleId
   if (opts.role) body.role = opts.role
   return clerkFetch(`/organizations/${opts.organizationId}/memberships`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listOrganizationMemberships(organizationId: string, userId: string) {
+  const q = new URLSearchParams();
+  q.append('user_id', userId);
+  return clerkFetch(`/organizations/${organizationId}/memberships?${q.toString()}`);
+}
+
+export async function updateOrganizationMembershipRole(
+  organizationId: string,
+  membershipId: string,
+  opts: { roleId?: string; role?: string }
+) {
+  const body: any = {};
+  if (opts.roleId) body.role_id = opts.roleId;
+  if (opts.role) body.role = opts.role;
+  return clerkFetch(`/organizations/${organizationId}/memberships/${membershipId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+// Create an organization invitation for a given email
+export async function inviteUserToOrganization(
+  organizationId: string,
+  email: string,
+  opts: { roleId?: string; role?: string } = {}
+) {
+  const body: any = { email_address: email };
+  if (opts.roleId) body.role_id = opts.roleId;
+  if (opts.role) body.role = opts.role;
+  return clerkFetch(`/organizations/${organizationId}/invitations`, {
     method: 'POST',
     body: JSON.stringify(body),
   });
