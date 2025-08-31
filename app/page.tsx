@@ -268,7 +268,7 @@ export default function HomePage() {
                   </span>
                 </h1>
                 <p className="text-lg md:text-xl font-medium text-gray-600 leading-relaxed max-w-2xl tracking-tight">
-                  Empower Amaan your Skoolal institution with our comprehensive Learning Management System. Streamline
+                  Empower education your Skoolal institution with our comprehensive Learning Management System. Streamline
                   courses, manage students, and track progress all in one place.
                 </p>
               </div>
