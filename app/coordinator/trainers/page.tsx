@@ -70,9 +70,7 @@ export default function CoordinatorTrainersPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Trainers</h1>
         <div className="flex gap-2">
-          {!(trainers || []).some((t:any) => String(t.status || '').toLowerCase() === 'verified') && (
-            <Link href="/coordinator/trainers/new"><Button>Add Trainer</Button></Link>
-          )}
+          <Link href="/coordinator/trainers/new"><Button>Add Trainer</Button></Link>
         </div>
       </div>
 
@@ -116,26 +114,6 @@ export default function CoordinatorTrainersPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              const newStatus = String(t.status || '').toLowerCase() === 'verified' ? 'unverified' : 'verified'
-                              const res = await fetch(`/api/trainers?id=${encodeURIComponent(t.id)}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ status: newStatus })
-                              })
-                              if (res.ok) {
-                                reload()
-                              } else {
-                                const j = await res.json().catch(() => ({} as any))
-                                alert(j?.error || 'Failed to update status')
-                              }
-                            }}
-                          >
-                            {String(t.status || '').toLowerCase() === 'verified' ? 'Unverify' : 'Verify'}
-                          </Button>
                           <ActionDropdown
                             onView={() => router.push(`/coordinator/trainers/${t.id}`)}
                             onEdit={() => router.push(`/coordinator/trainers/${t.id}/edit`)}

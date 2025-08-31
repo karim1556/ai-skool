@@ -72,12 +72,7 @@ export async function PATCH(req: NextRequest) {
       if (!schoolRow?.id) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
       schoolId = schoolRow.id;
     }
-    // If status is being set to 'verified', ensure no other verified trainer exists for the school
-    const isVerifying = 'status' in body && String(body.status).toLowerCase() === 'verified'
-    if (isVerifying) {
-      const other = await db.get<{ id: string }>(`SELECT id FROM trainers WHERE school_id = $1 AND id <> $2 AND LOWER(COALESCE(status,'')) = 'verified' LIMIT 1`, [schoolId, id])
-      if (other?.id) return NextResponse.json({ error: 'Only one verified trainer allowed per school' }, { status: 409 })
-    }
+    // Allow multiple verified trainers per school: removed single-verified constraint
     await db.run(`UPDATE trainers SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${fields.length + 1} AND school_id = $${fields.length + 2}`, [...values, id, schoolId]);
     return NextResponse.json({ success: true });
   } catch (e: any) {
@@ -187,12 +182,7 @@ export async function POST(req: NextRequest) {
       schoolId = schoolRow.id;
     }
 
-    // Enforce only ONE verified trainer per school
-    const creatingStatus = (status || 'verified') as string
-    if (String(creatingStatus).toLowerCase() === 'verified') {
-      const existsVerified = await db.get<{ id: string }>(`SELECT id FROM trainers WHERE school_id = $1 AND LOWER(COALESCE(status,'')) = 'verified' LIMIT 1`, [schoolId])
-      if (existsVerified?.id) return NextResponse.json({ error: 'A verified trainer already exists for this school' }, { status: 409 })
-    }
+    // Allow multiple verified trainers per school: removed single-verified constraint
 
     const row = await db.get<{ id: string }>(
       `INSERT INTO trainers (
@@ -211,7 +201,7 @@ export async function POST(req: NextRequest) {
         pincode || null,
         address || null,
         image_url || null,
-        creatingStatus || 'verified',
+        (status || 'verified') as string,
         email || null,
         password || null,
         highest_school || null,
