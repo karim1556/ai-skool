@@ -769,7 +769,7 @@ export default function HomePage() {
 </section>
 
 
-      {/* Pricing Section */}
+      {/* Pricing Section
       <section className="bg-gradient-to-b from-gray-50 to-white px-4 py-20 md:px-6 md:py-32">
         <div className="mx-auto max-w-7xl">
           <Card className="overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500 to-sky-600 p-0 shadow-2xl">
@@ -865,7 +865,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-      </section>
+      </section> */}
 
       {/* FAQ Section */}
       <section className="bg-gradient-to-b from-white to-gray-50 px-4 py-20 md:px-6 md:py-32">
@@ -911,7 +911,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-sky-500 to-sky-600 px-4 py-20 md:px-6 md:py-32 relative overflow-hidden">
+      {/* <section className="bg-gradient-to-r from-sky-500 to-sky-600 px-4 py-20 md:px-6 md:py-32 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.1),transparent_50%)]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
 
@@ -944,7 +944,7 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Footer */}
 
