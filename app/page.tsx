@@ -37,7 +37,7 @@ import {
   Heart,
   Share2
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bebas_Neue } from "next/font/google";
 
 // Load condensed font
@@ -51,6 +51,26 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("monthly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
+  const [courseLevel, setCourseLevel] = useState<'all' | 'beginner' | 'intermediate' | 'advanced'>("all");
+  const [selectedLevelId, setSelectedLevelId] = useState<1 | 2 | 3>(1);
+  const [levelCourses, setLevelCourses] = useState<any[]>([]);
+
+  // Fetch courses by level from API
+  useEffect(() => {
+    let ignore = false;
+    async function load() {
+      try {
+        const res = await fetch(`/api/levels/${selectedLevelId}/courses`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`Failed to load courses for level ${selectedLevelId}`);
+        const data = await res.json();
+        if (!ignore) setLevelCourses(Array.isArray(data) ? data : []);
+      } catch (_e) {
+        if (!ignore) setLevelCourses([]);
+      }
+    }
+    load();
+    return () => { ignore = true; };
+  }, [selectedLevelId]);
 
   // Mock data for courses
   const courses = [
@@ -59,6 +79,7 @@ export default function HomePage() {
       title: "React for Beginners",
       instructor: "Jane Doe",
       category: "Web Development",
+      level: "beginner" as const,
       rating: 4.8,
       reviews: 120,
       price: 49,
@@ -71,6 +92,7 @@ export default function HomePage() {
       title: "Advanced Python",
       instructor: "John Smith",
       category: "Programming",
+      level: "intermediate" as const,
       rating: 4.7,
       reviews: 98,
       price: 59,
@@ -83,6 +105,7 @@ export default function HomePage() {
       title: "UI/UX Design Essentials",
       instructor: "Emily Clark",
       category: "Design",
+      level: "advanced" as const,
       rating: 4.9,
       reviews: 150,
       price: 39,
@@ -91,6 +114,11 @@ export default function HomePage() {
       students: 1800,
     },
   ];
+
+  // Courses to show in UI: prefer API level courses; fallback to mock courses for Level 1 when empty
+  const displayedCourses: any[] = (selectedLevelId === 1 && levelCourses.length === 0)
+    ? courses
+    : levelCourses;
 
   // Mock data for testimonials
   const testimonials = [
@@ -130,36 +158,32 @@ export default function HomePage() {
     },
   ];
 
-  // Product data
+  // Product data (Top 3 reasons)
   const products = [
     {
       id: 1,
-      name: "Course Builder Pro",
-      description: "Create engaging courses with our drag-and-drop course builder. Add videos, quizzes, assignments, and more.",
-      icon: BookMarked,
-      gradient: "from-indigo-500 to-purple-600"
+      name: "Best Engaging",
+      description:
+        "One of the best options to engage your child and keep him/her away from TV & Video games. Annual Robotics Challenges like SPARC have them building Robots willingly and happily!",
+      icon: Heart,
+      gradient: "from-indigo-500 to-purple-600",
     },
     {
       id: 2,
-      name: "Analytics Dashboard",
-      description: "Track student progress, engagement, and performance with real-time analytics and reports.",
-      icon: BarChart,
-      gradient: "from-teal-500 to-emerald-600"
+      name: "Futuristic Learning",
+      description:
+        "Engaging in a future-based learning activity like Robotics, Drone, IOT, VR, AI and Android, is very useful for the child's future too. Child learns Science, Math and Coding in a very fun way with Robots and other activities.",
+      icon: Atom,
+      gradient: "from-teal-500 to-emerald-600",
     },
     {
       id: 3,
-      name: "Mobile Learning App",
-      description: "Access courses on-the-go with our native iOS and Android applications.",
-      icon: Smartphone,
-      gradient: "from-rose-500 to-pink-600"
+      name: "Skill Development",
+      description:
+        "Creativity of the child increases having learnt Electronics & Coding—which comes to life using their own Robots! Showcasing team spirit and competitive skills in events like SPARC highly improves their overall holistic development!",
+      icon: Trophy,
+      gradient: "from-amber-500 to-orange-600",
     },
-    {
-      id: 4,
-      name: "Admin Console",
-      description: "Manage users, courses, and permissions with our powerful admin tools.",
-      icon: LayoutDashboard,
-      gradient: "from-amber-500 to-orange-600"
-    }
   ];
 
   // New product data for e-commerce listing
@@ -262,29 +286,19 @@ export default function HomePage() {
             <div className="space-y-10">
               <div className="space-y-6">
                 <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight tracking-tight">
-                  Transform Your{" "}
+                  Make your child{" "}
                   <span className="bg-gradient-to-r from-sky-500 to-purple-600 bg-clip-text text-transparent">
-                    Learning Journey
+                    future ready
                   </span>
                 </h1>
                 <p className="text-lg md:text-xl font-medium text-gray-600 leading-relaxed max-w-2xl tracking-tight">
-                  Empower education your Skoolal institution with our comprehensive Learning Management System. Streamline
-                  courses, manage students, and track progress all in one place.
+                  Let your child explore the world of STEM, Robotics, Coding & AI to develop 21st century skills.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/login">
                   <Button className="rounded-full bg-gradient-to-r from-sky-500 to-sky-600 px-10 py-4 text-lg font-bold text-white hover:from-sky-600 hover:to-sky-700 transition-all duration-300 hover:scale-105 shadow-xl hover:shadow-2xl">
                     GET STARTED
-                  </Button>
-                </Link>
-                <Link href="/login">
-                  <Button
-                    variant="outline"
-                    className="rounded-full border-2 border-gray-300 px-10 py-4 text-lg font-semibold text-gray-700 hover:bg-gray-50 transition-all duration-200 bg-transparent tracking-tight"
-                  >
-                    <Play className="mr-2 h-4 w-4" />
-                    Watch Demo
                   </Button>
                 </Link>
               </div>
@@ -371,53 +385,52 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-20 text-center space-y-8">
             <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-              Your{" "}
+              Become a {" "}
               <span className="bg-gradient-to-r from-sky-500 to-purple-600 bg-clip-text text-transparent">
-                all-in-one
-              </span>{" "}
-              learning solution
+                change maker
+              </span>
             </h2>
             <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
-              EduFlow LMS takes the guesswork out of online Skool. Our platform provides all the tools and features you need to create, manage, and deliver exceptional learning experiences.
+              Innovate today for a better tomorrow by inculcating the indispensable skills of the 21st century.
             </p>
           </div>
 
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                icon: BookOpen,
-                title: "Course Management",
-                description: "Create, organize, and manage courses with our intuitive course builder and content management system.",
+                icon: Sparkles,
+                title: "Innovativeness",
+                description: "Foster curiosity and groundbreaking ideas through hands-on exploration.",
                 gradient: "from-blue-500 to-cyan-500",
               },
               {
-                icon: Users,
-                title: "Student Management",
-                description: "Track student progress, manage enrollments, and provide personalized learning experiences.",
+                icon: Brain,
+                title: "Logical Reasoning",
+                description: "Build strong analytical thinking with structured challenges and activities.",
                 gradient: "from-purple-500 to-indigo-500",
               },
               {
-                icon: TrendingUp,
-                title: "Analytics & Reports",
-                description: "Get detailed insights into student performance and course effectiveness with comprehensive analytics.",
+                icon: Zap,
+                title: "Creativity",
+                description: "Encourage original thinking, design, and expression across disciplines.",
                 gradient: "from-green-500 to-emerald-500",
               },
               {
-                icon: Award,
-                title: "Assessments & Quizzes",
-                description: "Create interactive assessments and quizzes to evaluate student understanding and progress.",
+                icon: Atom,
+                title: "Critical Thinking",
+                description: "Evaluate information, question assumptions, and make informed decisions.",
                 gradient: "from-orange-500 to-amber-500",
               },
               {
-                icon: CheckCircle,
-                title: "Progress Tracking",
-                description: "Monitor learning progress with detailed tracking and milestone achievements for every student.",
+                icon: Calculator,
+                title: "Problem Solving",
+                description: "Tackle real-world problems using STEM, coding, and design thinking.",
                 gradient: "from-pink-500 to-rose-500",
               },
               {
-                icon: Play,
-                title: "Interactive Content",
-                description: "Engage students with multimedia content, interactive lessons, and collaborative learning tools.",
+                icon: Users,
+                title: "Team Work",
+                description: "Collaborate effectively, communicate clearly, and lead with empathy.",
                 gradient: "from-red-500 to-pink-500",
               },
             ].map((feature, index) => (
@@ -437,6 +450,11 @@ export default function HomePage() {
               </Card>
             ))}
           </div>
+          {displayedCourses.length === 0 && (
+            <div className="mt-8 text-center text-gray-600">
+              No courses found for Level {selectedLevelId}. Please check back later.
+            </div>
+          )}
         </div>
       </section>
 
@@ -445,17 +463,18 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-20 text-center space-y-8">
             <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-              Our{" "}
+              Top 3 reasons why {" "}
               <span className="bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-                Powerful Products
-              </span>
+                1 Lac+ Parents
+              </span>{" "}
+              choose us
             </h2>
             <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
-              Discover our suite of specialized tools designed to enhance every aspect of the learning experience.
+              What sets us apart for your child’s growth and engagement.
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-8 md:grid-cols-3 lg:grid-cols-3">
             {products.map((product) => (
               <div 
                 key={product.id}
@@ -600,54 +619,89 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-20 text-center space-y-8">
             <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-              Popular{" "}
+              Find the right {" "}
               <span className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-                Courses
+                course for you
               </span>
             </h2>
             <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
-              Choose from our most popular and highly-rated courses
+              Browse by Level 1, Level 2, and Level 3
             </p>
+
+            <div className="flex items-center justify-center gap-6">
+              {[1,2,3].map((lvl) => (
+                <button
+                  key={lvl}
+                  onClick={() => setSelectedLevelId(lvl as 1|2|3)}
+                  className={`text-sm md:text-base font-semibold tracking-tight border-b-2 pb-1 transition-colors ${
+                    selectedLevelId === lvl
+                      ? 'text-sky-600 border-sky-600'
+                      : 'text-gray-500 border-transparent hover:text-gray-700'
+                  }`}
+                >
+                  {`Level ${lvl}`}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
-            {courses.slice(0, 3).map((course: typeof courses[0]) => (
+            {displayedCourses.slice(0, 3).map((course: any) => (
               <Card
-                key={course.id}
-                className={`group overflow-hidden rounded-3xl border-0 bg-gradient-to-b from-sky-500 to-sky-600 p-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105`}
+                key={course.id || course.title}
+                className={`group overflow-hidden rounded-3xl border-0 p-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105`}
               >
                 <CardContent className="p-0">
-                  <div className="aspect-square bg-gradient-to-b from-sky-400 to-sky-500 p-8 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-                    <div className="relative h-full w-full rounded-3xl bg-white/20 backdrop-blur-sm border border-white/30 flex flex-col items-center justify-center p-6">
-                      <Badge className="bg-white text-sky-600 mb-4 tracking-tight">{course.category}</Badge>
-                      <h3 className="text-xl font-bold text-white text-center mb-2 tracking-tight">{course.title}</h3>
-                      <p className="text-sky-100 text-center mb-4 tracking-tight">{course.instructor}</p>
-                      <div className="flex items-center gap-1 mb-4">
+                  {/* Thumbnail */}
+                  <div className="relative aspect-[4/3] w-full overflow-hidden">
+                    <Image
+                      src={course.image || "/placeholder.svg?height=240&width=360"}
+                      alt={course.title || "Course thumbnail"}
+                      fill
+                      sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6">
+                    <div className="mb-3 flex items-center justify-between">
+                      <Badge className="bg-sky-100 text-sky-700">{`Level ${selectedLevelId}`}{course.category ? ` • ${course.category}` : ''}</Badge>
+                      <div className="flex items-center gap-1 text-yellow-500">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 ${
-                              i < Math.floor(course.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                            }`}
+                            className={`w-4 h-4 ${i < Math.floor(Number(course.rating) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
                           />
                         ))}
-                        <span className="text-sm text-white ml-2 tracking-tight">({course.reviews})</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-auto">
-                        <span className="text-xl font-bold text-white tracking-tight">${course.price}</span>
-                        {course.originalPrice > course.price && (
-                          <span className="text-sm text-white/70 line-through tracking-tight">${course.originalPrice}</span>
-                        )}
+                        <span className="text-xs text-gray-500 ml-1">({Number(course.reviews) || 0})</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="p-8 text-center text-white space-y-4">
-                    <div className="flex items-center justify-between text-sm tracking-tight">
-                      <span>{course.duration}</span>
-                      <span>{course.students} students</span>
+
+                    <h3 className="text-lg font-bold text-gray-900 tracking-tight line-clamp-2">{course.title || 'Course'}</h3>
+                    <p className="mt-1 text-sm text-gray-600 tracking-tight">{course.provider || course.instructor || 'Instructor'}</p>
+
+                    {/* Pricing */}
+                    <div className="mt-4 flex items-center gap-2">
+                      {course.is_free ? (
+                        <span className="text-lg font-bold text-green-600">Free</span>
+                      ) : (
+                        <>
+                          <span className="text-xl font-bold text-gray-900">${Number(course.price || 0)}</span>
+                          {Number(course.original_price || 0) > Number(course.price || 0) && (
+                            <span className="text-sm text-gray-500 line-through">${Number(course.original_price)}</span>
+                          )}
+                        </>
+                      )}
                     </div>
-                    <Button className="w-full bg-white text-sky-600 hover:bg-gray-100 font-bold tracking-tight">
+
+                    {/* Meta */}
+                    <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+                      <span>{course.duration || '—'}</span>
+                      <span>{Number(course.students || 0)} students</span>
+                    </div>
+
+                    <Button className="mt-5 w-full bg-sky-600 text-white hover:bg-sky-700 font-bold tracking-tight">
                       Enroll Now
                     </Button>
                   </div>
