@@ -100,7 +100,58 @@ export async function POST(req: NextRequest) {
   if (!orgId) return NextResponse.json({ ok: true, skipped: 'no-org' })
 
   const role = canonicalRole(orgRole)
-  const schoolId = await getOrCreateSchoolByOrg(orgId)
+
+  // Prefer resolving an existing school linked to this user (email or clerk_user_id)
+  const db = getDb()
+  let schoolId: string | null = null
+  try {
+    if (userId) {
+      const hit = await db.get<{ school_id: string }>(
+        `SELECT school_id FROM coordinators WHERE clerk_user_id = $1 AND school_id IS NOT NULL
+         UNION
+         SELECT school_id FROM trainers WHERE clerk_user_id = $1 AND school_id IS NOT NULL
+         UNION
+         SELECT school_id FROM students WHERE clerk_user_id = $1 AND school_id IS NOT NULL
+         LIMIT 1`,
+        [userId]
+      )
+      if (hit?.school_id) schoolId = hit.school_id
+    }
+  } catch {}
+
+  if (!schoolId) {
+    // Try by email as a secondary resolver
+    let emailForLookup: string | null = null
+    try {
+      const user = await currentUser()
+      if (user) {
+        const primaryEmail = user.emailAddresses?.find(e => e.id === user.primaryEmailAddressId) || user.emailAddresses?.[0]
+        emailForLookup = (primaryEmail?.emailAddress || null) as any
+      }
+    } catch {}
+    if (emailForLookup) {
+      const hitByEmail = await db.get<{ school_id: string }>(
+        `SELECT school_id FROM coordinators WHERE lower(email) = lower($1) AND school_id IS NOT NULL
+         UNION
+         SELECT school_id FROM trainers WHERE lower(email) = lower($1) AND school_id IS NOT NULL
+         UNION
+         SELECT school_id FROM students WHERE lower(email) = lower($1) AND school_id IS NOT NULL
+         LIMIT 1`,
+        [emailForLookup]
+      )
+      if (hitByEmail?.school_id) schoolId = hitByEmail.school_id
+    }
+  }
+
+  // If we resolved a school, bind it to this org to maintain continuity
+  if (schoolId) {
+    try {
+      await db.run(`UPDATE schools SET clerk_org_id = $1 WHERE id = $2 AND (clerk_org_id IS NULL OR clerk_org_id = '' OR clerk_org_id = $1)`, [orgId, schoolId])
+    } catch {}
+  } else {
+    // Fall back to original behavior
+    schoolId = await getOrCreateSchoolByOrg(orgId)
+  }
 
   // Enrich from Clerk user
   let firstName: string | null = null
@@ -117,7 +168,6 @@ export async function POST(req: NextRequest) {
   } catch {}
 
   // Link strategy: prefer updating existing admin-created records by email
-  const db = getDb()
   if (role === 'schoolcoordinator' || role === 'coordinator') {
     let linked = false
     if (email) {

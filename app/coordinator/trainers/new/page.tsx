@@ -32,7 +32,7 @@ export default function CoordinatorAddTrainerPage() {
   const [pincode, setPincode] = useState("")
   const [address, setAddress] = useState("")
   const [imageUrl, setImageUrl] = useState("")
-  const [status, setStatus] = useState<string>("verified")
+  // removed status verification logic
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -44,7 +44,7 @@ export default function CoordinatorAddTrainerPage() {
   const [linkedin, setLinkedin] = useState("")
   const [twitter, setTwitter] = useState("")
   const [bio, setBio] = useState("")
-  const [hasVerified, setHasVerified] = useState<boolean>(false)
+  // removed single-verified gate; allow multiple trainers
 
   useEffect(() => {
     const init = async () => {
@@ -56,10 +56,6 @@ export default function CoordinatorAddTrainerPage() {
           setSchoolId(s.schoolId)
           setSchoolName(s?.name || organization?.name || '')
         }
-        // pre-load trainers to decide if verified exists
-        const tres = await fetch('/api/trainers', { cache: 'no-store' })
-        const tdata = tres.ok ? await tres.json() : []
-        setHasVerified(Array.isArray(tdata) && tdata.some((t:any) => String(t.status||'').toLowerCase()==='verified'))
         // optional: load all schools list (for dropdown if needed)
         try {
           const res = await fetch('/api/schools', { cache: 'no-store' })
@@ -105,42 +101,59 @@ export default function CoordinatorAddTrainerPage() {
         toast({ title: "Passwords do not match", variant: "destructive" })
         return
       }
-      const res = await fetch("/api/trainers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          school_id: schoolId || null,
-          coordinator_id: coordinatorId || null,
-          first_name: firstName || null,
-          last_name: lastName || null,
-          gender: gender || null,
-          dob: dob || null,
-          pincode: pincode || null,
-          address: address || null,
-          image_url: imageUrl || null,
-          status: status || "verified",
-          email: email || null,
-          password: password || null,
-          highest_school: highestSchool || null,
-          experience_years: experienceYears ? Number(experienceYears) : null,
-          specialization: specialization || null,
-          certifications: certifications || null,
-          phone: phone || null,
-          linkedin: linkedin || null,
-          twitter: twitter || null,
-          bio: bio || null,
-        }),
-      })
-      let data: any = null
-      try {
-        data = await res.json()
-      } catch (_) {}
-      if (!res.ok) {
-        const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to create trainer"))
-        throw new Error(`${res.status} ${res.statusText}: ${msg}`)
+      // support multiple emails separated by commas
+      const emails = (email || "")
+        .split(',')
+        .map(e => e.trim())
+        .filter(Boolean)
+      if (emails.length === 0) {
+        toast({ title: "Email is required", variant: "destructive" })
+        return
       }
-      toast({ title: "Trainer created" })
-      router.push("/coordinator/dashboard")
+      let success = 0
+      let lastError: string | null = null
+      for (const em of emails) {
+        const res = await fetch("/api/trainers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            school_id: schoolId || null,
+            coordinator_id: coordinatorId || null,
+            first_name: firstName || null,
+            last_name: lastName || null,
+            gender: gender || null,
+            dob: dob || null,
+            pincode: pincode || null,
+            address: address || null,
+            image_url: imageUrl || null,
+            // status removed
+            email: em,
+            password: password || null,
+            highest_school: highestSchool || null,
+            experience_years: experienceYears ? Number(experienceYears) : null,
+            specialization: specialization || null,
+            certifications: certifications || null,
+            phone: phone || null,
+            linkedin: linkedin || null,
+            twitter: twitter || null,
+            bio: bio || null,
+          }),
+        })
+        let data: any = null
+        try { data = await res.json() } catch {}
+        if (res.ok) {
+          success += 1
+        } else {
+          const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to create trainer"))
+          lastError = `${res.status} ${res.statusText}: ${msg}`
+        }
+      }
+      if (success > 0) {
+        toast({ title: `${success} trainer${success>1?'s':''} created` })
+        router.push("/coordinator/trainers")
+      } else {
+        throw new Error(lastError || 'Failed to create trainer(s)')
+      }
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || String(e) || "Failed to create trainer", variant: "destructive" })
     }
@@ -214,26 +227,14 @@ export default function CoordinatorAddTrainerPage() {
         <Label htmlFor="profileImage">Profile Image</Label>
         <Input id="profileImage" placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
       </div>
-      <div className="space-y-3">
-        <Label>Status<span className="text-red-500">*</span></Label>
-        <RadioGroup value={status} onValueChange={setStatus} className="flex gap-6">
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="verified" id="verified" />
-            <Label htmlFor="verified">Verified</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="unverified" id="unverified" />
-            <Label htmlFor="unverified">Unverified</Label>
-          </div>
-        </RadioGroup>
-      </div>
+      {/* Status selection removed */}
     </div>,
 
     // Login Credentials Step
     <div key="credentials" className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="email">Email<span className="text-red-500">*</span></Label>
-        <Input id="email" type="email" placeholder="Enter email address" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Label htmlFor="email">Email(s)<span className="text-red-500">*</span></Label>
+        <Input id="email" type="text" placeholder="Enter one or more emails, separated by commas" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password<span className="text-red-500">*</span></Label>
@@ -295,21 +296,7 @@ export default function CoordinatorAddTrainerPage() {
     </div>,
   ]
 
-  if (hasVerified) {
-    return (
-      <Protect role="schoolcoordinator" fallback={<p>Access denied</p>}>
-        <RoleLayout title="Coordinator" subtitle="Add Trainer" Sidebar={CoordinatorSidebar}>
-          <div className="max-w-2xl mx-auto p-6 border rounded-md bg-muted/10">
-            <h2 className="text-lg font-semibold mb-2">A verified trainer already exists</h2>
-            <p className="text-sm text-muted-foreground mb-4">Unverify or delete the existing trainer to add another verified trainer for this school.</p>
-            <div className="flex gap-2">
-              <Button onClick={() => router.push('/coordinator/trainers')}>Go to Trainers</Button>
-            </div>
-          </div>
-        </RoleLayout>
-      </Protect>
-    )
-  }
+  // Always allow adding trainers; no single-verified restriction
 
   return (
     <Protect

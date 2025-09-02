@@ -92,13 +92,12 @@ export default function CoordinatorTrainersPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Email</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Phone</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Specialization</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {trainers.length === 0 && (
-                    <tr><td className="py-3 px-4 text-sm text-muted-foreground" colSpan={7}>No trainers found</td></tr>
+                    <tr><td className="py-3 px-4 text-sm text-muted-foreground" colSpan={6}>No trainers found</td></tr>
                   )}
                   {trainers.map((t, idx) => (
                     <tr key={t.id} className="border-b hover:bg-gray-50">
@@ -107,11 +106,6 @@ export default function CoordinatorTrainersPage() {
                       <td className="py-3 px-4">{t.email || "—"}</td>
                       <td className="py-3 px-4">{t.phone ? String(t.phone) : "—"}</td>
                       <td className="py-3 px-4">{t.specialization || "—"}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${String(t.status||'').toLowerCase()==='verified' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                          {t.status ? String(t.status) : '—'}
-                        </span>
-                      </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <ActionDropdown

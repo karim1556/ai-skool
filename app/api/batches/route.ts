@@ -46,23 +46,40 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
+  const all = searchParams.get('all');
+  const schoolIdParam = searchParams.get('schoolId');
   // Derive school from Clerk organization
   const { orgId } = await auth()
   if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 })
   const schoolRow = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
   if (!schoolRow?.id) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
-  const schoolId = schoolRow.id
+  let schoolId = schoolRow.id
+  // Allow overriding by query param in development; in production only if it matches
+  if (schoolIdParam && (process.env.NODE_ENV !== 'production' || schoolIdParam === schoolId)) {
+    schoolId = schoolIdParam
+  }
 
   try {
     let rows;
-    if (id) {
+    if (process.env.NODE_ENV !== 'production' && all === '1' && !id) {
+      // Dev/debug: list all batches across schools
+      rows = await db.all(
+        `SELECT b.*,
+                (SELECT COUNT(*) FROM batch_students WHERE batch_id = b.id) AS student_count,
+                (SELECT COUNT(*) FROM batch_trainers WHERE batch_id = b.id) AS trainer_count,
+                (SELECT string_agg(trainer_id::text, ',') FROM batch_trainers WHERE batch_id = b.id) AS trainer_ids,
+                (SELECT string_agg(student_id::text, ',') FROM batch_students WHERE batch_id = b.id) AS student_ids
+         FROM batches b
+         ORDER BY b.created_at DESC`
+      );
+    } else if (id) {
       rows = await db.all(
         `SELECT b.*,
                 (SELECT string_agg(trainer_id::text, ',') FROM batch_trainers WHERE batch_id = b.id) AS trainer_ids,
                 (SELECT string_agg(student_id::text, ',') FROM batch_students WHERE batch_id = b.id) AS student_ids,
                 (SELECT COUNT(*) FROM batch_students WHERE batch_id = b.id) AS student_count
          FROM batches b
-         WHERE b.id = $1 AND b.school_id = $2`,
+         WHERE b.id = $1 AND (b.school_id = $2 OR b.school_id IS NULL)`,
         [id, schoolId]
       );
     } else {
@@ -73,7 +90,7 @@ export async function GET(req: NextRequest) {
                 (SELECT string_agg(trainer_id::text, ',') FROM batch_trainers WHERE batch_id = b.id) AS trainer_ids,
                 (SELECT string_agg(student_id::text, ',') FROM batch_students WHERE batch_id = b.id) AS student_ids
          FROM batches b
-         WHERE b.school_id = $1
+         WHERE (b.school_id = $1 OR b.school_id IS NULL)
          ORDER BY b.created_at DESC`,
         [schoolId]
       );
