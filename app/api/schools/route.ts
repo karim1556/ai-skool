@@ -42,14 +42,30 @@ async function ensureTable() {
   try { await db.run(`ALTER TABLE schools ADD COLUMN clerk_org_id text UNIQUE`); } catch {}
 }
 
+// export async function GET(req: NextRequest) {
+//   await ensureTable();
+//   const db = getDb();
+//   const { orgId } = await auth();
+//   if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 });
+//   const rows = await db.all("SELECT * FROM schools WHERE clerk_org_id = $1 ORDER BY created_at DESC", [orgId]);
+//   return NextResponse.json(rows);
+// }
 export async function GET(req: NextRequest) {
+  // 1. Ensure the table exists
   await ensureTable();
+
+  // 2. Get a database connection
   const db = getDb();
-  const { orgId } = await auth();
-  if (!orgId) return NextResponse.json({ error: 'Organization not selected' }, { status: 401 });
-  const rows = await db.all("SELECT * FROM schools WHERE clerk_org_id = $1 ORDER BY created_at DESC", [orgId]);
+
+  // 3. Fetch all schools, ordered by newest first
+  const rows = await db.all(
+    "SELECT * FROM schools ORDER BY created_at DESC"
+  );
+
+  // 4. Return all schools as JSON
   return NextResponse.json(rows);
 }
+
 
 export async function POST(req: NextRequest) {
   await ensureTable();
