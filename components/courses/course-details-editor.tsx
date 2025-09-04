@@ -24,7 +24,7 @@ interface CourseDetails {
   objectives: string[];
   demo_video_url?: string;
   attachments?: Attachment[];
-  externalLinks?: ExternalLink[];
+  external_links?: ExternalLink[]; // Match the database schema
 }
 
 interface CourseDetailsEditorProps {
@@ -32,13 +32,28 @@ interface CourseDetailsEditorProps {
 }
 
 export const CourseDetailsEditor = ({ course }: CourseDetailsEditorProps) => {
-  const [objectives, setObjectives] = useState<string[]>(course.objectives || []);
+  // Helper to safely parse props that might be JSON strings
+  const parseJsonSafe = (data: any): any[] => {
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'string') {
+      try {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error("Failed to parse JSON string, defaulting to empty array:", e);
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const [objectives, setObjectives] = useState<string[]>(parseJsonSafe(course.objectives));
   const [demoVideoUrl, setDemoVideoUrl] = useState(course.demo_video_url || '');
-  const [attachments, setAttachments] = useState<Attachment[]>(course.attachments || []);
-  const [externalLinks, setExternalLinks] = useState<ExternalLink[]>(course.externalLinks || []);
+  const [attachments, setAttachments] = useState<Attachment[]>(parseJsonSafe(course.attachments));
+    const [externalLinks, setExternalLinks] = useState<ExternalLink[]>(parseJsonSafe(course.external_links));
   
   const [newObjective, setNewObjective] = useState('');
-  const [newAttachment, setNewAttachment] = useState({ title: '', url: '' });
+
   const [newExternalLink, setNewExternalLink] = useState({ title: '', url: '' });
 
   const [loading, setLoading] = useState(false);
@@ -57,17 +72,13 @@ export const CourseDetailsEditor = ({ course }: CourseDetailsEditorProps) => {
   };
 
   const handleUpdateObjective = (index: number, value: string) => {
-    const updatedItems = [...objectives];
-    updatedItems[index] = value;
+    const updatedItems = objectives.map((item, i) => (i === index ? value : item));
     setObjectives(updatedItems);
   };
 
   // --- Attachments Handlers ---
   const handleAddAttachment = () => {
-    if (newAttachment.title.trim() && newAttachment.url.trim()) {
-      setAttachments([...attachments, { ...newAttachment }]);
-      setNewAttachment({ title: '', url: '' });
-    }
+    setAttachments([...attachments, { title: '', url: '' }]);
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -75,8 +86,9 @@ export const CourseDetailsEditor = ({ course }: CourseDetailsEditorProps) => {
   };
 
   const handleUpdateAttachment = (index: number, field: 'title' | 'url', value: string) => {
-    const updatedItems = [...attachments];
-    updatedItems[index][field] = value;
+    const updatedItems = attachments.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    );
     setAttachments(updatedItems);
   };
 
@@ -93,9 +105,41 @@ export const CourseDetailsEditor = ({ course }: CourseDetailsEditorProps) => {
   };
 
   const handleUpdateExternalLink = (index: number, field: 'title' | 'url', value: string) => {
-    const updatedItems = [...externalLinks];
-    updatedItems[index][field] = value;
+    const updatedItems = externalLinks.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    );
     setExternalLinks(updatedItems);
+  };
+
+  const handleFileChange = async (index: number, file: File | null) => {
+    if (!file) return;
+
+    const originalUrl = attachments[index].url;
+    // Optimistically set a loading state for the URL
+    handleUpdateAttachment(index, 'url', 'Uploading...');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'File upload failed');
+      }
+
+      handleUpdateAttachment(index, 'url', result.url);
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+      // Revert on failure
+      handleUpdateAttachment(index, 'url', originalUrl);
+      alert(`Error uploading file: ${error.message}`);
+    }
   };
 
 
@@ -200,12 +244,19 @@ export const CourseDetailsEditor = ({ course }: CourseDetailsEditorProps) => {
                   onChange={(e) => handleUpdateAttachment(index, 'title', e.target.value)}
                 />
                 <div className="flex items-center space-x-2">
-                  <Input
-                    placeholder="URL"
-                    value={att.url}
-                    onChange={(e) => handleUpdateAttachment(index, 'url', e.target.value)}
-                    className="flex-grow"
-                  />
+                  <>
+                    <Input
+                      type="file"
+                      onChange={(e) => handleFileChange(index, e.target.files ? e.target.files[0] : null)}
+                      className="flex-grow"
+                    />
+                    {att.url && !att.url.startsWith('Uploading') && (
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline truncate">
+                        {att.url.split('/').pop()}
+                      </a>
+                    )}
+                    {att.url === 'Uploading...' && <p className="text-sm text-gray-500">Uploading...</p>}
+                  </>
                   <Button type="button" variant="destructive" size="icon" onClick={() => handleRemoveAttachment(index)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -213,23 +264,13 @@ export const CourseDetailsEditor = ({ course }: CourseDetailsEditorProps) => {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-end mt-4">
-            <Input
-              placeholder="New Attachment Title"
-              value={newAttachment.title}
-              onChange={(e) => setNewAttachment({ ...newAttachment, title: e.target.value })}
-            />
-            <div className="flex items-center space-x-2">
-              <Input
-                placeholder="New Attachment URL"
-                value={newAttachment.url}
-                onChange={(e) => setNewAttachment({ ...newAttachment, url: e.target.value })}
-                className="flex-grow"
-              />
-              <Button type="button" variant="outline" onClick={handleAddAttachment}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add
-              </Button>
+          <div className="mt-4">
+            <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">To add a new attachment, first click 'Add'.</p>
+                <Button type="button" variant="outline" onClick={handleAddAttachment}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add
+                </Button>
             </div>
           </div>
         </CardContent>

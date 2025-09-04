@@ -9,6 +9,7 @@ import { CourseContentManager } from "@/components/courses/course-content-manage
 import { CourseDetailsEditor } from "@/components/courses/course-details-editor"
 import { CourseReviewsManager } from "@/components/courses/course-reviews-manager"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Protect } from "@clerk/nextjs"
 
 // Define types for the data we'll be fetching
 interface BasicCourse {
@@ -96,6 +97,10 @@ export default function ManageCourseContentPage() {
   }
 
   return (
+    <Protect
+    role="admin"
+    fallback={<p>Access denied</p>}
+    >
     <AdminLayout>
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">📝 Manage Course Content</h1>
@@ -151,5 +156,6 @@ export default function ManageCourseContentPage() {
         )}
       </div>
     </AdminLayout>
+    </Protect>
   )
 }

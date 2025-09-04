@@ -3,172 +3,106 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
-import { User, GraduationCap } from "lucide-react"
+import { User, ShieldCheck, Clock, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function RegisterPage() {
   const router = useRouter()
 
-  const handleParentRegistration = () => {
-    router.push("/register/parent")
-  }
-
-  const handleTeacherRegistration = () => {
-    router.push("/register/teacher")
-  }
+  const go = (path: string) => router.push(path)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-    
+    <div className="relative overflow-hidden bg-gradient-to-br from-fuchsia-50 via-white to-sky-50">
+      {/* Decorative blobs */}
+      <div className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-fuchsia-300 opacity-20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-28 -right-20 h-96 w-96 rounded-full bg-sky-300 opacity-20 blur-3xl" />
 
-      <div className="px-4 py-16 md:px-6">
-        <div className="mx-auto max-w-4xl text-center">
-          <h1 className="text-4xl font-black text-gray-900 mb-12 md:text-5xl">
-            Choose your account type to get started
-          </h1>
-
-          <div className="mb-8">
-            <Button className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-8 py-3 rounded-full text-lg transition-all duration-200 hover:scale-105 shadow-lg">
-              JOIN WITH A PARENT CODE
-            </Button>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 max-w-2xl mx-auto">
-            {/* Parent Account */}
-            <Card
-              className="group cursor-pointer border-2 border-gray-200 hover:border-pink-400 hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white"
-              onClick={handleParentRegistration}
-            >
-              <CardContent className="p-8 text-center">
-                <div className="mb-6">
-                  <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <div className="w-16 h-16 rounded-full bg-pink-300 flex items-center justify-center">
-                      <User className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
-                </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Parent</h3>
-                <p className="text-gray-600 font-medium">Best for use at home</p>
-              </CardContent>
-            </Card>
-
-            {/* Teacher Account */}
-            <Card
-              className="group cursor-pointer border-2 border-gray-200 hover:border-sky-400 hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white"
-              onClick={handleTeacherRegistration}
-            >
-              <CardContent className="p-8 text-center">
-                <div className="mb-6">
-                  <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-sky-400 to-sky-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <div className="w-16 h-16 rounded-full bg-sky-300 flex items-center justify-center">
-                      <GraduationCap className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
-                </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Teacher</h3>
-                <p className="text-gray-600 font-medium">Best for the classroom</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="mt-8">
-            <p className="text-gray-600">
-              Already have an account?{" "}
-              <Link href="/login" className="text-blue-600 hover:underline font-medium">
-                Sign in here
-              </Link>
+      <div className="px-4 pt-20 pb-6 md:px-6 md:pb-10">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 md:grid-cols-2">
+          {/* Left - copy */}
+          <div className="text-center md:text-left">
+            <h1 className="mb-3 bg-gradient-to-r from-fuchsia-600 via-purple-600 to-sky-600 bg-clip-text text-4xl font-extrabold text-transparent md:text-5xl">
+              New to AiSkool?
+            </h1>
+            <p className="mb-8 max-w-xl text-gray-600 md:mx-0 mx-auto">
+              Create your student account to start learning. If you already have an account, just sign in.
             </p>
+
+            <div className="mb-10 flex flex-wrap items-center gap-3 md:justify-start justify-center">
+              <Button className="bg-fuchsia-500 hover:bg-fuchsia-600 px-6 py-3 text-lg font-semibold text-white" onClick={() => go("/register/online-student")}>
+                <User className="mr-2 h-5 w-5" /> Register as Online Student
+              </Button>
+              <Button variant="outline" className="px-6 py-3 text-lg" onClick={() => go("/login")}>
+                Login
+              </Button>
+            </div>
+
+            <ul className="mx-auto grid max-w-md list-disc space-y-2 pl-5 text-sm text-gray-700 md:mx-0">
+              <li>Single, secure login for all roles</li>
+              <li>Learn anywhere, access on any device</li>
+              <li>No credit card required to start</li>
+            </ul>
           </div>
+
+          {/* Right - decorative info card (no image) */}
+          <div className="relative mx-auto w-full max-w-md">
+            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-fuchsia-400 to-sky-400 opacity-30 blur" />
+            <Card className="relative rounded-3xl border bg-white/80 p-6 shadow-xl backdrop-blur">
+              <div className="mb-4 flex items-center gap-2 text-fuchsia-600">
+                <Sparkles className="h-5 w-5" />
+                <span className="text-sm font-semibold">Why join AiSkool</span>
+              </div>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 text-green-600" />
+                  <span>Secure platform with best practices and privacy-by-design.</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Clock className="mt-0.5 h-5 w-5 text-sky-600" />
+                  <span>Learn at your own pace with lifetime course access.</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Sparkles className="mt-0.5 h-5 w-5 text-fuchsia-600" />
+                  <span>Modern, clean interface focused on your learning.</span>
+                </li>
+              </ul>
+            </Card>
+          </div>
+        </div>
+
+        {/* Highlights */}
+        <div className="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card>
+            <CardContent className="p-4 text-left">
+              <p className="font-semibold">Quick signup</p>
+              <p className="text-sm text-gray-600">It only takes a minute to get started.</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-left">
+              <p className="font-semibold">Learn at your pace</p>
+              <p className="text-sm text-gray-600">Access courses anytime on any device.</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-left">
+              <p className="font-semibold">Secure login</p>
+              <p className="text-sm text-gray-600">Your data stays private and protected.</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-10 text-center">
+          <p className="text-gray-600">
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-fuchsia-600 hover:underline">
+              Sign in here
+            </Link>
+          </p>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-black text-white py-8 mt-16">
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <div className="grid gap-8 md:grid-cols-4">
-            <div>
-              <h4 className="font-bold text-lg mb-4 text-sky-400">EDUCATORS</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Classroom Management
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Curriculum
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Professional Development
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4 text-sky-400">PARENTS</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Home Learning
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Progress Tracking
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Support
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4 text-sky-400">RESOURCES</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Research
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4 text-sky-400">CONNECT</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Facebook
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    Twitter
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-sky-400 transition-colors">
-                    LinkedIn
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Site-wide footer is provided globally; removing local footer to avoid duplication */}
     </div>
   )
 }

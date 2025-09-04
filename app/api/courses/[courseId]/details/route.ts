@@ -1,54 +1,119 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, sql } from '@/lib/db';
+import postgres from 'postgres';
+
+// Define types for our data structures
+interface Instructor {
+  name: string;
+  image: string;
+  title: string;
+  bio: string;
+  courses_count: number;
+  students_count: number;
+  average_rating: number;
+  reviews_count: number;
+}
+
+interface Review {
+  id: string;
+  user: string;
+  user_image: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+interface Course {
+  id: string;
+  created_by: string; // Used to fetch instructor
+  curriculum?: Section[];
+  instructor?: Instructor | null;
+  reviews?: Review[];
+}
+
+interface SectionContent {
+  id: string;
+  title: string;
+  type: 'lesson' | 'quiz' | 'assignment';
+}
+
+interface Section {
+  id: string;
+  title: string;
+  lessons: SectionContent[];
+}
+
+interface UpdateCoursePayload {
+  objectives?: string[];
+  demo_video_url?: string;
+  attachments?: { title: string; url: string }[];
+  externalLinks?: { title: string; url: string }[];
+}
 
 export async function GET(request: Request, { params }: { params: { courseId: string } }) {
   const { courseId } = params;
-
   if (!courseId) {
     return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
   }
 
-  try {
-    const db = await getDb();
+  const db = await getDb();
 
+  try {
     // 1. Fetch the main course data
-    const courseResult = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
-    if (!courseResult) {
+    const course = await db.get<Course>('SELECT * FROM courses WHERE id = $1', [courseId]);
+    if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    // 2. Fetch instructor(s)
-    // For now, we'll fetch the first instructor associated with the course, matching the UI mock.
-    const instructorQuery = `
-      SELECT p.* 
-      FROM profiles p
-      JOIN course_instructors ci ON p.id = ci.instructor_id
-      WHERE ci.course_id = $1
-      LIMIT 1;
-    `;
-    const instructor = await db.get(instructorQuery, [courseId]).catch(() => null);
+    // 2. Fetch all sections for the course
+    const sections = await db.all<Section>('SELECT * FROM sections WHERE course_id = $1', [courseId]);
 
-    // 3. Fetch curriculum (sections and lessons)
-    const sectionsQuery = 'SELECT * FROM sections WHERE course_id = $1 ORDER BY "order" ASC';
-    const sections = await db.all(sectionsQuery, [courseId]).catch(() => []);
+    // 3. For each section, fetch all of its content
+    for (const section of sections) {
+      // Include content and file_url for lessons so clients can render without extra fetches
+      const lessons = await db.all<any>(
+        `SELECT id, title, content, file_url, 'lesson' as type FROM lessons WHERE section_id = $1`,
+        [section.id]
+      );
+      const quizzes = await db.all<SectionContent>(
+        `SELECT id, title, 'quiz' as type FROM quizzes WHERE section_id = $1`,
+        [section.id]
+      );
+      const assignments = await db.all<SectionContent>(
+        `SELECT id, title, 'assignment' as type FROM assignments WHERE section_id = $1`,
+        [section.id]
+      );
 
-    const lessonsQuery = `
-      SELECT l.* 
-      FROM lessons l
-      JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = $1
-      ORDER BY s."order" ASC, l."order" ASC;
-    `;
-    const allLessons = await db.all(lessonsQuery, [courseId]).catch(() => []);
+      // Combine all content
+      section.lessons = [...lessons, ...quizzes, ...assignments];
+    }
 
-    const curriculum = sections.map(section => ({
-      ...section,
-      lessons: allLessons.filter(lesson => lesson.section_id === section.id)
-    }));
+    // 4. Attach the fully populated sections to the course object
+    course.curriculum = sections;
 
-    // 4. Fetch reviews
+    // 5. Fetch instructor details
+    let instructor = null;
+    if (course.created_by) {
+      const instructorQuery = `
+        SELECT 
+          p.full_name as name, 
+          p.avatar_url as image, 
+          i.title as title,
+          i.bio as bio,
+          (SELECT COUNT(*) FROM courses WHERE created_by = i.user_id) as courses_count,
+          (SELECT SUM(enrolled_students_count) FROM courses WHERE created_by = i.user_id) as students_count,
+          (SELECT AVG(rating) FROM reviews r JOIN courses c ON r.course_id = c.id WHERE c.created_by = i.user_id) as average_rating,
+          (SELECT COUNT(*) FROM reviews r JOIN courses c ON r.course_id = c.id WHERE c.created_by = i.user_id) as reviews_count
+        FROM instructors i
+        JOIN profiles p ON i.user_id = p.id
+        WHERE i.user_id = $1;
+      `;
+      instructor = await db.get(instructorQuery, [course.created_by]).catch(() => null);
+    }
+
+    // 6. Fetch reviews with user details
     const reviewsQuery = `
-      SELECT r.*, p.full_name as user, p.image as user_image
+      SELECT r.*, p.full_name as user, p.avatar_url as user_image
       FROM reviews r
       JOIN profiles p ON r.user_id = p.id
       WHERE r.course_id = $1
@@ -56,31 +121,16 @@ export async function GET(request: Request, { params }: { params: { courseId: st
     `;
     const reviews = await db.all(reviewsQuery, [courseId]).catch(() => []);
 
-    // Attachments and external links are now stored as JSONB in the courses table.
-    // They are already part of the courseResult object.
-
-    // 7. Assemble the final course object
+    // 7. Combine all data into a single response object
     const courseDetails = {
-      ...courseResult,
-      instructor: instructor || null,
-      curriculum: curriculum,
-      reviews: reviews,
-      // Use the JSONB data directly from the course object, providing empty arrays as fallbacks.
-      attachments: courseResult.attachments || [], 
-      external_links: courseResult.external_links || [],
-      // Ensure numeric types and correct field names for UI compatibility
-      rating: parseFloat(courseResult.rating) || 0,
-      price: parseFloat(courseResult.price) || 0,
-      original_price: parseFloat(courseResult.original_price) || null,
-      enrolled_students_count: parseInt(courseResult.enrolled_students_count, 10) || 0,
-      reviews_count: reviews.length,
-      tagline: courseResult.tagline || 'Unlock your potential with this amazing course!',
-      last_updated: courseResult.updated_at, // Pass ISO string directly
-      demo_video_url: courseResult.demo_video_url,
-      video_preview_image: courseResult.video_preview_image
+      ...course,
+      instructor,
+      curriculum: sections,
+      reviews,
     };
 
     return NextResponse.json(courseDetails);
+
   } catch (error) {
     console.error('Error fetching course details:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -97,58 +147,37 @@ export async function PUT(request: Request, { params }: { params: { courseId: st
     return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
   }
 
-  const db = await getDb();
-
   try {
-    const { 
-      objectives = [], 
-      demo_video_url = '', 
-      attachments = [], 
-      externalLinks = [] 
-    } = await request.json();
+    const payload: UpdateCoursePayload = await request.json();
+    const {
+      objectives = [],
+      demo_video_url = '',
+      attachments = [],
+      externalLinks,
+    } = payload;
 
-    // Begin transaction
-    await db.run('BEGIN', []);
+    const external_links = externalLinks || [];
 
-    // 1. Update the main courses table
-    await db.run(
-      'UPDATE courses SET objectives = $1, demo_video_url = $2 WHERE id = $3',
-      [objectives, demo_video_url, courseId]
-    );
+    await sql.begin(async (tx: postgres.Sql) => {
+      await tx`
+        UPDATE courses
+        SET 
+          objectives = ${JSON.stringify(objectives)},
+          demo_video_url = ${demo_video_url || ''},
+          attachments = ${JSON.stringify(attachments)},
+          external_links = ${JSON.stringify(external_links)}
+        WHERE id = ${courseId}
+      `;
+    });
 
-    // 2. Handle attachments (delete and re-insert)
-    await db.run('DELETE FROM attachments WHERE course_id = $1', [courseId]);
-    if (attachments.length > 0) {
-      for (const att of attachments) {
-        await db.run('INSERT INTO attachments (course_id, title, url) VALUES ($1, $2, $3)', [
-          courseId, 
-          att.title, 
-          att.url
-        ]);
-      }
-    }
-
-    // 3. Handle external links (delete and re-insert)
-    await db.run('DELETE FROM external_links WHERE course_id = $1', [courseId]);
-    if (externalLinks.length > 0) {
-      for (const link of externalLinks) {
-        await db.run('INSERT INTO external_links (course_id, title, url) VALUES ($1, $2, $3)', [
-          courseId, 
-          link.title, 
-          link.url
-        ]);
-      }
-    }
-
-    // Commit transaction
-    await db.run('COMMIT', []);
-
-    return NextResponse.json({ message: 'Course details updated successfully' });
+    return NextResponse.json({ message: 'Course updated successfully' });
 
   } catch (error) {
-    // Rollback transaction on error
-    await db.run('ROLLBACK', []);
-    console.error('Error updating course details:', error);
-    return NextResponse.json({ error: 'Failed to update course details' }, { status: 500 });
+    console.error('Failed to update course:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ 
+      error: 'Failed to update course.',
+      details: errorMessage 
+    }, { status: 500 });
   }
 }

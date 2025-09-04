@@ -29,15 +29,33 @@ import { mockTrainers } from "@/lib/mock-data"
 const allNavigationItems = [
   {
     title: "Dashboard",
-    href: "/dashboard",
+    href: "/trainer/dashboard",
     icon: LayoutDashboard,
     privilege: null, // always show
+  },
+  {
+    title: "Sessions",
+    href: "/trainer/sessions",
+    icon: Calendar,
+    privilege: null,
+  },
+  {
+    title: "New Session",
+    href: "/trainer/sessions/new",
+    icon: Calendar,
+    privilege: null,
   },
   {
     title: "Courses",
     href: "/trainer/courses",
     icon: BookOpen,
     privilege: "manage_courses",
+  },
+  {
+    title: "My Levels",
+    href: "/trainer/levels",
+    icon: FolderTree,
+    privilege: null,
   },
   {
     title: "Batches",
@@ -50,6 +68,12 @@ const allNavigationItems = [
     href: "/trainer/assignments",
     icon: ClipboardList,
     privilege: "approve_assignments",
+  },
+  {
+    title: "Grade",
+    href: "/trainer/grade",
+    icon: GraduationCap,
+    privilege: null,
   },
   {
     title: "Students",

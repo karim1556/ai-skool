@@ -6,12 +6,14 @@ CREATE TABLE IF NOT EXISTS quizzes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     section_id UUID REFERENCES sections(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Create Assignments Table
 CREATE TABLE IF NOT EXISTS assignments (
+    sort_order INTEGER DEFAULT 0,
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     section_id UUID REFERENCES sections(id) ON DELETE CASCADE,
     title TEXT NOT NULL,

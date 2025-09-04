@@ -12,7 +12,9 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
+import Image from "next/image"
 import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info } from "lucide-react"
+import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 import { useState } from "react"
 
 export function Header() {
@@ -23,9 +25,15 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100 px-4 py-4 md:px-6">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="text-3xl font-black text-gray-900 tracking-tight">Ai</div>
-          <div className="text-3xl font-light text-sky-500 tracking-tight">Skool‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ </div>
+        <Link href="/" className="flex items-center" aria-label="AISkool Home">
+          <Image
+            src="/images/aiskoollogo.png"
+            alt="AISkool"
+            width={180}
+            height={48}
+            priority
+            className="h-10 w-auto"
+          />
         </Link>
 
         {/* Desktop Navigation */}
@@ -132,6 +140,13 @@ export function Header() {
 
         {/* Right Side Actions */}
         <div className="flex items-center space-x-3">
+          {/* Org Switcher + User when signed in */}
+          <SignedIn>
+            <div className="hidden md:flex items-center gap-3">
+              <OrganizationSwitcher />
+              <UserButton />
+            </div>
+          </SignedIn>
           {/* Shopping Cart */}
           <Link href="/cart">
             <Button
@@ -148,22 +163,24 @@ export function Header() {
             </Button>
           </Link>
 
-          {/* Login/Register - Desktop */}
-          <div className="hidden md:flex items-center space-x-3">
-            <Link href="/login">
-              <Button
-                variant="outline"
-                className="rounded-full border-2 border-pink-400 px-6 py-2.5 text-sm font-semibold text-pink-500 hover:bg-pink-50 bg-transparent transition-all duration-200 hover:scale-105"
-              >
-                LOG IN
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button className="rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white hover:from-pink-600 hover:to-purple-700 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl">
-                REGISTER
-              </Button>
-            </Link>
-          </div>
+          {/* Login/Register - Desktop (only when signed out) */}
+          <SignedOut>
+            <div className="hidden md:flex items-center space-x-3">
+              <Link href="/login">
+                <Button
+                  variant="outline"
+                  className="rounded-full border-2 border-pink-400 px-6 py-2.5 text-sm font-semibold text-pink-500 hover:bg-pink-50 bg-transparent transition-all duration-200 hover:scale-105"
+                >
+                  LOG IN
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button className="rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white hover:from-pink-600 hover:to-purple-700 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl">
+                  REGISTER
+                </Button>
+              </Link>
+            </div>
+          </SignedOut>
 
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

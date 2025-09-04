@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useEffect, useState } from "react"
 
 interface CourseFiltersProps {
   filters: {
@@ -9,17 +10,32 @@ interface CourseFiltersProps {
     status: string
     instructor: string
     price: string
+    levelId?: string
   }
   onFilterChange: (key: string, value: string) => void
   onApplyFilters: () => void
 }
 
 export function CourseFilters({ filters, onFilterChange, onApplyFilters }: CourseFiltersProps) {
+  const [levels, setLevels] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchLevels = async () => {
+      try {
+        const res = await fetch('/api/levels')
+        const data = await res.json()
+        setLevels(Array.isArray(data) ? data : [])
+      } catch (e) {
+        setLevels([])
+      }
+    }
+    fetchLevels()
+  }, [])
   return (
     <div className="bg-white p-6 rounded-lg border">
       <h3 className="text-lg font-semibold mb-4">COURSE LIST</h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
         <div>
           <label className="block text-sm font-medium mb-2">Categories</label>
           <Select value={filters.category} onValueChange={(value) => onFilterChange("category", value)}>
@@ -75,6 +91,23 @@ export function CourseFilters({ filters, onFilterChange, onApplyFilters }: Cours
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="free">Free</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">Level</label>
+          <Select value={filters.levelId || 'all'} onValueChange={(value) => onFilterChange("levelId", value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {levels.map((lvl) => (
+                <SelectItem key={lvl.id} value={String(lvl.id)}>
+                  {lvl.name} {lvl.category ? `(${lvl.category})` : ''}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
