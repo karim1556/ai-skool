@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
+import Image from "next/image"
 import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info } from "lucide-react"
 import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 import { useState } from "react"
@@ -24,9 +25,15 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100 px-4 py-4 md:px-6">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="text-3xl font-black text-gray-900 tracking-tight">Ai</div>
-          <div className="text-3xl font-light text-sky-500 tracking-tight">Skool‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ </div>
+        <Link href="/" className="flex items-center" aria-label="AISkool Home">
+          <Image
+            src="/images/aiskoollogo.png"
+            alt="AISkool"
+            width={180}
+            height={48}
+            priority
+            className="h-10 w-auto"
+          />
         </Link>
 
         {/* Desktop Navigation */}
