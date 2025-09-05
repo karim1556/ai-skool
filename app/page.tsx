@@ -380,6 +380,104 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Popular Courses */}
+      <section className="bg-gradient-to-b from-gray-50 to-white px-4 py-20 md:px-6 md:py-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-20 text-center space-y-8">
+            <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
+              Find the right {" "}
+              <span className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+                course for you
+              </span>
+            </h2>
+            <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
+              Browse by Level 1, Level 2, and Level 3
+            </p>
+
+            <div className="flex items-center justify-center gap-6">
+              {[1,2,3].map((lvl) => (
+                <button
+                  key={lvl}
+                  onClick={() => setSelectedLevelId(lvl as 1|2|3)}
+                  className={`text-sm md:text-base font-semibold tracking-tight border-b-2 pb-1 transition-colors ${
+                    selectedLevelId === lvl
+                      ? 'text-sky-600 border-sky-600'
+                      : 'text-gray-500 border-transparent hover:text-gray-700'
+                  }`}
+                >
+                  {`Level ${lvl}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+            {displayedCourses.slice(0, 3).map((course: any) => (
+              <Card
+                key={course.id || course.title}
+                className={`group overflow-hidden rounded-3xl border-0 p-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105`}
+              >
+                <CardContent className="p-0">
+                  {/* Thumbnail */}
+                  <div className="relative aspect-[4/3] w-full overflow-hidden">
+                    <Image
+                      src={course.image || "/placeholder.svg?height=240&width=360"}
+                      alt={course.title || "Course thumbnail"}
+                      fill
+                      sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6">
+                    <div className="mb-3 flex items-center justify-between">
+                      <Badge className="bg-sky-100 text-sky-700">{`Level ${selectedLevelId}`}{course.category ? ` • ${course.category}` : ''}</Badge>
+                      <div className="flex items-center gap-1 text-yellow-500">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${i < Math.floor(Number(course.rating) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                          />
+                        ))}
+                        <span className="text-xs text-gray-500 ml-1">({Number(course.reviews) || 0})</span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-900 tracking-tight line-clamp-2">{course.title || 'Course'}</h3>
+                    <p className="mt-1 text-sm text-gray-600 tracking-tight">{course.provider || course.instructor || 'Instructor'}</p>
+
+                    {/* Pricing */}
+                    <div className="mt-4 flex items-center gap-2">
+                      {course.is_free ? (
+                        <span className="text-lg font-bold text-green-600">Free</span>
+                      ) : (
+                        <>
+                          <span className="text-xl font-bold text-gray-900">${Number(course.price || 0)}</span>
+                          {Number(course.original_price || 0) > Number(course.price || 0) && (
+                            <span className="text-sm text-gray-500 line-through">${Number(course.original_price)}</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Meta */}
+                    <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+                      <span>{course.duration || '—'}</span>
+                      <span>{Number(course.students || 0)} students</span>
+                    </div>
+
+                    <Button className="mt-5 w-full bg-sky-600 text-white hover:bg-sky-700 font-bold tracking-tight">
+                      Enroll Now
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features Grid */}
       <section className="bg-gradient-to-b from-white to-gray-50 px-4 py-20 md:px-6 md:py-32">
         <div className="mx-auto max-w-7xl">
@@ -614,104 +712,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Popular Courses */}
-      <section className="bg-gradient-to-b from-gray-50 to-white px-4 py-20 md:px-6 md:py-32">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-20 text-center space-y-8">
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-              Find the right {" "}
-              <span className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-                course for you
-              </span>
-            </h2>
-            <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
-              Browse by Level 1, Level 2, and Level 3
-            </p>
-
-            <div className="flex items-center justify-center gap-6">
-              {[1,2,3].map((lvl) => (
-                <button
-                  key={lvl}
-                  onClick={() => setSelectedLevelId(lvl as 1|2|3)}
-                  className={`text-sm md:text-base font-semibold tracking-tight border-b-2 pb-1 transition-colors ${
-                    selectedLevelId === lvl
-                      ? 'text-sky-600 border-sky-600'
-                      : 'text-gray-500 border-transparent hover:text-gray-700'
-                  }`}
-                >
-                  {`Level ${lvl}`}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
-            {displayedCourses.slice(0, 3).map((course: any) => (
-              <Card
-                key={course.id || course.title}
-                className={`group overflow-hidden rounded-3xl border-0 p-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105`}
-              >
-                <CardContent className="p-0">
-                  {/* Thumbnail */}
-                  <div className="relative aspect-[4/3] w-full overflow-hidden">
-                    <Image
-                      src={course.image || "/placeholder.svg?height=240&width=360"}
-                      alt={course.title || "Course thumbnail"}
-                      fill
-                      sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-6">
-                    <div className="mb-3 flex items-center justify-between">
-                      <Badge className="bg-sky-100 text-sky-700">{`Level ${selectedLevelId}`}{course.category ? ` • ${course.category}` : ''}</Badge>
-                      <div className="flex items-center gap-1 text-yellow-500">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-4 h-4 ${i < Math.floor(Number(course.rating) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                          />
-                        ))}
-                        <span className="text-xs text-gray-500 ml-1">({Number(course.reviews) || 0})</span>
-                      </div>
-                    </div>
-
-                    <h3 className="text-lg font-bold text-gray-900 tracking-tight line-clamp-2">{course.title || 'Course'}</h3>
-                    <p className="mt-1 text-sm text-gray-600 tracking-tight">{course.provider || course.instructor || 'Instructor'}</p>
-
-                    {/* Pricing */}
-                    <div className="mt-4 flex items-center gap-2">
-                      {course.is_free ? (
-                        <span className="text-lg font-bold text-green-600">Free</span>
-                      ) : (
-                        <>
-                          <span className="text-xl font-bold text-gray-900">${Number(course.price || 0)}</span>
-                          {Number(course.original_price || 0) > Number(course.price || 0) && (
-                            <span className="text-sm text-gray-500 line-through">${Number(course.original_price)}</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Meta */}
-                    <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
-                      <span>{course.duration || '—'}</span>
-                      <span>{Number(course.students || 0)} students</span>
-                    </div>
-
-                    <Button className="mt-5 w-full bg-sky-600 text-white hover:bg-sky-700 font-bold tracking-tight">
-                      Enroll Now
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Testimonial Section */}
       <section className="bg-gradient-to-br from-sky-500 to-sky-600 px-4 py-20 md:px-6 md:py-32 relative overflow-hidden">
   <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.1),transparent_50%)]"></div>
@@ -766,9 +766,7 @@ export default function HomePage() {
       </div>
     </div>
   </div>
-</section>
-
-
+      </section>
 
       {/* FAQ Section */}
       <section className="bg-gradient-to-b from-white to-gray-50 px-4 py-20 md:px-6 md:py-32">
@@ -812,45 +810,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
+      
       {/* CTA Section */}
-      {/* <section className="bg-gradient-to-r from-sky-500 to-sky-600 px-4 py-20 md:px-6 md:py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.1),transparent_50%)]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
-
-        <div className="mx-auto max-w-4xl text-center relative">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">
-            Ready to Transform Your Learning Experience?
-          </h2>
-          <p className="text-lg text-white/90 mb-10 max-w-2xl mx-auto tracking-tight">
-            Join thousands of educators and students who are already using EduFlow LMS to achieve their learning goals.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register">
-              <Button 
-                size="lg"
-                className="rounded-full bg-white text-sky-600 hover:bg-gray-100 px-10 py-4 text-lg font-bold transition-all duration-300 hover:scale-105 shadow-xl tracking-tight"
-              >
-                Start Free Trial
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button
-                variant="outline"
-                size="lg"
-                className="rounded-full border-2 border-white text-white hover:bg-white hover:text-sky-600 bg-transparent px-10 py-4 text-lg font-semibold transition-all duration-200 tracking-tight"
-              >
-                <Play className="mr-2 h-4 w-4" />
-                View Demo
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section> */}
-
       {/* Footer */}
-
     </div>
   );
 }
