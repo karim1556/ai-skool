@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
 
 export interface DashboardCounts {
   courses: number
@@ -31,6 +30,9 @@ export function useDashboardStats() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [latestCourses, setLatestCourses] = useState<any[]>([])
+  const [activeBatches, setActiveBatches] = useState<any[]>([])
+  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([])
 
   useEffect(() => {
     let isMounted = true
@@ -39,47 +41,43 @@ export function useDashboardStats() {
       setLoading(true)
       setError(null)
       try {
-        const [coursesRes, profilesStudents, profilesTrainers, profilesCoordinators, schoolsRes, enrollmentsRes, assignmentsRes, activeCourseRes, pendingCourseRes] = await Promise.all([
-          supabase.from("courses").select("id", { count: "exact", head: true }),
-          supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
-          supabase
-            .from("profiles")
-            .select("id", { count: "exact", head: true })
-            .in("role", ["trainer", "instructor"]),
-          supabase
-            .from("profiles")
-            .select("id", { count: "exact", head: true })
-            .in("role", ["coordinator", "school_coordinator", "camp_coordinator"]),
-          supabase.from("schools").select("id", { count: "exact", head: true }),
-          supabase.from("batch_enrollments").select("id", { count: "exact", head: true }),
-          supabase.from("assignments").select("id", { count: "exact", head: true }),
-          supabase.from("courses").select("id", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("courses").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        ])
-
+        const res = await fetch("/api/admin/stats", { cache: "no-store" })
+        if (!res.ok) {
+          throw new Error(`Failed to fetch stats: ${res.status}`)
+        }
+        const data = await res.json()
         if (!isMounted) return
 
-        // Lessons count is optional; fall back to 0 if table is absent
-        let lessonsCount = 0
+        let nextCounts: DashboardCounts = data.counts as DashboardCounts
+
+        // Fallbacks
         try {
-          const lessonsRes = await supabase.from("lessons").select("id", { count: "exact", head: true })
-          lessonsCount = lessonsRes.count ?? 0
-        } catch (_) {
-          lessonsCount = 0
+          if ((nextCounts.trainers ?? 0) === 0) {
+            const t = await fetch("/api/trainers", { cache: "no-store" })
+            if (t.ok) {
+              const tData = await t.json()
+              nextCounts.trainers = Array.isArray(tData) ? tData.length : nextCounts.trainers
+            }
+          }
+        } catch {}
+        try {
+          if ((nextCounts.coordinators ?? 0) === 0) {
+            const c = await fetch("/api/coordinators", { cache: "no-store" })
+            if (c.ok) {
+              const cData = await c.json()
+              nextCounts.coordinators = Array.isArray(cData) ? cData.length : nextCounts.coordinators
+            }
+          }
+        } catch {}
+        // Ensure course overview shows something when we have courses
+        if ((nextCounts.activeCourses + nextCounts.pendingCourses) === 0 && (nextCounts.courses ?? 0) > 0) {
+          nextCounts = { ...nextCounts, activeCourses: nextCounts.courses, pendingCourses: 0 }
         }
 
-        setCounts({
-          courses: coursesRes.count ?? 0,
-          lessons: lessonsCount,
-          enrollments: enrollmentsRes.count ?? 0,
-          students: profilesStudents.count ?? 0,
-          trainers: profilesTrainers.count ?? 0,
-          coordinators: profilesCoordinators.count ?? 0,
-          schools: schoolsRes.count ?? 0,
-          assignments: assignmentsRes.count ?? 0,
-          activeCourses: activeCourseRes.count ?? 0,
-          pendingCourses: pendingCourseRes.count ?? 0,
-        })
+        setCounts(nextCounts)
+        setLatestCourses(data.latestCourses ?? [])
+        setActiveBatches(data.activeBatches ?? [])
+        setUpcomingSessions(data.upcomingSessions ?? [])
       } catch (e: any) {
         if (!isMounted) return
         setError(e?.message || "Failed to load stats")
@@ -95,5 +93,5 @@ export function useDashboardStats() {
     }
   }, [])
 
-  return { counts, loading, error }
+  return { counts, loading, error, latestCourses, activeBatches, upcomingSessions }
 }

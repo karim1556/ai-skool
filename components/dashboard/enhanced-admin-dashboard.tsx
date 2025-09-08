@@ -1,103 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Users, BookOpen, Calendar, GraduationCap, TrendingUp, Video, UserCheck } from "lucide-react"
 import { mockData } from "@/lib/mock-auth"
-import {
-  mockTrainers,
-  mockCoordinators,
-  mockStudents,
-  mockSchools,
-  mockBatches,
-  mockAssignments,
-  mockPrivileges,
-} from "@/lib/mock-data"
+import { useDashboardStats } from "@/hooks/use-dashboard-stats"
 
 export function EnhancedAdminDashboard() {
-  const [stats, setStats] = useState({
-    courses: 0,
-    lessons: 0,
-    enrollments: 0,
-    students: 0,
-    activeCourses: 0,
-    pendingCourses: 0,
-    trainers: 0,
-    coordinators: 0,
-    schools: 0,
-    activeBatches: 0,
-    pendingBatches: 0,
-    assignments: 0,
-  })
-
-  const [pendingUsers, setPendingUsers] = useState(mockData.pendingUsers)
-  const [pendingBatches, setPendingBatches] = useState(mockBatches.filter((batch) => batch.status === "pending"))
-
-  // Add state for all users (trainers, coordinators, students)
-  const [allTrainers, setAllTrainers] = useState([...mockTrainers])
-  const [allCoordinators, setAllCoordinators] = useState([...mockCoordinators])
-  const [allStudents, setAllStudents] = useState([...mockStudents])
-
-  // Handler to toggle privilege for a user
-  const handleTogglePrivilege = (userType, userId, privilege) => {
-    const updateUserPrivileges = (users, setUsers) => {
-      setUsers(
-        users.map((user) => {
-          if (user.id === userId) {
-            const newPrivileges = user.privileges.includes(privilege)
-              ? user.privileges.filter((p) => p !== privilege)
-              : [...user.privileges, privilege]
-            // Persist to localStorage for trainers
-            if (userType === "trainer") {
-              if (typeof window !== "undefined") {
-                localStorage.setItem(
-                  `trainer-privileges-${user.email}`,
-                  JSON.stringify(newPrivileges)
-                )
-              }
-            }
-            return { ...user, privileges: newPrivileges }
-          }
-          return user
-        })
-      )
-    }
-    if (userType === "trainer") updateUserPrivileges(allTrainers, setAllTrainers)
-    if (userType === "coordinator") updateUserPrivileges(allCoordinators, setAllCoordinators)
-    if (userType === "student") updateUserPrivileges(allStudents, setAllStudents)
-  }
-
-  useEffect(() => {
-    // Calculate real stats from mock data
-    const activeBatches = mockBatches.filter((batch) => batch.status === "active").length
-    const pendingBatchesCount = mockBatches.filter((batch) => batch.status === "pending").length
-    const totalEnrollments = mockBatches.reduce((sum, batch) => sum + batch.noOfStudents, 0)
-
-    setStats({
-      courses: mockData.courses.length,
-      lessons: 229, // Mock lesson count
-      enrollments: totalEnrollments,
-      students: mockStudents.length,
-      activeCourses: mockData.courses.length,
-      pendingCourses: 0,
-      trainers: mockTrainers.length,
-      coordinators: mockCoordinators.length,
-      schools: mockSchools.length,
-      activeBatches,
-      pendingBatches: pendingBatchesCount,
-      assignments: mockAssignments.length,
-    })
-  }, [])
-
-  const approveUser = (userId: string) => {
-    setPendingUsers(pendingUsers.filter((user) => user.id !== userId))
-  }
-
-  const approveBatch = (batchId: number) => {
-    setPendingBatches(pendingBatches.filter((batch) => batch.id !== batchId))
-  }
+  const { counts: stats, loading, error, activeBatches, upcomingSessions, latestCourses } = useDashboardStats()
 
   return (
     <div className="space-y-6">
@@ -105,6 +17,14 @@ export function EnhancedAdminDashboard() {
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Welcome to EduFlow LMS Admin Panel</p>
       </div>
+
+      {error && (
+        <Card>
+          <CardContent>
+            <p className="text-sm text-red-600">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -114,7 +34,7 @@ export function EnhancedAdminDashboard() {
             <BookOpen className="h-8 w-8 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.courses}</div>
+            <div className="text-3xl font-bold">{loading ? "-" : stats.courses}</div>
             <p className="text-xs text-muted-foreground">+2 from last month</p>
           </CardContent>
         </Card>
@@ -125,7 +45,7 @@ export function EnhancedAdminDashboard() {
             <Video className="h-8 w-8 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.lessons}</div>
+            <div className="text-3xl font-bold">{loading ? "-" : stats.lessons}</div>
             <p className="text-xs text-muted-foreground">+12 from last week</p>
           </CardContent>
         </Card>
@@ -136,7 +56,7 @@ export function EnhancedAdminDashboard() {
             <UserCheck className="h-8 w-8 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.enrollments}</div>
+            <div className="text-3xl font-bold">{loading ? "-" : stats.enrollments}</div>
             <p className="text-xs text-muted-foreground">+5 from yesterday</p>
           </CardContent>
         </Card>
@@ -147,7 +67,7 @@ export function EnhancedAdminDashboard() {
             <Users className="h-8 w-8 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.students}</div>
+            <div className="text-3xl font-bold">{loading ? "-" : stats.students}</div>
             <p className="text-xs text-muted-foreground">+8 from last week</p>
           </CardContent>
         </Card>
@@ -161,7 +81,7 @@ export function EnhancedAdminDashboard() {
             <GraduationCap className="h-8 w-8 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.trainers}</div>
+            <div className="text-2xl font-bold">{loading ? "-" : stats.trainers}</div>
           </CardContent>
         </Card>
 
@@ -171,7 +91,7 @@ export function EnhancedAdminDashboard() {
             <UserCheck className="h-8 w-8 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.coordinators}</div>
+            <div className="text-2xl font-bold">{loading ? "-" : stats.coordinators}</div>
           </CardContent>
         </Card>
 
@@ -181,7 +101,7 @@ export function EnhancedAdminDashboard() {
             <BookOpen className="h-8 w-8 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.schools}</div>
+            <div className="text-2xl font-bold">{loading ? "-" : stats.schools}</div>
           </CardContent>
         </Card>
 
@@ -191,7 +111,7 @@ export function EnhancedAdminDashboard() {
             <Calendar className="h-8 w-8 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.assignments}</div>
+            <div className="text-2xl font-bold">{loading ? "-" : stats.assignments}</div>
           </CardContent>
         </Card>
       </div>
@@ -214,13 +134,13 @@ export function EnhancedAdminDashboard() {
                     stroke="#10b981"
                     strokeWidth="8"
                     fill="none"
-                    strokeDasharray={`${(stats.activeCourses / (stats.activeCourses + stats.pendingCourses || 1)) * 251.2} 251.2`}
+                    strokeDasharray={`${((loading ? 0 : stats.activeCourses) / ((loading ? 1 : stats.activeCourses + stats.pendingCourses) || 1)) * 251.2} 251.2`}
                     className="transition-all duration-300"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-2xl font-bold">{stats.activeCourses + stats.pendingCourses}</div>
+                    <div className="text-2xl font-bold">{loading ? "-" : stats.activeCourses + stats.pendingCourses}</div>
                     <div className="text-sm text-gray-500">Total Courses</div>
                   </div>
                 </div>
@@ -231,14 +151,14 @@ export function EnhancedAdminDashboard() {
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-2xl font-bold">{stats.activeCourses}</span>
+                  <span className="text-2xl font-bold">{loading ? "-" : stats.activeCourses}</span>
                 </div>
                 <div className="text-sm text-gray-600">Active courses</div>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Calendar className="h-4 w-4 text-yellow-500" />
-                  <span className="text-2xl font-bold">{stats.pendingCourses}</span>
+                  <span className="text-2xl font-bold">{loading ? "-" : stats.pendingCourses}</span>
                 </div>
                 <div className="text-sm text-gray-600">Pending courses</div>
               </div>
@@ -273,121 +193,48 @@ export function EnhancedAdminDashboard() {
         </Card>
       </div>
 
-      {/* Privilege Management Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Privilege Management</CardTitle>
-          <CardDescription>Assign or revoke privileges for trainers and coordinators</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-8">
-            {/* Trainers */}
-            <div>
-              <h3 className="font-semibold text-lg mb-2">Trainers</h3>
-              {allTrainers.map((trainer) => (
-                <div key={trainer.id} className="mb-4 p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{trainer.name}</span>
-                    <span className="text-xs text-muted-foreground">{trainer.email}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {mockPrivileges.map((priv) => (
-                      <label key={priv} className="flex items-center gap-1 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={trainer.privileges.includes(priv)}
-                          onChange={() => handleTogglePrivilege("trainer", trainer.id, priv)}
-                        />
-                        {priv.replace(/_/g, " ")}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* Coordinators */}
-            <div>
-              <h3 className="font-semibold text-lg mb-2">Coordinators</h3>
-              {allCoordinators.map((coordinator) => (
-                <div key={coordinator.id} className="mb-4 p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{coordinator.name}</span>
-                    <span className="text-xs text-muted-foreground">{coordinator.email}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {mockPrivileges.map((priv) => (
-                      <label key={priv} className="flex items-center gap-1 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={coordinator.privileges.includes(priv)}
-                          onChange={() => handleTogglePrivilege("coordinator", coordinator.id, priv)}
-                        />
-                        {priv.replace(/_/g, " ")}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Privilege Management section removed as per requirements */}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Pending User Approvals */}
-        <Card>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Active Batches */}
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Pending User Approvals</CardTitle>
-            <CardDescription>Users waiting for approval</CardDescription>
+            <CardTitle>Active Batches</CardTitle>
+            <CardDescription>Recently active cohorts</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {pendingUsers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No pending approvals</p>
+          <CardContent className="space-y-3">
+            {(activeBatches ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active batches</p>
             ) : (
-              pendingUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div>
-                    <p className="font-medium">{user.full_name}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                    <Badge variant="secondary">{user.role}</Badge>
+              (activeBatches ?? []).map((b: any) => (
+                <div key={b.id} className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{b.name}</p>
+                      <p className="text-xs text-muted-foreground">{b.course?.title} • Trainer: {b.trainer?.full_name}</p>
+                    </div>
+                    <Badge variant="outline">{b.status}</Badge>
                   </div>
-                  <Button size="sm" onClick={() => approveUser(user.id)} className="bg-green-600 hover:bg-green-700">
-                    Approve
-                  </Button>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
 
-        {/* Pending Batch Approvals */}
+        {/* Upcoming Sessions */}
         <Card>
           <CardHeader>
-            <CardTitle>Pending Batch Approvals</CardTitle>
-            <CardDescription>Batches waiting for approval</CardDescription>
+            <CardTitle>Upcoming Sessions</CardTitle>
+            <CardDescription>Next scheduled classes</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {pendingBatches.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No pending batch approvals</p>
+          <CardContent className="space-y-3">
+            {(upcomingSessions ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming sessions</p>
             ) : (
-              pendingBatches.map((batch) => (
-                <div
-                  key={batch.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div>
-                    <p className="font-medium">{batch.batchName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {batch.course} - {batch.trainer}
-                    </p>
-                    <Badge variant="outline">{batch.status}</Badge>
-                  </div>
-                  <Button size="sm" onClick={() => approveBatch(batch.id)} className="bg-green-600 hover:bg-green-700">
-                    Approve
-                  </Button>
+              (upcomingSessions ?? []).map((s: any) => (
+                <div key={s.id} className="p-3 border rounded-lg">
+                  <p className="font-medium">{s.title}</p>
+                  <p className="text-xs text-muted-foreground">{s.batch?.name} • {new Date(s.scheduled_date).toLocaleString()}</p>
                 </div>
               ))
             )}
@@ -395,47 +242,23 @@ export function EnhancedAdminDashboard() {
         </Card>
       </div>
 
-      {/* Recent Activity */}
+      {/* Latest Courses */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Latest system activities and updates</CardDescription>
+          <CardTitle>Latest Courses</CardTitle>
+          <CardDescription>Recently added courses</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">New instructor application received</p>
-                <p className="text-xs text-gray-500">Sarah Johnson applied for Data Science instructor role</p>
+        <CardContent className="space-y-3">
+          {(latestCourses ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No courses yet</p>
+          ) : (
+            (latestCourses ?? []).map((c: any) => (
+              <div key={c.id} className="p-3 border rounded-lg flex items-center justify-between">
+                <p className="font-medium">{c.title}</p>
+                <span className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</span>
               </div>
-              <span className="text-xs text-gray-500">2 hours ago</span>
-            </div>
-            <div className="flex items-center gap-4 p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Batch approved successfully</p>
-                <p className="text-xs text-gray-500">Web Development Batch 2024-A has been approved</p>
-              </div>
-              <span className="text-xs text-gray-500">4 hours ago</span>
-            </div>
-            <div className="flex items-center gap-4 p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors cursor-pointer">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Course completion milestone</p>
-                <p className="text-xs text-gray-500">25 students completed JavaScript Fundamentals course</p>
-              </div>
-              <span className="text-xs text-gray-500">1 day ago</span>
-            </div>
-            <div className="flex items-center gap-4 p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">New assignment created</p>
-                <p className="text-xs text-gray-500">React Components assignment added to Web Dev batch</p>
-              </div>
-              <span className="text-xs text-gray-500">2 days ago</span>
-            </div>
-          </div>
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
