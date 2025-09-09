@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,48 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowRight, Trash2, Plus, Minus, ShoppingCart } from "lucide-react"
-
-// Mock cart data
-const initialCartItems = [
-  {
-    id: 1,
-    title: "Introduction to Artificial Intelligence",
-    provider: "AI Skool",
-    price: 4999,
-    originalPrice: 8999,
-    image: "/images/skool1.png", // Placeholder image
-    quantity: 1,
-  },
-  {
-    id: 2,
-    title: "Advanced STEM Concepts",
-    provider: "AI Skool",
-    price: 7999,
-    originalPrice: 12999,
-    image: "/images/skool.jpg", // Placeholder image
-    quantity: 1,
-  },
-]
+import { useCart } from "@/hooks/use-cart"
 
 export default function ShoppingCartPage() {
-  const [cartItems, setCartItems] = useState(initialCartItems)
+  const { items: cartItems, updateQuantity, removeItem, subtotal } = useCart()
 
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity < 1) {
-      removeItem(id)
-    } else {
-      setCartItems((items) =>
-        items.map((item) => (item.id === id ? { ...item, quantity: newQuantity } : item))
-      )
-    }
-  }
-
-  const removeItem = (id: number) => {
-    setCartItems((items) => items.filter((item) => item.id !== id))
-  }
-
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const originalTotal = cartItems.reduce((sum, item) => sum + item.originalPrice * item.quantity, 0)
+  const originalTotal = cartItems.reduce((sum, item) => sum + (Number(item.originalPrice || item.price) * item.quantity), 0)
   const savings = originalTotal - subtotal
 
   const handleCheckout = () => {
@@ -100,11 +63,11 @@ export default function ShoppingCartPage() {
                           />
                           <div className="flex-grow">
                             <h3 className="font-semibold text-gray-800">{item.title}</h3>
-                            <p className="text-sm text-gray-500">By {item.provider}</p>
+                            {item.provider && <p className="text-sm text-gray-500">By {item.provider}</p>}
                             <div className="flex items-baseline gap-2 mt-2">
                               <span className="font-bold text-xl text-gray-900">₹{item.price.toLocaleString()}</span>
-                              {item.originalPrice && (
-                                <span className="text-sm text-gray-500 line-through">₹{item.originalPrice.toLocaleString()}</span>
+                              {item.originalPrice && item.originalPrice > item.price && (
+                                <span className="text-sm text-gray-500 line-through">₹{Number(item.originalPrice).toLocaleString()}</span>
                               )}
                             </div>
                           </div>

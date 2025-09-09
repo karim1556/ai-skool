@@ -16,9 +16,10 @@ import Image from "next/image"
 import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info } from "lucide-react"
 import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 import { useState } from "react"
+import { useCart } from "@/hooks/use-cart"
 
 export function Header() {
-  const [cartCount] = useState(0) // This would come from your cart state
+  const { count: cartCount } = useCart()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (

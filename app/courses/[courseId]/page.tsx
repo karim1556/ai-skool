@@ -29,6 +29,7 @@ import {
   InfinityIcon,
 } from "lucide-react";
 import { useAuth, useOrganization, useUser } from "@clerk/nextjs";
+import { useCart } from "@/hooks/use-cart";
 // Define the types based on your API response
 interface Instructor {
   name: string;
@@ -134,6 +135,7 @@ export default function CoursePage({ params }: { params: { courseId: string } })
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { user, isLoaded: userLoaded } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
+  const { addItem } = useCart();
   
   // Detect and transform YouTube URLs to embed form
   const getYouTubeEmbedUrl = (url: string | undefined | null): string | null => {
@@ -539,8 +541,40 @@ export default function CoursePage({ params }: { params: { courseId: string } })
                   </Link>
                 ) : (
                   <>
-                    <Button size="lg" className="w-full text-lg py-6 font-semibold">Add to Cart</Button>
-                    <Button size="lg" variant="outline" className="w-full text-lg py-6 font-semibold">Buy Now</Button>
+                    <Button
+                      size="lg"
+                      className="w-full text-lg py-6 font-semibold"
+                      onClick={() => addItem({
+                        id: course.id,
+                        title: course.title,
+                        price: Number(course.price || 0),
+                        originalPrice: Number(course.original_price || 0) || undefined,
+                        image: course.video_preview_image || null,
+                        provider: course.instructor?.name || null,
+                        type: "course",
+                      })}
+                    >
+                      Add to Cart
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full text-lg py-6 font-semibold"
+                      onClick={() => {
+                        addItem({
+                          id: course.id,
+                          title: course.title,
+                          price: Number(course.price || 0),
+                          originalPrice: Number(course.original_price || 0) || undefined,
+                          image: course.video_preview_image || null,
+                          provider: course.instructor?.name || null,
+                          type: "course",
+                        });
+                        window.location.href = '/cart';
+                      }}
+                    >
+                      Buy Now
+                    </Button>
                   </>
                 )}
                 <p className="text-center text-xs text-gray-500">30-Day Money-Back Guarantee</p>

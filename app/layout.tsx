@@ -3,6 +3,7 @@ import './globals.css'
 import { Header } from '@/components/ui/header'
 import { Footer } from '@/components/ui/footer'
 import ClientOnly from '@/components/ClientOnly'
+import { CartProvider } from '@/hooks/use-cart'
 import {
   ClerkProvider,
 } from '@clerk/nextjs'
@@ -23,11 +24,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ClientOnly>
-          <Header />
-        </ClientOnly>
-        {children}
-        <ClientOnly>
-          <Footer />
+          <CartProvider>
+            <Header />
+            {children}
+            <Footer />
+          </CartProvider>
         </ClientOnly>
       </body>
     </html>

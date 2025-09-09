@@ -9,6 +9,7 @@ import Image from "next/image"
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useCart } from "@/hooks/use-cart"
 
 export default function CoursesPage() {
   const router = useRouter()
@@ -24,7 +25,7 @@ export default function CoursesPage() {
     language: "All",
     rating: "All",
   })
-  const [cartItems, setCartItems] = useState<number[]>([])
+  const { addItem } = useCart()
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -65,19 +66,31 @@ export default function CoursesPage() {
     })
   }, [filters, allCourses])
 
-  const handleEnrollNow = (e: React.MouseEvent, courseId: number) => {
+  const handleEnrollNow = (e: React.MouseEvent, course: any) => {
     e.preventDefault()
-    if (!cartItems.includes(courseId)) {
-      setCartItems([...cartItems, courseId])
-    }
+    addItem({
+      id: course.id,
+      title: course.title,
+      price: Number(course.price || 0),
+      originalPrice: Number(course.original_price || 0) || undefined,
+      image: course.image || null,
+      provider: course.provider || null,
+      type: "course",
+    })
     router.push("/cart")
   }
 
-  const handleAddToCart = (e: React.MouseEvent, courseId: number) => {
+  const handleAddToCart = (e: React.MouseEvent, course: any) => {
     e.preventDefault()
-    if (!cartItems.includes(courseId)) {
-      setCartItems([...cartItems, courseId])
-    }
+    addItem({
+      id: course.id,
+      title: course.title,
+      price: Number(course.price || 0),
+      originalPrice: Number(course.original_price || 0) || undefined,
+      image: course.image || null,
+      provider: course.provider || null,
+      type: "course",
+    })
   }
 
   const handleRefresh = () => {
@@ -147,10 +160,10 @@ export default function CoursesPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" onClick={(e) => handleAddToCart(e, course.id)}>
+                  <Button variant="outline" size="icon" onClick={(e) => handleAddToCart(e, course)}>
                     <ShoppingCart className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" onClick={(e) => handleEnrollNow(e, course.id)} className="bg-gradient-to-r from-purple-500 to-blue-500 text-white">
+                  <Button size="sm" onClick={(e) => handleEnrollNow(e, course)} className="bg-gradient-to-r from-purple-500 to-blue-500 text-white">
                     Enroll Now
                   </Button>
                 </div>
@@ -165,7 +178,15 @@ export default function CoursesPage() {
   const LevelCard = ({ level }: { level: any }) => {
     const onAddToCart = (e: React.MouseEvent) => {
       e.preventDefault()
-      router.push('/cart')
+      addItem({
+        id: level.id,
+        title: level.name,
+        price: Number(level.price || 0),
+        originalPrice: Number(level.original_price || 0) || undefined,
+        image: level.thumbnail || null,
+        provider: null,
+        type: "level",
+      })
     }
     const onView = (e: React.MouseEvent) => {
       // allow navigation

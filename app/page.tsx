@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Bebas_Neue } from "next/font/google";
+import { useCart } from "@/hooks/use-cart";
 
 // Load condensed font
 const bebas = Bebas_Neue({
@@ -48,6 +49,7 @@ const bebas = Bebas_Neue({
 });
 
 export default function HomePage() {
+  const { addItem } = useCart();
   const [activeTab, setActiveTab] = useState("monthly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
@@ -692,6 +694,15 @@ export default function HomePage() {
                       <Button 
                         disabled={!product.inStock}
                         className="rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+                        onClick={() => addItem({
+                          id: product.id,
+                          title: product.name,
+                          price: Number(product.price || 0),
+                          originalPrice: Number(product.originalPrice || 0) || undefined,
+                          image: product.image || null,
+                          provider: product.category || null,
+                          type: "product",
+                        })}
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
                         Add to Cart
