@@ -34,8 +34,6 @@ export default function CoordinatorAddTrainerPage() {
   const [imageUrl, setImageUrl] = useState("")
   // removed status verification logic
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [highestSchool, setHighestSchool] = useState("")
   const [experienceYears, setExperienceYears] = useState<string>("")
   const [specialization, setSpecialization] = useState("")
@@ -97,10 +95,6 @@ export default function CoordinatorAddTrainerPage() {
 
   const handleComplete = async () => {
     try {
-      if (password && password !== confirmPassword) {
-        toast({ title: "Passwords do not match", variant: "destructive" })
-        return
-      }
       // support multiple emails separated by commas
       const emails = (email || "")
         .split(',')
@@ -128,7 +122,6 @@ export default function CoordinatorAddTrainerPage() {
             image_url: imageUrl || null,
             // status removed
             email: em,
-            password: password || null,
             highest_school: highestSchool || null,
             experience_years: experienceYears ? Number(experienceYears) : null,
             specialization: specialization || null,
@@ -235,14 +228,6 @@ export default function CoordinatorAddTrainerPage() {
       <div className="space-y-2">
         <Label htmlFor="email">Email(s)<span className="text-red-500">*</span></Label>
         <Input id="email" type="text" placeholder="Enter one or more emails, separated by commas" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password<span className="text-red-500">*</span></Label>
-        <Input id="password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm Password<span className="text-red-500">*</span></Label>
-        <Input id="confirmPassword" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
       </div>
     </div>,
 

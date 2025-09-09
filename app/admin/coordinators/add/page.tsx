@@ -147,20 +147,6 @@ export default function AddCoordinatorPage() {
         </Label>
         <Input id="email" type="email" placeholder="Enter email address" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="password">
-          Password<span className="text-red-500">*</span>
-        </Label>
-        <Input id="password" type="password" placeholder="Enter password" />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword">
-          Confirm Password<span className="text-red-500">*</span>
-        </Label>
-        <Input id="confirmPassword" type="password" placeholder="Confirm password" />
-      </div>
     </div>,
 
     // Qualification Step

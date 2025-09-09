@@ -15,7 +15,7 @@ import { Protect } from "@clerk/nextjs"
 export default function AddStudentPage() {
   const steps = [
     { id: "basic", title: "Basic info", icon: User },
-    { id: "credentials", title: "Login credentials", icon: Lock },
+    { id: "credentials", title: "Contact", icon: Lock },
     { id: "social", title: "Social information", icon: Share2 },
     { id: "finish", title: "Finish", icon: CheckCircle },
   ]
@@ -26,14 +26,13 @@ export default function AddStudentPage() {
   const [lastName, setLastName] = useState("")
   const [biography, setBiography] = useState("")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
+  
   const [phone, setPhone] = useState("")
   const [parentPhone, setParentPhone] = useState("")
   const [address, setAddress] = useState("")
   const [stateVal, setStateVal] = useState("")
   const [district, setDistrict] = useState("")
-  const [invite, setInvite] = useState(false)
+  
 
   const stepContent = [
     // Basic Info Step
@@ -92,41 +91,13 @@ export default function AddStudentPage() {
       </div>
     </div>,
 
-    // Login Credentials Step
+    // Contact Step
     <div key="credentials" className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="email">
           Email<span className="text-red-500">*</span>
         </Label>
         <Input id="email" type="email" placeholder="Enter email address" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-
-      <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={invite}
-            onChange={(e) => setInvite(e.target.checked)}
-          />
-          <span>Invite student via email (recommended)</span>
-        </label>
-        <p className="text-xs text-muted-foreground">
-          When invited, the student receives an email from Clerk to create their password. We will add them to the database as invited.
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="password">
-          Password<span className="text-red-500">*</span>
-        </Label>
-        <Input id="password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={invite} />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword">
-          Confirm Password<span className="text-red-500">*</span>
-        </Label>
-        <Input id="confirmPassword" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={invite} />
       </div>
     </div>,
 
@@ -171,10 +142,6 @@ export default function AddStudentPage() {
 
   const handleComplete = async () => {
     try {
-      if (!invite && password !== confirmPassword) {
-        toast({ title: "Passwords do not match", variant: "destructive" })
-        return
-      }
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,13 +150,12 @@ export default function AddStudentPage() {
           last_name: lastName || null,
           biography,
           email: email || null,
-          ...(invite ? {} : { password }),
           phone: phone || null,
           parent_phone: parentPhone,
           address,
           state: stateVal || null,
           district: district || null,
-          invite,
+          invite: true,
         }),
       })
       let data: any = null
@@ -202,7 +168,7 @@ export default function AddStudentPage() {
         const msg = data?.error || data?.message || (await res.text().catch(() => "Failed to create student"))
         throw new Error(`${res.status} ${res.statusText}: ${msg}`)
       }
-      toast({ title: invite ? "Invitation sent" : "Student created" })
+      toast({ title: "Invitation sent" })
       router.push("/admin/students")
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || String(e) || "Failed to create student", variant: "destructive" })

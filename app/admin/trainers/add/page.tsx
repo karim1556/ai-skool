@@ -31,8 +31,6 @@ function AddTrainerContent() {
   const [imageUrl, setImageUrl] = useState("")
   const [status, setStatus] = useState<string>("verified")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [highestSchool, setHighestSchool] = useState("")
   const [experienceYears, setExperienceYears] = useState<string>("")
   const [specialization, setSpecialization] = useState("")
@@ -84,10 +82,6 @@ function AddTrainerContent() {
 
   const handleComplete = async () => {
     try {
-      if (password && password !== confirmPassword) {
-        toast({ title: "Passwords do not match", variant: "destructive" })
-        return
-      }
       const postUrl = schoolId ? `/api/trainers?schoolId=${encodeURIComponent(schoolId)}` : "/api/trainers"
       const res = await fetch(postUrl, {
         method: "POST",
@@ -103,7 +97,6 @@ function AddTrainerContent() {
           image_url: imageUrl || null,
           status: status || "verified",
           email: email || null,
-          password: password || null,
           highest_school: highestSchool || null,
           experience_years: experienceYears ? Number(experienceYears) : null,
           specialization: specialization || null,
@@ -240,20 +233,6 @@ function AddTrainerContent() {
           Email<span className="text-red-500">*</span>
         </Label>
         <Input id="email" type="email" placeholder="Enter email address" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="password">
-          Password<span className="text-red-500">*</span>
-        </Label>
-        <Input id="password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword">
-          Confirm Password<span className="text-red-500">*</span>
-        </Label>
-        <Input id="confirmPassword" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
       </div>
     </div>,
 
