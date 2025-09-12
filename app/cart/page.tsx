@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowRight, Trash2, Plus, Minus, ShoppingCart } from "lucide-react"
+import { ArrowRight, Trash2, ShoppingCart } from "lucide-react"
 import { useCart } from "@/hooks/use-cart"
 
 export default function ShoppingCartPage() {
-  const { items: cartItems, updateQuantity, removeItem, subtotal } = useCart()
+  const { items: cartItems, removeItem, subtotal } = useCart()
 
   const originalTotal = cartItems.reduce((sum, item) => sum + (Number(item.originalPrice || item.price) * item.quantity), 0)
   const savings = originalTotal - subtotal
@@ -73,16 +73,8 @@ export default function ShoppingCartPage() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                           <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="w-10 text-center font-medium">{item.quantity}</span>
-                            <Button variant="outline" size="icon" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <Button variant="ghost" size="sm" onClick={() => removeItem(item.id)} className="text-gray-500 hover:text-red-600">
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">Qty: 1</span>
+                          <Button variant="ghost" size="sm" onClick={() => removeItem(item.id, item.type)} className="text-gray-500 hover:text-red-600">
                             <Trash2 className="h-4 w-4 mr-1" />
                             Remove
                           </Button>
