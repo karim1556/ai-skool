@@ -2,18 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
 import { auth } from "@clerk/nextjs/server";
+// Edge-safe UUID generator: use Web Crypto when available, fallback to Math.random
+function makeUUID(): string {
+  const g: any = globalThis as any
+  if (g.crypto && typeof g.crypto.getRandomValues === 'function') {
+    const buf = new Uint8Array(16)
+    g.crypto.getRandomValues(buf)
+    // Per RFC4122 v4
+    buf[6] = (buf[6] & 0x0f) | 0x40
+    buf[8] = (buf[8] & 0x3f) | 0x80
+    const hex = [...buf].map(b => b.toString(16).padStart(2, '0')).join('')
+    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`
+  }
+  // Weak fallback (rarely used)
+  const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1)
+  return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`
+}
 
 export const dynamic = "force-dynamic";
 
-// Ensure table exists
+// Ensure table exists (avoid extension requirements in serverless DBs)
 async function ensureTable() {
   const db = getDb();
-  // Try to enable pgcrypto for gen_random_uuid (ignore failures on providers that disallow it)
-  try {
-    await db.run(`CREATE EXTENSION IF NOT EXISTS pgcrypto`);
-  } catch {}
+  // Create without relying on gen_random_uuid to avoid extension dependency
   await db.run(`CREATE TABLE IF NOT EXISTS schools (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY,
     name text NOT NULL,
     tagline text,
     description text,
@@ -96,18 +109,24 @@ export async function POST(req: NextRequest) {
     if (logoFile && logoFile.size > 0) {
       const fileName = `logos/${Date.now()}-${logoFile.name}`;
       const { error } = await supabase.storage.from("course-thumbnails").upload(fileName, logoFile);
-      if (error) throw new Error(`Logo upload failed: ${error.message}`);
-      const { data } = supabase.storage.from("course-thumbnails").getPublicUrl(fileName);
-      logoUrl = data.publicUrl;
+      if (error) {
+        console.warn("Logo upload failed, continuing without logo:", error.message);
+      } else {
+        const { data } = supabase.storage.from("course-thumbnails").getPublicUrl(fileName);
+        logoUrl = data.publicUrl;
+      }
     }
 
     const bannerFile = formData.get("banner") as File | null;
     if (bannerFile && bannerFile.size > 0) {
       const fileName = `banners/${Date.now()}-${bannerFile.name}`;
       const { error } = await supabase.storage.from("course-thumbnails").upload(fileName, bannerFile);
-      if (error) throw new Error(`Banner upload failed: ${error.message}`);
-      const { data } = supabase.storage.from("course-thumbnails").getPublicUrl(fileName);
-      bannerUrl = data.publicUrl;
+      if (error) {
+        console.warn("Banner upload failed, continuing without banner:", error.message);
+      } else {
+        const { data } = supabase.storage.from("course-thumbnails").getPublicUrl(fileName);
+        bannerUrl = data.publicUrl;
+      }
     }
 
     // Scalars
@@ -160,16 +179,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 });
     }
 
-    const result = await db.get<{ id: string }>(
+    // Generate UUID on the server to avoid DB extensions
+    const id = (globalThis as any).crypto?.randomUUID?.() || makeUUID();
+
+    try {
+      const result = await db.get<{ id: string }>(
       `INSERT INTO schools (
-        name, tagline, description, logo_url, banner_url, website, email, phone,
+        id, name, tagline, description, logo_url, banner_url, website, email, phone,
         address_line1, address_line2, city, state, country, postal_code,
         principal, established_year, student_count, accreditation, social_links,
         banner_focal_x, banner_focal_y, clerk_org_id
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23
       ) RETURNING id`,
       [
+        id,
         values.name,
         values.tagline,
         values.description,
@@ -193,9 +217,16 @@ export async function POST(req: NextRequest) {
         banner_focal_y,
         orgId
       ]
-    );
-
-    return NextResponse.json({ id: result?.id, success: true });
+      );
+      return NextResponse.json({ id: result?.id, success: true });
+    } catch (e: any) {
+      // Unique violation on clerk_org_id -> return conflict with existing id
+      if (e && (e.code === '23505' || String(e.message || '').includes('unique constraint') )) {
+        const existing = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId]);
+        return NextResponse.json({ success: false, error: 'School already exists for this organization', id: existing?.id }, { status: 409 });
+      }
+      throw e;
+    }
   } catch (err) {
     console.error("Create school failed", err);
     return NextResponse.json({ error: "Failed to create school" }, { status: 500 });

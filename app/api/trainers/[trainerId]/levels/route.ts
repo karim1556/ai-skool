@@ -8,19 +8,38 @@ export const dynamic = 'force-dynamic';
 
 async function verifyTrainerBelongsToOrg(trainerId: string) {
   const db = getDb();
-  const { orgId } = await auth();
-  if (!orgId) return { error: 'Organization not selected', status: 401 } as const;
-  const schoolRow = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId]);
-  if (!schoolRow?.id) return { error: 'No school bound to this organization', status: 403 } as const;
-  const trainer = await db.get<{ id: string }>(`SELECT id FROM trainers WHERE id = $1 AND school_id = $2`, [trainerId, schoolRow.id]);
+  const { orgId, userId } = await auth();
+  let schoolId: string | null = null;
+  if (orgId) {
+    const schoolRow = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId]);
+    if (schoolRow?.id) schoolId = schoolRow.id;
+  }
+  // Fallback: resolve by current user's linked records
+  if (!schoolId && userId) {
+    const link = await db.get<{ school_id: string }>(
+      `SELECT school_id FROM coordinators WHERE clerk_user_id = $1 AND school_id IS NOT NULL
+       UNION SELECT school_id FROM trainers WHERE clerk_user_id = $1 AND school_id IS NOT NULL
+       UNION SELECT school_id FROM students WHERE clerk_user_id = $1 AND school_id IS NOT NULL
+       LIMIT 1`,
+      [userId]
+    );
+    if (link?.school_id) schoolId = link.school_id;
+  }
+  if (!schoolId) return { error: 'Organization not selected', status: 401 } as const;
+  const trainer = await db.get<{ id: string }>(`SELECT id FROM trainers WHERE id = $1 AND school_id = $2`, [trainerId, schoolId]);
   if (!trainer?.id) return { error: 'Trainer not found', status: 404 } as const;
-  return { schoolId: schoolRow.id } as const;
+  return { schoolId } as const;
 }
 
 async function ensureCoordinatorForSchool(schoolId: string) {
   const db = getDb();
-  const { userId } = await auth();
+  const { userId, orgRole } = await auth();
   if (!userId) return { error: 'Not authenticated', status: 401 } as const;
+  // Accept by org role as well
+  const role = (orgRole || '').toLowerCase().replace(/^org:/,'').replace(/[^a-z]/g,'');
+  if (role === 'admin' || role === 'coordinator' || role === 'schoolcoordinator') {
+    return {} as const;
+  }
   const row = await db.get<{ id: string }>(
     `SELECT id FROM coordinators WHERE school_id = $1 AND clerk_user_id = $2`,
     [schoolId, userId]
