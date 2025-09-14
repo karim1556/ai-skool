@@ -8,7 +8,7 @@ import { MultiStepForm } from "@/components/forms/multi-step-form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// Removed school/course Select UI
 import { User, Users, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -19,16 +19,16 @@ export default function CoordinatorAddBatchPage() {
   const { toast } = useToast()
   const { organization, isLoaded: orgLoaded } = useOrganization()
   const [name, setName] = useState("")
-  const [schoolId, setSchoolId] = useState<string>("")
-  const [courseId, setCourseId] = useState<string>("")
+  // School and course are derived server-side; no UI
+  const [schoolId] = useState<string>("")
+  const [courseId] = useState<string>("")
   const [status, setStatus] = useState<string>("verified")
   const [maxStudents, setMaxStudents] = useState<string>("30")
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
   const [schedule, setSchedule] = useState<string>("")
   const [description, setDescription] = useState<string>("")
-  const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
-  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([])
+  // Removed schools/courses lists
   const [trainers, setTrainers] = useState<Array<{ id: string; first_name?: string; last_name?: string }>>([])
   const [students, setStudents] = useState<Array<{ id: string; first_name?: string; last_name?: string }>>([])
   const [selectedTrainerIds, setSelectedTrainerIds] = useState<Set<string>>(new Set())
@@ -38,18 +38,8 @@ export default function CoordinatorAddBatchPage() {
     if (!orgLoaded) return
     const load = async () => {
       try {
-        const [schRes, crsRes, stdRes] = await Promise.all([
-          fetch("/api/schools"),
-          fetch("/api/courses"),
-          fetch("/api/students"),
-        ])
-        const [sch, crs, std] = await Promise.all([schRes.json(), crsRes.json(), stdRes.json()])
-        const mappedSchools = (Array.isArray(sch) ? sch : []).map((s:any) => ({
-          id: s.id,
-          name: (s.name && s.name !== 'Unnamed School') ? s.name : (organization?.name || s.id)
-        }))
-        setSchools(mappedSchools)
-        setCourses(Array.isArray(crs) ? crs : [])
+        const stdRes = await fetch("/api/students")
+        const std = await stdRes.json()
         setStudents(Array.isArray(std) ? std : [])
       } catch (_) {}
     }
@@ -59,14 +49,13 @@ export default function CoordinatorAddBatchPage() {
   useEffect(() => {
     const loadTrainers = async () => {
       try {
-        const url = schoolId ? `/api/trainers?schoolId=${schoolId}` : "/api/trainers"
-        const res = await fetch(url)
+        const res = await fetch("/api/trainers")
         const data = await res.json()
         setTrainers(Array.isArray(data) ? data : [])
       } catch (_) {}
     }
     loadTrainers()
-  }, [schoolId])
+  }, [])
 
   const steps = [
     { id: "basic", title: "Basic info", icon: User },
@@ -80,32 +69,6 @@ export default function CoordinatorAddBatchPage() {
       <div className="space-y-2">
         <Label htmlFor="batchName">Batch Name<span className="text-red-500">*</span></Label>
         <Input id="batchName" placeholder="Enter batch name" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="school">School (optional)</Label>
-        <Select value={schoolId} onValueChange={setSchoolId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose School" />
-          </SelectTrigger>
-          <SelectContent>
-            {schools.map((s) => (
-              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="course">Course (optional)</Label>
-        <Select value={courseId} onValueChange={setCourseId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose Course" />
-          </SelectTrigger>
-          <SelectContent>
-            {courses.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
       <div className="space-y-3">
         <Label>Status<span className="text-red-500">*</span></Label>
@@ -152,7 +115,16 @@ export default function CoordinatorAddBatchPage() {
     <div key="students" className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="maxStudents">Maximum Students</Label>
-        <Input id="maxStudents" type="number" placeholder="Enter maximum number of students" value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} />
+        <Input id="maxStudents" type="number" min={1} placeholder="Enter maximum number of students" value={maxStudents} onChange={(e) => {
+          const v = e.target.value
+          setMaxStudents(v)
+          // Trim current selection if it exceeds new max
+          const max = Number(v) || 0
+          if (max > 0 && selectedStudentIds.size > max) {
+            const trimmed = new Set(Array.from(selectedStudentIds).slice(0, max))
+            setSelectedStudentIds(trimmed)
+          }
+        }} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="startDate">Start Date</Label>
@@ -183,9 +155,13 @@ export default function CoordinatorAddBatchPage() {
                   checked={checked}
                   onCheckedChange={(v) => {
                     setSelectedStudentIds((prev) => {
+                      const max = Number(maxStudents) || 0
                       const next = new Set(prev)
-                      if (v) next.add(id)
-                      else next.delete(id)
+                      if (v) {
+                        if (max === 0 || next.size < max) next.add(id)
+                      } else {
+                        next.delete(id)
+                      }
                       return next
                     })
                   }}
@@ -219,8 +195,8 @@ export default function CoordinatorAddBatchPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          school_id: schoolId || null,
-          course_id: courseId || null,
+          school_id: null,
+          course_id: null,
           start_date: startDate || null,
           end_date: endDate || null,
           max_students: maxStudents || null,

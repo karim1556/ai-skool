@@ -492,7 +492,12 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
-            {displayedCourses.slice(0, 3).map((course: any) => (
+            {displayedCourses.length === 0 && (
+              <div className="col-span-full text-center text-gray-600">
+                No courses found for Level {selectedLevelId}. Please check back later.
+              </div>
+            )}
+            {displayedCourses.map((course: any) => (
               <Card
                 key={course.id || course.title}
                 className={`group overflow-hidden rounded-3xl border-0 p-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105`}

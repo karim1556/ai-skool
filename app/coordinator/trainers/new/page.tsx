@@ -10,21 +10,20 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// Removed Select imports as school/coordinator dropdowns are not needed
 import { User, Lock, GraduationCap, Share2, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Protect, useOrganization } from "@clerk/nextjs"
+import { supabase } from "@/lib/supabase"
 
 export default function CoordinatorAddTrainerPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { organization } = useOrganization()
 
-  const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
   const [schoolName, setSchoolName] = useState<string>("")
-  const [coordinators, setCoordinators] = useState<Array<{ id: string; first_name: string; last_name: string }>>([])
   const [schoolId, setSchoolId] = useState<string>("")
-  const [coordinatorId, setCoordinatorId] = useState<string>("")
+  // coordinator is the logged-in user; no manual selection needed
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [gender, setGender] = useState<string>("male")
@@ -39,9 +38,7 @@ export default function CoordinatorAddTrainerPage() {
   const [specialization, setSpecialization] = useState("")
   const [certifications, setCertifications] = useState("")
   const [phone, setPhone] = useState("")
-  const [linkedin, setLinkedin] = useState("")
-  const [twitter, setTwitter] = useState("")
-  const [bio, setBio] = useState("")
+  // removed linkedin, twitter, bio fields
   // removed single-verified gate; allow multiple trainers
 
   useEffect(() => {
@@ -54,12 +51,7 @@ export default function CoordinatorAddTrainerPage() {
           setSchoolId(s.schoolId)
           setSchoolName(s?.name || organization?.name || '')
         }
-        // optional: load all schools list (for dropdown if needed)
-        try {
-          const res = await fetch('/api/schools', { cache: 'no-store' })
-          const data = await res.json()
-          setSchools(Array.isArray(data) ? data : [])
-        } catch {}
+        // no dropdown of other schools; we keep only resolved schoolId/name
       } catch {}
     }
     init()
@@ -68,18 +60,11 @@ export default function CoordinatorAddTrainerPage() {
   useEffect(() => {
     const loadCoordinators = async () => {
       if (!schoolId) {
-        setCoordinators([])
-        setCoordinatorId("")
-        return
-      }
-      try {
-        const res = await fetch(`/api/coordinators?schoolId=${schoolId}`)
-        const data = await res.json()
-        const list = Array.isArray(data) ? data : []
-        setCoordinators(list)
-        if (!coordinatorId && list.length > 0) {
-          setCoordinatorId(list[0].id)
+          return
         }
+      try {
+        // No UI selection; optional: validate current user is coordinator of this school
+        await fetch(`/api/coordinators?schoolId=${schoolId}`, { cache: 'no-store' }).catch(() => {})
       } catch (_) {}
     }
     loadCoordinators()
@@ -112,7 +97,7 @@ export default function CoordinatorAddTrainerPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             school_id: schoolId || null,
-            coordinator_id: coordinatorId || null,
+            coordinator_id: null,
             first_name: firstName || null,
             last_name: lastName || null,
             gender: gender || null,
@@ -127,9 +112,6 @@ export default function CoordinatorAddTrainerPage() {
             specialization: specialization || null,
             certifications: certifications || null,
             phone: phone || null,
-            linkedin: linkedin || null,
-            twitter: twitter || null,
-            bio: bio || null,
           }),
         })
         let data: any = null
@@ -157,29 +139,7 @@ export default function CoordinatorAddTrainerPage() {
     <div key="basic" className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="school">School</Label>
-        <Select value={schoolId} onValueChange={setSchoolId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose School">{schoolName || "Choose School"}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {schools.map((s) => (
-              <SelectItem key={s.id} value={s.id}>{s.name || organization?.name || 'School'}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="coordinator">Coordinator (by school)</Label>
-        <Select value={coordinatorId} onValueChange={setCoordinatorId} disabled={!schoolId || coordinators.length === 0}>
-          <SelectTrigger>
-            <SelectValue placeholder={schoolId ? (coordinators.length ? "Choose Coordinator" : "No coordinator found") : "Choose school first"} />
-          </SelectTrigger>
-          <SelectContent>
-            {coordinators.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{`${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || c.id}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Input id="school" value={schoolName} readOnly disabled />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
@@ -218,7 +178,23 @@ export default function CoordinatorAddTrainerPage() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="profileImage">Profile Image</Label>
-        <Input id="profileImage" placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+        <Input id="profileImage" type="file" accept="image/*" onChange={async (e) => {
+          const file = e.target.files?.[0]
+          if (!file) return
+          try {
+            const fileName = `trainer-profiles/${Date.now()}-${file.name}`
+            const { error } = await supabase.storage.from("course-thumbnails").upload(fileName, file)
+            if (error) throw error
+            const { data } = supabase.storage.from("course-thumbnails").getPublicUrl(fileName)
+            setImageUrl(data.publicUrl)
+            toast({ title: "Profile image uploaded" })
+          } catch (err: any) {
+            toast({ title: "Image upload failed", description: err?.message || "", variant: "destructive" })
+          }
+        }} />
+        {imageUrl && (
+          <p className="text-xs text-gray-500 break-all">Uploaded: {imageUrl}</p>
+        )}
       </div>
       {/* Status selection removed */}
     </div>,
@@ -256,18 +232,6 @@ export default function CoordinatorAddTrainerPage() {
       <div className="space-y-2">
         <Label htmlFor="phone">Phone Number</Label>
         <Input id="phone" placeholder="Enter phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="linkedin">LinkedIn Profile</Label>
-        <Input id="linkedin" placeholder="Enter LinkedIn URL" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="twitter">Twitter Profile</Label>
-        <Input id="twitter" placeholder="Enter Twitter URL" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="bio">Bio</Label>
-        <Textarea id="bio" placeholder="Enter bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
       </div>
     </div>,
 

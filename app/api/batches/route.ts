@@ -146,13 +146,21 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const cap = Number.isFinite(+max_students) ? +max_students : null
       if (Array.isArray(studentIds) && studentIds.length) {
+        if (cap != null && studentIds.length > cap) {
+          throw new Error(`Requested ${studentIds.length} students exceeds max_students ${cap}`)
+        }
+        let insertedCount = 0
         for (const sid of studentIds) {
-          await trx`
+          if (cap != null && insertedCount >= cap) break
+          const res = await trx`
             INSERT INTO batch_students (batch_id, student_id)
             VALUES (${batchId}, ${sid})
             ON CONFLICT (batch_id, student_id) DO NOTHING
+            RETURNING id
           `;
+          if (res?.[0]?.id) insertedCount++
         }
       }
 
@@ -161,6 +169,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ id: result, success: true });
   } catch (e: any) {
+    // If cap exceeded, return 400
+    if (String(e?.message || '').includes('exceeds max_students')) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
     return NextResponse.json({ error: e.message || 'Failed to create batch' }, { status: 500 });
   }
 }
@@ -224,15 +236,33 @@ export async function PATCH(req: NextRequest) {
       }
 
       if (Array.isArray(studentIds)) {
+        // Determine cap: updated max_students (if provided) or current value in DB
+        let cap: number | null = null
+        if (max_students !== undefined) {
+          cap = Number.isFinite(+max_students) ? +max_students : null
+        } else {
+          const cur = await trx`SELECT max_students FROM batches WHERE id = ${id}`
+          const v = cur?.[0]?.max_students
+          cap = (v === null || v === undefined) ? null : Number(v)
+        }
+        if (cap != null && studentIds.length > cap) {
+          throw new Error(`Requested ${studentIds.length} students exceeds max_students ${cap}`)
+        }
         await trx`DELETE FROM batch_students WHERE batch_id = ${id}`;
+        let insertedCount = 0
         for (const sid of studentIds) {
-          await trx`INSERT INTO batch_students (batch_id, student_id) VALUES (${id}, ${sid}) ON CONFLICT (batch_id, student_id) DO NOTHING`;
+          if (cap != null && insertedCount >= cap) break
+          const res = await trx`INSERT INTO batch_students (batch_id, student_id) VALUES (${id}, ${sid}) ON CONFLICT (batch_id, student_id) DO NOTHING RETURNING id`;
+          if (res?.[0]?.id) insertedCount++
         }
       }
     });
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
+    if (String(e?.message || '').includes('exceeds max_students')) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
     return NextResponse.json({ error: e.message || 'Failed to update batch' }, { status: 500 });
   }
 }
