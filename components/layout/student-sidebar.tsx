@@ -8,7 +8,6 @@ import { LayoutDashboard, BookOpen, Calendar, ClipboardList, BarChart3, Settings
 
 const items = [
   { title: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
-  { title: "My Courses", href: "/student/courses", icon: BookOpen },
   { title: "My Levels", href: "/student/levels", icon: BookOpen },
   { title: "My Batches", href: "/student/batches", icon: Calendar },
   { title: "Sessions", href: "/student/sessions", icon: Calendar },
