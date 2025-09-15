@@ -1,6 +1,10 @@
 import { getDb } from "./db";
 
+let levelsSchemaReady: Promise<void> | null = null;
+
 export async function ensureLevelsSchema() {
+  if (levelsSchemaReady) return levelsSchemaReady;
+  levelsSchemaReady = (async () => {
   const db = await getDb();
   await db.run(`
     CREATE TABLE IF NOT EXISTS levels (
@@ -63,4 +67,6 @@ export async function ensureLevelsSchema() {
       ]
     );
   }
+  })();
+  return levelsSchemaReady;
 }

@@ -13,14 +13,30 @@ import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 import Image from "next/image"
-import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info } from "lucide-react"
+import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info, Boxes } from "lucide-react"
 import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useCart } from "@/hooks/use-cart"
 
 export function Header() {
   const { count: cartCount } = useCart()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [products, setProducts] = useState<Array<{ name: string; slug: string; hero_image?: string }>>([])
+
+  useEffect(() => {
+    let ignore = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/products', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!ignore) setProducts(Array.isArray(data) ? data : [])
+      } catch (e) {
+        // ignore
+      }
+    })()
+    return () => { ignore = true }
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100 px-4 py-4 md:px-6">
@@ -49,6 +65,35 @@ export function Header() {
                     Home
                   </NavigationMenuLink>
                 </Link>
+              </NavigationMenuItem>
+
+              {/* Products Mega Menu */}
+              <NavigationMenuItem>
+                <NavigationMenuTrigger className="bg-transparent hover:bg-gray-100">
+                  <Boxes className="w-4 h-4 mr-2" />
+                  Products
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <div className="w-[720px] p-6">
+                    <h3 className="font-medium text-gray-900 mb-4">Our Products</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                      {(products.length ? products : [
+                        { name: 'PictoBlox', slug: 'pictoblox', hero_image: '/placeholder-logo.png' },
+                        { name: 'Quarky', slug: 'quarky', hero_image: '/images/skool1.png' },
+                        { name: 'Wizbot Maxx', slug: 'wizbot-maxx', hero_image: '/images/skool.jpg' },
+                        { name: 'Wizbot', slug: 'wizbot', hero_image: '/uploads/img-intro-removebg-preview.png' },
+                        { name: 'Skillful Minds Books', slug: 'skillful-minds-books', hero_image: '/placeholder-logo.svg' },
+                      ]).map((p) => (
+                        <Link key={p.slug} href={`/products/${p.slug}`} className="group block rounded-md border hover:shadow-sm transition overflow-hidden bg-white">
+                          <div className="aspect-square w-full bg-gray-50 flex items-center justify-center">
+                            <Image src={p.hero_image || '/placeholder-logo.png'} alt={p.name} width={160} height={160} className="object-contain p-3" />
+                          </div>
+                          <div className="p-2 text-center text-sm font-medium text-gray-700 group-hover:text-gray-900">{p.name}</div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </NavigationMenuContent>
               </NavigationMenuItem>
 
               {/* Learn Dropdown */}
@@ -200,6 +245,30 @@ export function Header() {
                   <Home className="w-5 h-5" />
                   <span>Home</span>
                 </Link>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
+                    <Boxes className="w-5 h-5" />
+                    <span>Products</span>
+                  </h3>
+                  <div className="pl-7 grid grid-cols-1 gap-2">
+                    <Link href="/products/pictoblox" className="block text-gray-600 hover:text-gray-900 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                      PictoBlox
+                    </Link>
+                    <Link href="/products/quarky" className="block text-gray-600 hover:text-gray-900 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                      Quarky
+                    </Link>
+                    <Link href="/products/wizbot-maxx" className="block text-gray-600 hover:text-gray-900 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                      Wizbot Maxx
+                    </Link>
+                    <Link href="/products/wizbot" className="block text-gray-600 hover:text-gray-900 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                      Wizbot
+                    </Link>
+                    <Link href="/products/skillful-minds-books" className="block text-gray-600 hover:text-gray-900 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                      Skillful Minds Books
+                    </Link>
+                  </div>
+                </div>
 
                 <div className="space-y-2">
                   <h3 className="font-semibold text-gray-900 flex items-center space-x-2">

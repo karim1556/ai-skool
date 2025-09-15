@@ -17,6 +17,9 @@ if (!connectionString) {
 const sql = postgres(connectionString, {
   prepare: false,
   ssl: 'require',
+  max: 5,               // limit pool size to avoid local exhaustion
+  idle_timeout: 20,     // seconds
+  connect_timeout: 10,  // seconds
 });
 
 console.log('Postgres client initialized.');

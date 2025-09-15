@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
+  Boxes,
 } from "lucide-react"
 
 const navigationItems = [
@@ -38,6 +39,14 @@ const navigationItems = [
       { title: "Categories", href: "/admin/categories" },
       { title: "Add new category", href: "/admin/categories/new" },
       { title: "Add category section", href: "/admin/categories/sections" },
+    ],
+  },
+  {
+    title: "Products",
+    icon: Boxes,
+    items: [
+      { title: "Products", href: "/admin/products" },
+      { title: "Add new product", href: "/admin/products/new" },
     ],
   },
   {

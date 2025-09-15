@@ -1,0 +1,266 @@
+"use client"
+
+import { AdminLayout } from "@/components/layout/admin-layout"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent } from "@/components/ui/card"
+import { useParams, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { Protect } from "@clerk/nextjs"
+
+export default function EditProductPage() {
+  const router = useRouter()
+  const params = useParams<{ slug: string }>()
+  const currentSlug = String(params.slug)
+  const { toast } = useToast()
+
+  const [loading, setLoading] = useState(true)
+
+  const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
+  const [tagline, setTagline] = useState("")
+  const [description, setDescription] = useState("")
+  const [heroImage, setHeroImage] = useState("")
+
+  // Theme simple fields
+  const [themeFrom, setThemeFrom] = useState("from-pink-500")
+  const [themeTo, setThemeTo] = useState("to-purple-600")
+  const [themeAccent, setThemeAccent] = useState("text-purple-600")
+  const [themeSoft, setThemeSoft] = useState("from-pink-50 to-white")
+  const [themeGradient, setThemeGradient] = useState("bg-gradient-to-r from-pink-500 to-purple-600")
+  const [themeLight, setThemeLight] = useState("bg-pink-100")
+
+  // Repeatable groups
+  const [highlights, setHighlights] = useState<Array<{ title: string; subtitle?: string }>>([])
+  const [technologies, setTechnologies] = useState<Array<{ title: string; image?: string }>>([])
+  const [kits, setKits] = useState<Array<{ title: string; description?: string; age?: string; courses: string[]; features: string[] }>>([])
+  const [addons, setAddons] = useState<Array<{ title: string; description?: string }>>([])
+  const [techSpecs, setTechSpecs] = useState<Array<{ text: string }>>([])
+
+  useEffect(() => {
+    let ignore = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/products/${currentSlug}`, { cache: "no-store" })
+        if (!res.ok) throw new Error(await res.text())
+        const p = await res.json()
+        if (ignore) return
+        setName(p.name || "")
+        setSlug(p.slug || currentSlug)
+        setTagline(p.tagline || "")
+        setDescription(p.description || "")
+        setHeroImage(p.hero_image || "")
+        const t = p.theme || {}
+        setThemeFrom(t.from || "from-pink-500")
+        setThemeTo(t.to || "to-purple-600")
+        setThemeAccent(t.accent || "text-purple-600")
+        setThemeSoft(t.soft || "from-pink-50 to-white")
+        setThemeGradient(t.gradient || "bg-gradient-to-r from-pink-500 to-purple-600")
+        setThemeLight(t.light || "bg-pink-100")
+        setHighlights(Array.isArray(p.highlights) ? p.highlights : [])
+        setTechnologies(Array.isArray(p.technologies) ? p.technologies : [])
+        setKits(Array.isArray(p.kits) ? p.kits : [])
+        setAddons(Array.isArray(p.addons) ? p.addons : [])
+        setTechSpecs(Array.isArray(p.tech_specs) ? p.tech_specs : [])
+      } catch (e: any) {
+        toast({ title: "Failed to load product", description: e?.message || String(e), variant: "destructive" })
+      } finally {
+        if (!ignore) setLoading(false)
+      }
+    })()
+    return () => { ignore = true }
+  }, [currentSlug, toast])
+
+  const onSubmit = async () => {
+    try {
+      if (!name || !slug) {
+        toast({ title: "Name and Slug are required", variant: "destructive" })
+        return
+      }
+      const body = {
+        name,
+        slug,
+        tagline: tagline || null,
+        description: description || null,
+        hero_image: heroImage || null,
+        theme: {
+          from: themeFrom,
+          to: themeTo,
+          accent: themeAccent,
+          soft: themeSoft,
+          gradient: themeGradient,
+          light: themeLight,
+        },
+        highlights,
+        technologies,
+        kits,
+        addons,
+        tech_specs: techSpecs,
+      }
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || data?.message || `Failed (${res.status})`)
+      toast({ title: "Product saved" })
+      router.push("/admin/products")
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || String(e), variant: "destructive" })
+    }
+  }
+
+  if (loading) return (
+    <Protect role="admin" fallback={<p>Access denied</p>}>
+      <AdminLayout>
+        <p className="text-gray-500">Loading...</p>
+      </AdminLayout>
+    </Protect>
+  )
+
+  return (
+    <Protect role="admin" fallback={<p>Access denied</p>}>
+      <AdminLayout>
+        <div className="max-w-5xl mx-auto space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold">Edit product</h1>
+            <p className="text-gray-600">Update details and save.</p>
+          </div>
+
+          {/* Basic */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Slug</Label>
+                  <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tagline">Tagline</Label>
+                <Input id="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Short description</Label>
+                <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hero">Hero image URL</Label>
+                <Input id="hero" value={heroImage} onChange={(e) => setHeroImage(e.target.value)} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Theme */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1"><Label>From</Label><Input value={themeFrom} onChange={(e) => setThemeFrom(e.target.value)} /></div>
+                <div className="space-y-1"><Label>To</Label><Input value={themeTo} onChange={(e) => setThemeTo(e.target.value)} /></div>
+                <div className="space-y-1"><Label>Accent</Label><Input value={themeAccent} onChange={(e) => setThemeAccent(e.target.value)} /></div>
+                <div className="space-y-1"><Label>Soft</Label><Input value={themeSoft} onChange={(e) => setThemeSoft(e.target.value)} /></div>
+                <div className="space-y-1"><Label>Gradient</Label><Input value={themeGradient} onChange={(e) => setThemeGradient(e.target.value)} /></div>
+                <div className="space-y-1"><Label>Light</Label><Input value={themeLight} onChange={(e) => setThemeLight(e.target.value)} /></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Highlights */}
+          <Card>
+            <CardContent className="p-6 space-y-3">
+              <div className="flex items-center justify-between"><h3 className="font-semibold">Highlights</h3><Button type="button" variant="outline" size="sm" onClick={() => setHighlights((p) => [...p, { title: "" }])}>Add</Button></div>
+              {highlights.map((h, idx) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input placeholder="Title" value={h.title} onChange={(e) => setHighlights((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
+                  <div className="flex gap-2">
+                    <Input placeholder="Subtitle" value={h.subtitle || ""} onChange={(e) => setHighlights((p) => p.map((x, i) => i===idx ? { ...x, subtitle: e.target.value } : x))} />
+                    <Button variant="ghost" onClick={() => setHighlights((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Technologies */}
+          <Card>
+            <CardContent className="p-6 space-y-3">
+              <div className="flex items-center justify-between"><h3 className="font-semibold">Technologies</h3><Button type="button" variant="outline" size="sm" onClick={() => setTechnologies((p) => [...p, { title: "" }])}>Add</Button></div>
+              {technologies.map((t, idx) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input placeholder="Title" value={t.title} onChange={(e) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
+                  <div className="flex gap-2">
+                    <Input placeholder="Image URL" value={t.image || ""} onChange={(e) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, image: e.target.value } : x))} />
+                    <Button variant="ghost" onClick={() => setTechnologies((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Kits */}
+          <Card>
+            <CardContent className="p-6 space-y-3">
+              <div className="flex items-center justify-between"><h3 className="font-semibold">Kits</h3><Button type="button" variant="outline" size="sm" onClick={() => setKits((p) => [...p, { title: "", courses: [], features: [] }])}>Add</Button></div>
+              {kits.map((k, idx) => (
+                <div key={idx} className="border rounded-md p-3 space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Input placeholder="Title" value={k.title} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
+                    <Input placeholder="Age" value={k.age || ""} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, age: e.target.value } : x))} />
+                  </div>
+                  <Textarea placeholder="Description" value={k.description || ""} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, description: e.target.value } : x))} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Input placeholder="Courses (comma separated)" value={k.courses.join(", ")} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, courses: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) } : x))} />
+                    <Input placeholder="Features (comma separated)" value={k.features.join(", ")} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, features: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) } : x))} />
+                  </div>
+                  <div className="flex justify-end"><Button variant="ghost" onClick={() => setKits((p) => p.filter((_, i) => i!==idx))}>Remove</Button></div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Add-ons */}
+          <Card>
+            <CardContent className="p-6 space-y-3">
+              <div className="flex items-center justify-between"><h3 className="font-semibold">Add-ons</h3><Button type="button" variant="outline" size="sm" onClick={() => setAddons((p) => [...p, { title: "" }])}>Add</Button></div>
+              {addons.map((a, idx) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input placeholder="Title" value={a.title} onChange={(e) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
+                  <div className="flex gap-2">
+                    <Input placeholder="Description" value={a.description || ""} onChange={(e) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, description: e.target.value } : x))} />
+                    <Button variant="ghost" onClick={() => setAddons((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Tech specs */}
+          <Card>
+            <CardContent className="p-6 space-y-3">
+              <div className="flex items-center justify-between"><h3 className="font-semibold">Tech specs</h3><Button type="button" variant="outline" size="sm" onClick={() => setTechSpecs((p) => [...p, { text: "" }])}>Add</Button></div>
+              {techSpecs.map((s, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <Input placeholder="Spec text" value={s.text} onChange={(e) => setTechSpecs((p) => p.map((x, i) => i===idx ? { ...x, text: e.target.value } : x))} />
+                  <Button variant="ghost" onClick={() => setTechSpecs((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
+            <Button onClick={onSubmit}>Save product</Button>
+          </div>
+        </div>
+      </AdminLayout>
+    </Protect>
+  )
+}
