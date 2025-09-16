@@ -2,9 +2,17 @@ import { NextResponse } from "next/server"
 import { getDb } from "@/lib/db"
 import { ensureProductsSchema } from "@/lib/products-schema"
 
+// Simple in-memory cache for product list (10s)
+let productsCache: { data: any[]; ts: number } | null = null
+const CACHE_TTL_MS = 10_000
+
 export async function GET() {
   const db = getDb()
-  await ensureProductsSchema()
+  // Serve from cache if fresh
+  if (productsCache && Date.now() - productsCache.ts < CACHE_TTL_MS) {
+    return NextResponse.json(productsCache.data)
+  }
+  // Do not run schema in GET to avoid locks during traffic
   const rows = await db.all<any>(`SELECT * FROM products ORDER BY created_at DESC`)
   const parsed = rows.map((row: any) => {
     const r = { ...row }
@@ -16,6 +24,7 @@ export async function GET() {
     })
     return r
   })
+  productsCache = { data: parsed, ts: Date.now() }
   return NextResponse.json(parsed)
 }
 
@@ -88,5 +97,7 @@ export async function POST(req: Request) {
   )
 
   const saved = await db.get<any>(`SELECT * FROM products WHERE slug = $1`, [slug])
+  // Invalidate cache after write
+  productsCache = null
   return NextResponse.json(saved, { status: 201 })
 }
