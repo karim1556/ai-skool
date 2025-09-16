@@ -14,7 +14,7 @@ import { useInView } from "framer-motion"
 const AnimatedSection = ({ children, className = "", delay = 0.3 }: { children: React.ReactNode, className?: string, delay?: number }) => {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px" })
-  
+
   return (
     <div 
       ref={ref}
@@ -128,6 +128,20 @@ export default function ProductDetailPage() {
     }
   ]
 
+  // Technologies list (cards)
+  const technologies = Array.isArray(product?.technologies) ? product!.technologies : null
+
+  // Normalize tech specs items (may be strings or { text })
+  const normalizedTechSpecs = (Array.isArray(product?.tech_specs) ? product!.tech_specs : [
+    { icon: <Cpu className="w-5 h-5" />, text: "Powerful processor for complex projects" },
+    { icon: <Battery className="w-5 h-5" />, text: "3.7V Li-ion battery support" },
+    { icon: <Wifi className="w-5 h-5" />, text: "Wi-Fi and Bluetooth compatibility" },
+    { icon: <Smartphone className="w-5 h-5" />, text: "Programmable via smartphone" }
+  ]).map((s: any) => {
+    if (typeof s === 'string') return { text: s }
+    return s
+  })
+
   // "Highlights" (why it's best)
   const highlights = Array.isArray(product?.highlights) ? product!.highlights : [
     {
@@ -148,12 +162,6 @@ export default function ProductDetailPage() {
     }
   ]
 
-  const techSpecs = Array.isArray(product?.tech_specs) ? product!.tech_specs : [
-    { icon: <Cpu className="w-5 h-5" />, text: "Powerful processor for complex projects" },
-    { icon: <Battery className="w-5 h-5" />, text: "3.7V Li-ion battery support" },
-    { icon: <Wifi className="w-5 h-5" />, text: "Wi-Fi and Bluetooth compatibility" },
-    { icon: <Smartphone className="w-5 h-5" />, text: "Programmable via smartphone" }
-  ]
 
   return (
     <main className="overflow-hidden">
@@ -264,25 +272,32 @@ export default function ProductDetailPage() {
       <section className="py-16 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <AnimatedSection className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Technologies at Focus</h2>
-            <p className="text-gray-600 mt-4 max-w-2xl mx-auto text-lg">
-              Gain hands-on experience with advanced, 21st-century technologies that offer engaging and practical ways for kids to apply their learning.
-            </p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">{product?.technologies_title || 'Technologies at Focus'}</h2>
+            {(product?.technologies_subtitle || ' ')
+              && (
+                <p className="text-gray-600 mt-4 max-w-2xl mx-auto text-lg">
+                  {product?.technologies_subtitle || 'Gain hands-on experience with advanced, 21st-century technologies that offer engaging and practical ways for kids to apply their learning.'}
+                </p>
+              )}
           </AnimatedSection>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { title: "Coding: Block and Python", icon: <Code2 className="w-10 h-10" /> },
-              { title: "Artificial Intelligence", icon: <Brain className="w-10 h-10" /> },
-              { title: "Robotics", icon: <Rocket className="w-10 h-10" /> },
-              { title: "Self Driving Technology", icon: <Car className="w-10 h-10" /> },
-              { title: "Interactive AI", icon: <Users className="w-10 h-10" /> },
-              { title: "Localization and Automation", icon: <Wifi className="w-10 h-10" /> }
-            ].map((tech, index) => (
+            {(technologies || [
+              { title: 'Coding: Block and Python' },
+              { title: 'Artificial Intelligence' },
+              { title: 'Robotics' },
+              { title: 'Self Driving Technology' },
+              { title: 'Interactive AI' },
+              { title: 'Localization and Automation' },
+            ]).map((tech: any, index: number) => (
               <AnimatedSection key={index} delay={0.1 * index}>
                 <Card className="text-center p-6 border-0 shadow-md hover:shadow-lg transition-shadow group">
-                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${theme.light} mb-4 group-hover:scale-110 transition-transform`}>
-                    {tech.icon}
+                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${theme.light} mb-4 overflow-hidden group-hover:scale-110 transition-transform`}>
+                    {tech?.image ? (
+                      <Image src={tech.image} alt={tech.title || 'Technology'} width={48} height={48} className="object-contain" />
+                    ) : (
+                      <Code2 className="w-10 h-10" />
+                    )}
                   </div>
                   <h3 className="font-semibold text-lg text-gray-900">{tech.title}</h3>
                 </Card>
@@ -362,10 +377,12 @@ export default function ProductDetailPage() {
       <section className="py-16 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <AnimatedSection className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Why is <span className={theme.accent}>Quarky</span> the best?</h2>
-            <p className="text-gray-600 mt-4 max-w-2xl mx-auto text-lg">
-              Learn to use 21st-century technologies with a fun-filled AI learning experience from the comfort of your home.
-            </p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">{product?.highlights_title || `Why is ${title} the best?`}</h2>
+            {(product?.highlights_subtitle || ' ') && (
+              <p className="text-gray-600 mt-4 max-w-2xl mx-auto text-lg">
+                {product?.highlights_subtitle || 'Learn to use 21st-century technologies with a fun-filled experience.'}
+              </p>
+            )}
           </AnimatedSection>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -429,17 +446,14 @@ export default function ProductDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <AnimatedSection>
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Quarky's Tech</h2>
-                <p className="text-gray-600 mb-6">
-                  Quarky is a powerful, portable device that allows users to create complex projects with its 3.7V Li-ion battery support, 
-                  two tactile switches, five capacitive touch sensors, two infrared sensors, and general-purpose input-output pins.
-                </p>
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">{title}'s Tech</h2>
+                <p className="text-gray-600 mb-6">{product?.tech_overview || 'This product is a powerful, portable device that allows users to create complex projects with modern connectivity and sensors.'}</p>
                 
                 <div className="space-y-4">
-                  {techSpecs.map((spec: any, index: number) => (
+                  {normalizedTechSpecs.map((spec: any, index: number) => (
                     <div key={index} className="flex items-start">
                       <div className={`flex-shrink-0 w-10 h-10 rounded-full ${theme.light} flex items-center justify-center mr-4`}>
-                        {spec.icon}
+                        {spec.icon || <span className="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block" />}
                       </div>
                       <p className="text-gray-700">{spec.text}</p>
                     </div>

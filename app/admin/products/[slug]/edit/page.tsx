@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -24,6 +25,12 @@ export default function EditProductPage() {
   const [tagline, setTagline] = useState("")
   const [description, setDescription] = useState("")
   const [heroImage, setHeroImage] = useState("")
+  // Section headings/subtitles
+  const [technologiesTitle, setTechnologiesTitle] = useState("")
+  const [technologiesSubtitle, setTechnologiesSubtitle] = useState("")
+  const [highlightsTitle, setHighlightsTitle] = useState("")
+  const [highlightsSubtitle, setHighlightsSubtitle] = useState("")
+  const [techOverview, setTechOverview] = useState("")
 
   // Theme simple fields
   const [themeFrom, setThemeFrom] = useState("from-pink-500")
@@ -35,9 +42,9 @@ export default function EditProductPage() {
 
   // Repeatable groups
   const [highlights, setHighlights] = useState<Array<{ title: string; subtitle?: string }>>([])
-  const [technologies, setTechnologies] = useState<Array<{ title: string; image?: string }>>([])
+  const [technologies, setTechnologies] = useState<Array<{ title: string; image?: string; icon?: string }>>([])
   const [kits, setKits] = useState<Array<{ title: string; description?: string; age?: string; courses: string[]; features: string[] }>>([])
-  const [addons, setAddons] = useState<Array<{ title: string; description?: string }>>([])
+  const [addons, setAddons] = useState<Array<{ title: string; description?: string; icon?: string }>>([])
   const [techSpecs, setTechSpecs] = useState<Array<{ text: string }>>([])
 
   useEffect(() => {
@@ -53,6 +60,11 @@ export default function EditProductPage() {
         setTagline(p.tagline || "")
         setDescription(p.description || "")
         setHeroImage(p.hero_image || "")
+        setTechnologiesTitle(p.technologies_title || "")
+        setTechnologiesSubtitle(p.technologies_subtitle || "")
+        setHighlightsTitle(p.highlights_title || "")
+        setHighlightsSubtitle(p.highlights_subtitle || "")
+        setTechOverview(p.tech_overview || "")
         const t = p.theme || {}
         setThemeFrom(t.from || "from-pink-500")
         setThemeTo(t.to || "to-purple-600")
@@ -86,6 +98,11 @@ export default function EditProductPage() {
         tagline: tagline || null,
         description: description || null,
         hero_image: heroImage || null,
+        technologies_title: technologiesTitle || null,
+        technologies_subtitle: technologiesSubtitle || null,
+        highlights_title: highlightsTitle || null,
+        highlights_subtitle: highlightsSubtitle || null,
+        tech_overview: techOverview || null,
         theme: {
           from: themeFrom,
           to: themeTo,
@@ -156,6 +173,31 @@ export default function EditProductPage() {
                 <Label htmlFor="hero">Hero image URL</Label>
                 <Input id="hero" value={heroImage} onChange={(e) => setHeroImage(e.target.value)} />
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Technologies section title</Label>
+                  <Input value={technologiesTitle} onChange={(e)=>setTechnologiesTitle(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Highlights section title</Label>
+                  <Input value={highlightsTitle} onChange={(e)=>setHighlightsTitle(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Technologies section subtitle</Label>
+                  <Textarea rows={2} value={technologiesSubtitle} onChange={(e)=>setTechnologiesSubtitle(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Highlights section subtitle</Label>
+                  <Textarea rows={2} value={highlightsSubtitle} onChange={(e)=>setHighlightsSubtitle(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Tech overview paragraph (left of specs)</Label>
+                <Textarea rows={3} value={techOverview} onChange={(e)=>setTechOverview(e.target.value)} />
+              </div>
             </CardContent>
           </Card>
 
@@ -163,6 +205,29 @@ export default function EditProductPage() {
           <Card>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1 md:col-span-3">
+                  <Label>Theme preset</Label>
+                  <Select onValueChange={(v)=>{
+                    const map:any = {
+                      pink: { from:"from-pink-500", to:"to-purple-600", accent:"text-purple-600", soft:"from-pink-50 to-white", gradient:"bg-gradient-to-r from-pink-500 to-purple-600", light:"bg-pink-100" },
+                      purple: { from:"from-violet-500", to:"to-fuchsia-600", accent:"text-violet-600", soft:"from-violet-50 to-white", gradient:"bg-gradient-to-r from-violet-500 to-fuchsia-600", light:"bg-violet-100" },
+                      blue: { from:"from-sky-500", to:"to-indigo-600", accent:"text-indigo-600", soft:"from-sky-50 to-white", gradient:"bg-gradient-to-r from-sky-500 to-indigo-600", light:"bg-sky-100" },
+                      emerald: { from:"from-emerald-500", to:"to-teal-600", accent:"text-emerald-600", soft:"from-emerald-50 to-white", gradient:"bg-gradient-to-r from-emerald-500 to-teal-600", light:"bg-emerald-100" },
+                      orange: { from:"from-orange-500", to:"to-amber-600", accent:"text-orange-600", soft:"from-orange-50 to-white", gradient:"bg-gradient-to-r from-orange-500 to-amber-600", light:"bg-orange-100" },
+                    }
+                    const p = map[v]
+                    if (p){ setThemeFrom(p.from); setThemeTo(p.to); setThemeAccent(p.accent); setThemeSoft(p.soft); setThemeGradient(p.gradient); setThemeLight(p.light) }
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Choose a preset" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pink">Pink</SelectItem>
+                      <SelectItem value="purple">Purple</SelectItem>
+                      <SelectItem value="blue">Blue</SelectItem>
+                      <SelectItem value="emerald">Emerald</SelectItem>
+                      <SelectItem value="orange">Orange</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1"><Label>From</Label><Input value={themeFrom} onChange={(e) => setThemeFrom(e.target.value)} /></div>
                 <div className="space-y-1"><Label>To</Label><Input value={themeTo} onChange={(e) => setThemeTo(e.target.value)} /></div>
                 <div className="space-y-1"><Label>Accent</Label><Input value={themeAccent} onChange={(e) => setThemeAccent(e.target.value)} /></div>
@@ -194,10 +259,22 @@ export default function EditProductPage() {
             <CardContent className="p-6 space-y-3">
               <div className="flex items-center justify-between"><h3 className="font-semibold">Technologies</h3><Button type="button" variant="outline" size="sm" onClick={() => setTechnologies((p) => [...p, { title: "" }])}>Add</Button></div>
               {technologies.map((t, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <Input placeholder="Title" value={t.title} onChange={(e) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
-                  <div className="flex gap-2">
-                    <Input placeholder="Image URL" value={t.image || ""} onChange={(e) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, image: e.target.value } : x))} />
+                  <Input placeholder="Image URL" value={t.image || ""} onChange={(e) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, image: e.target.value } : x))} />
+                  <div className="flex gap-2 items-center">
+                    <Select value={t.icon || undefined} onValueChange={(v) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, icon: v } : x))}>
+                      <SelectTrigger><SelectValue placeholder="Icon (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="code">Coding</SelectItem>
+                        <SelectItem value="brain">AI</SelectItem>
+                        <SelectItem value="robotics">Robotics</SelectItem>
+                        <SelectItem value="car">Self Driving</SelectItem>
+                        <SelectItem value="users">Interactive AI</SelectItem>
+                        <SelectItem value="wifi">Localization/Automation</SelectItem>
+                        <SelectItem value="rocket">Rocket</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button variant="ghost" onClick={() => setTechnologies((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
                   </div>
                 </div>
@@ -231,10 +308,21 @@ export default function EditProductPage() {
             <CardContent className="p-6 space-y-3">
               <div className="flex items-center justify-between"><h3 className="font-semibold">Add-ons</h3><Button type="button" variant="outline" size="sm" onClick={() => setAddons((p) => [...p, { title: "" }])}>Add</Button></div>
               {addons.map((a, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <Input placeholder="Title" value={a.title} onChange={(e) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
-                  <div className="flex gap-2">
-                    <Input placeholder="Description" value={a.description || ""} onChange={(e) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, description: e.target.value } : x))} />
+                  <Input placeholder="Description" value={a.description || ""} onChange={(e) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, description: e.target.value } : x))} />
+                  <div className="flex gap-2 items-center">
+                    <Select value={a.icon || undefined} onValueChange={(v) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, icon: v } : x))}>
+                      <SelectTrigger><SelectValue placeholder="Icon (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="car">Car</SelectItem>
+                        <SelectItem value="users">Users</SelectItem>
+                        <SelectItem value="rocket">Rocket</SelectItem>
+                        <SelectItem value="globe">Globe</SelectItem>
+                        <SelectItem value="bot">Bot</SelectItem>
+                        <SelectItem value="house">House</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button variant="ghost" onClick={() => setAddons((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
                   </div>
                 </div>

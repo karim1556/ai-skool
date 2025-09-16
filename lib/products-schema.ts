@@ -15,6 +15,11 @@ export async function ensureProductsSchema() {
       tagline TEXT,
       description TEXT,
       hero_image TEXT,
+      technologies_title TEXT,
+      technologies_subtitle TEXT,
+      highlights_title TEXT,
+      highlights_subtitle TEXT,
+      tech_overview TEXT,
       theme JSONB,
       highlights JSONB,
       technologies JSONB,
@@ -34,6 +39,11 @@ export async function ensureProductsSchema() {
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS tagline TEXT`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS hero_image TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS technologies_title TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS technologies_subtitle TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS highlights_title TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS highlights_subtitle TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS tech_overview TEXT`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS theme JSONB`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS highlights JSONB`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS technologies JSONB`)
