@@ -13,6 +13,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Protect } from "@clerk/nextjs"
+import { supabase } from "@/lib/supabase"
 
 function AddTrainerContent() {
   const router = useRouter()
@@ -206,7 +207,29 @@ function AddTrainerContent() {
 
       <div className="space-y-2">
         <Label htmlFor="profileImage">Profile Image</Label>
-        <Input id="profileImage" placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+        {imageUrl && (
+          <div className="mb-2">
+            <img src={imageUrl} alt="profile" className="h-20 w-20 object-cover rounded-full border" />
+          </div>
+        )}
+        <div className="flex gap-3 items-center">
+          <Input id="profileImage" placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+          <Input id="profileFile" type="file" accept="image/*" onChange={async (e) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            try {
+              const path = `trainer-profiles/${Date.now()}-${file.name}`
+              const { error } = await supabase.storage.from('course-thumbnails').upload(path, file)
+              if (error) throw error
+              const { data } = supabase.storage.from('course-thumbnails').getPublicUrl(path)
+              setImageUrl(data.publicUrl)
+              toast({ title: 'Uploaded profile image' })
+            } catch (err: any) {
+              toast({ title: 'Upload failed', description: err?.message || String(err), variant: 'destructive' })
+            }
+          }} />
+        </div>
+        <p className="text-xs text-gray-500">You can paste an external URL or upload to Supabase bucket (course-thumbnails) and we’ll fill it.</p>
       </div>
 
       <div className="space-y-3">
@@ -239,8 +262,19 @@ function AddTrainerContent() {
     // Qualification Step
     <div key="qualification" className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="Skool">Highest Skool</Label>
-        <Input id="Skool" placeholder="Enter highest Skool" value={highestSchool} onChange={(e) => setHighestSchool(e.target.value)} />
+        <Label>Qualification</Label>
+        <Select value={highestSchool} onValueChange={setHighestSchool}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select qualification" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="12th">12th</SelectItem>
+            <SelectItem value="Graduate Commerce">Graduate Commerce</SelectItem>
+            <SelectItem value="Graduate Art">Graduate Art</SelectItem>
+            <SelectItem value="Diploma">Diploma</SelectItem>
+            <SelectItem value="Degree of Engg">Degree of engg</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">

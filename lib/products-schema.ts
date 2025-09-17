@@ -55,6 +55,8 @@ export async function ensureProductsSchema() {
 
   // Ensure unique index on slug (if table was created without it)
   await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_products_slug ON products(slug)`)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at)`)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_products_updated_at ON products(updated_at)`)
   })()
   return productsSchemaReady
 }

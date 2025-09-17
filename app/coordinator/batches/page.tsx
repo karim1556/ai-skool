@@ -88,6 +88,7 @@ export default function CoordinatorBatchesPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Students</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Trainers</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Schedule</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
                   </tr>
                 </thead>
@@ -101,6 +102,11 @@ export default function CoordinatorBatchesPage() {
                       <td className="py-3 px-4">{b.student_count || 0}</td>
                       <td className="py-3 px-4">{b.trainer_count || 0}</td>
                       <td className="py-3 px-4 capitalize">{b.status || 'pending'}</td>
+                      <td className="py-3 px-4 max-w-xs">
+                        <div className="text-sm text-gray-700 truncate" title={b.schedule || ''}>
+                          {b.schedule ? b.schedule : '—'}
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-right">
                         <ActionDropdown
                           actions={[

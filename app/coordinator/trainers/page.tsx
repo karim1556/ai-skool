@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { RoleLayout } from "@/components/layout/role-layout"
@@ -102,7 +103,20 @@ export default function CoordinatorTrainersPage() {
                   {trainers.map((t, idx) => (
                     <tr key={t.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4">{idx + 1}</td>
-                      <td className="py-3 px-4 font-medium">{`${t.first_name || ""} ${t.last_name || ""}`.trim() || t.email || t.id}</td>
+                      <td className="py-3 px-4 font-medium">
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-8 w-8 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                            <Image
+                              src={t.image_url || "/placeholder-logo.png"}
+                              alt={t.first_name || t.last_name ? `${t.first_name ?? ""} ${t.last_name ?? ""}`.trim() : "Trainer"}
+                              fill
+                              sizes="32px"
+                              className="object-cover"
+                            />
+                          </div>
+                          <span>{`${t.first_name || ""} ${t.last_name || ""}`.trim() || t.email || t.id}</span>
+                        </div>
+                      </td>
                       <td className="py-3 px-4">{t.email || "—"}</td>
                       <td className="py-3 px-4">{t.phone ? String(t.phone) : "—"}</td>
                       <td className="py-3 px-4">{t.specialization || "—"}</td>

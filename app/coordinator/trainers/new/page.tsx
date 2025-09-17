@@ -15,6 +15,7 @@ import { User, Lock, GraduationCap, Share2, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Protect, useOrganization } from "@clerk/nextjs"
 import { supabase } from "@/lib/supabase"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function CoordinatorAddTrainerPage() {
   const router = useRouter()
@@ -210,8 +211,19 @@ export default function CoordinatorAddTrainerPage() {
     // Qualification Step
     <div key="qualification" className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="Skool">Highest Skool</Label>
-        <Input id="Skool" placeholder="Enter highest Skool" value={highestSchool} onChange={(e) => setHighestSchool(e.target.value)} />
+        <Label>Qualification</Label>
+        <Select value={highestSchool} onValueChange={setHighestSchool}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select qualification" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="12th">12th</SelectItem>
+            <SelectItem value="Graduate Commerce">Graduate Commerce</SelectItem>
+            <SelectItem value="Graduate Art">Graduate Art</SelectItem>
+            <SelectItem value="Diploma">Diploma</SelectItem>
+            <SelectItem value="Degree of Engg">Degree of engg</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-2">
         <Label htmlFor="experience">Experience (Years)</Label>

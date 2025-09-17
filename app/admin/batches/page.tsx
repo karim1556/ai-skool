@@ -109,6 +109,7 @@ export default function BatchesPage() {
                         <th className="text-left py-3 px-4 font-medium text-gray-600">Course</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-600">Students</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Schedule</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-600">Actions</th>
                       </tr>
                     </thead>
@@ -130,6 +131,11 @@ export default function BatchesPage() {
                             >
                               {batch.status}
                             </Badge>
+                          </td>
+                          <td className="py-4 px-4 max-w-xs">
+                            <div className="text-sm text-gray-700 truncate" title={batch.schedule || ''}>
+                              {batch.schedule ? batch.schedule : '—'}
+                            </div>
                           </td>
                           <td className="py-4 px-4">
                             <ActionDropdown

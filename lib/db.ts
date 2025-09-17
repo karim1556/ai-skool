@@ -24,20 +24,41 @@ const sql = postgres(connectionString, {
 
 console.log('Postgres client initialized.');
 
+// Simple retry wrapper for transient errors
+async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
+  let lastErr: any
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn()
+    } catch (err: any) {
+      lastErr = err
+      const code = err?.code
+      // retry on common transient conditions
+      const transient = code === 'XX000' /* pool timeout */
+        || code === '57014' /* statement timeout */
+        || code === '57P01' /* admin shutdown */
+        || code === 'ECONNRESET'
+        || /timeout/i.test(String(err?.message || ''))
+      if (!transient || i === attempts - 1) throw err
+      // small backoff
+      await new Promise((r) => setTimeout(r, 250 * (i + 1)))
+    }
+  }
+  throw lastErr
+}
+
 // This is our singleton database object.
 const db: Database = {
   async get<T>(query: string, params: any[] = []): Promise<T | null> {
-    const rows = await sql.unsafe(query, params);
-    return (rows[0] as unknown as T) || null;
+    const rows = await withRetry(() => sql.unsafe(query, params))
+    return (rows[0] as unknown as T) || null
   },
-
   async all<T>(query: string, params: any[] = []): Promise<T[]> {
-    const rows = await sql.unsafe(query, params);
-    return rows as unknown as T[];
+    const rows = await withRetry(() => sql.unsafe(query, params))
+    return rows as unknown as T[]
   },
-
   async run(query: string, params: any[] = []): Promise<void> {
-    await sql.unsafe(query, params);
+    await withRetry(() => sql.unsafe(query, params))
   },
 };
 

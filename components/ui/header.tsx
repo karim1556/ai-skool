@@ -26,14 +26,24 @@ export function Header() {
   useEffect(() => {
     let ignore = false
     ;(async () => {
-      try {
+      const attempt = async () => {
         const res = await fetch('/api/products', { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json()
-        if (!ignore) setProducts(Array.isArray(data) ? data : [])
-      } catch (e) {
-        // ignore
+        if (!res.ok) throw new Error(await res.text().catch(()=>'fetch failed'))
+        return res.json()
       }
+      try {
+        let data: any = null
+        for (let i = 0; i < 2; i++) {
+          try {
+            data = await attempt()
+            break
+          } catch (err) {
+            if (i === 1) throw err
+            await new Promise(r => setTimeout(r, 300 * (i + 1)))
+          }
+        }
+        if (!ignore) setProducts(Array.isArray(data) ? data : [])
+      } catch (e) { /* swallow transient errors */ }
     })()
     return () => { ignore = true }
   }, [])
