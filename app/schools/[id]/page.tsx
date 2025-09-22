@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Calendar, MapPin, Phone, Mail, Globe, Award, Home, Linkedin } from "lucide-react";
+import { Users, Calendar, MapPin, Phone, Mail, Globe, Award, Home, Linkedin, Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 import Link from "next/link";
 import type { School } from "@/types/school";
 
@@ -226,21 +226,61 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
             <Card className="border border-gray-200 shadow-sm">
               <CardHeader><CardTitle>Social</CardTitle></CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-3 text-sm">
+                <div className="flex flex-wrap gap-4">
                   {social.facebook && (
-                    <a className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" href={social.facebook}>Facebook</a>
+                    <a 
+                      className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      href={social.facebook}
+                      title="Facebook"
+                    >
+                      <Facebook className="h-5 w-5" />
+                    </a>
                   )}
                   {social.instagram && (
-                    <a className="text-pink-600 hover:underline" target="_blank" rel="noopener noreferrer" href={social.instagram}>Instagram</a>
+                    <a 
+                      className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 transition-colors" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      href={social.instagram}
+                      title="Instagram"
+                    >
+                      <Instagram className="h-5 w-5" />
+                    </a>
                   )}
                   {social.twitter && (
-                    <a className="text-sky-500 hover:underline" target="_blank" rel="noopener noreferrer" href={social.twitter}>Twitter</a>
+                    <a 
+                      className="flex items-center justify-center w-10 h-10 rounded-full bg-sky-500 text-white hover:bg-sky-600 transition-colors" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      href={social.twitter}
+                      title="Twitter"
+                    >
+                      <Twitter className="h-5 w-5" />
+                    </a>
                   )}
                   {social.linkedin && (
-                    <a className="text-blue-700 hover:underline" target="_blank" rel="noopener noreferrer" href={social.linkedin}>LinkedIn</a>
+                    <a 
+                      className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-700 text-white hover:bg-blue-800 transition-colors" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      href={social.linkedin}
+                      title="LinkedIn"
+                    >
+                      <Linkedin className="h-5 w-5" />
+                    </a>
                   )}
                   {social.youtube && (
-                    <a className="text-red-600 hover:underline" target="_blank" rel="noopener noreferrer" href={social.youtube}>YouTube</a>
+                    <a 
+                      className="flex items-center justify-center w-10 h-10 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      href={social.youtube}
+                      title="YouTube"
+                    >
+                      <Youtube className="h-5 w-5" />
+                    </a>
                   )}
                 </div>
               </CardContent>
