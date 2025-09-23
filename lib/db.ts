@@ -8,21 +8,27 @@ export interface Database {
 }
 
 // The 'postgres' library automatically handles connection pooling.
-// We create a single, shared instance of the client.
+// We create a single, shared instance of the client when a connection string is provided.
 const connectionString = process.env.POSTGRES_URL;
-if (!connectionString) {
-  throw new Error('POSTGRES_URL environment variable is not set.');
+let sql: ReturnType<typeof postgres> | null = null;
+let dbInitError: Error | null = null;
+try {
+  if (connectionString) {
+    sql = postgres(connectionString, {
+      prepare: false,
+      ssl: 'require',
+      max: 5,               // limit pool size to avoid local exhaustion
+      idle_timeout: 20,     // seconds
+      connect_timeout: 10,  // seconds
+    });
+    console.log('Postgres client initialized.');
+  } else {
+    dbInitError = new Error('POSTGRES_URL environment variable is not set.');
+    console.warn('[DB] POSTGRES_URL not set. API routes will return 500 with an informative error.');
+  }
+} catch (err: any) {
+  dbInitError = err instanceof Error ? err : new Error(String(err));
 }
-
-const sql = postgres(connectionString, {
-  prepare: false,
-  ssl: 'require',
-  max: 5,               // limit pool size to avoid local exhaustion
-  idle_timeout: 20,     // seconds
-  connect_timeout: 10,  // seconds
-});
-
-console.log('Postgres client initialized.');
 
 // Simple retry wrapper for transient errors
 async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
@@ -50,15 +56,21 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
 // This is our singleton database object.
 const db: Database = {
   async get<T>(query: string, params: any[] = []): Promise<T | null> {
-    const rows = await withRetry(() => sql.unsafe(query, params))
+    if (dbInitError) throw dbInitError
+    if (!sql) throw new Error('Database client is not initialized.')
+    const rows = await withRetry(() => sql!.unsafe(query, params))
     return (rows[0] as unknown as T) || null
   },
   async all<T>(query: string, params: any[] = []): Promise<T[]> {
-    const rows = await withRetry(() => sql.unsafe(query, params))
+    if (dbInitError) throw dbInitError
+    if (!sql) throw new Error('Database client is not initialized.')
+    const rows = await withRetry(() => sql!.unsafe(query, params))
     return rows as unknown as T[]
   },
   async run(query: string, params: any[] = []): Promise<void> {
-    await withRetry(() => sql.unsafe(query, params))
+    if (dbInitError) throw dbInitError
+    if (!sql) throw new Error('Database client is not initialized.')
+    await withRetry(() => sql!.unsafe(query, params))
   },
 };
 

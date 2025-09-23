@@ -35,6 +35,7 @@ export default function EditSchoolPage() {
     return {
       name: data.name || "",
       board: data.tagline || "cbse",
+      country: data.country || "",
       stateVal: data.state || "",
       district: data.city || "",
       description: data.description || "",
@@ -69,6 +70,7 @@ export default function EditSchoolPage() {
         fd.append("address_line1", values.address)
         fd.append("city", values.district)
         fd.append("state", values.stateVal)
+        fd.append("country", values.country)
         fd.append("website", values.website)
         fd.append("social_links", JSON.stringify(social))
         if (values.logoFile) fd.append("logo", values.logoFile)
@@ -87,6 +89,7 @@ export default function EditSchoolPage() {
           address_line1: values.address,
           city: values.district,
           state: values.stateVal,
+          country: values.country,
           website: values.website,
           social_links: JSON.stringify(social),
           banner_focal_x: values.banner_focal_x,

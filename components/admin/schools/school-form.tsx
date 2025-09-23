@@ -13,6 +13,7 @@ import { User, Lock, Share2, CheckCircle } from "lucide-react"
 export type SchoolFormValues = {
   name: string
   board: string
+  country: string
   stateVal: string
   district: string
   description: string
@@ -43,6 +44,7 @@ export function SchoolForm({
 }) {
   const [name, setName] = useState(initial?.name ?? "")
   const [board, setBoard] = useState(initial?.board ?? "cbse")
+  const [country, setCountry] = useState(initial?.country ?? "india")
   const [stateVal, setStateVal] = useState(initial?.stateVal ?? "")
   const [district, setDistrict] = useState(initial?.district ?? "")
   const [description, setDescription] = useState(initial?.description ?? "")
@@ -85,6 +87,7 @@ export function SchoolForm({
   const handleComplete = async () => {
     const errs: string[] = []
     if (!name.trim()) errs.push("School name is required")
+    if (!country) errs.push("Country is required")
     if (!stateVal) errs.push("State is required")
     if (!district) errs.push("District is required")
     if (!address.trim()) errs.push("Address is required")
@@ -97,7 +100,7 @@ export function SchoolForm({
     if (errs.length) { alert(errs.join("\n")); return }
 
     await onSubmit({
-      name, board, stateVal, district, description, address,
+      name, board, country, stateVal, district, description, address,
       logoFile, bannerFile, email, phone, contactPerson,
       website, facebook, instagram, twitter,
       banner_focal_x: Math.round(bannerFocalX),
@@ -128,6 +131,23 @@ export function SchoolForm({
             <SelectItem value="icse">ICSE</SelectItem>
             <SelectItem value="state">State Board</SelectItem>
             <SelectItem value="ib">IB</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="country">
+          Country<span className="text-red-500">*</span>
+        </Label>
+        <Select value={country} onValueChange={setCountry}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="india">India</SelectItem>
+            <SelectItem value="usa">United States</SelectItem>
+            <SelectItem value="uk">United Kingdom</SelectItem>
+            <SelectItem value="uae">United Arab Emirates</SelectItem>
           </SelectContent>
         </Select>
       </div>

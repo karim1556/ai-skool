@@ -23,6 +23,7 @@ export default function AddSchoolPage() {
       fd.append("address_line1", values.address)
       fd.append("city", values.district)
       fd.append("state", values.stateVal)
+      fd.append("country", values.country)
       fd.append("website", values.website)
       if (values.logoFile) fd.append("logo", values.logoFile)
       if (values.bannerFile) fd.append("banner", values.bannerFile)

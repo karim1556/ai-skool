@@ -64,19 +64,25 @@ async function ensureTable() {
 //   return NextResponse.json(rows);
 // }
 export async function GET(req: NextRequest) {
-  // 1. Ensure the table exists
-  await ensureTable();
+  try {
+    // 1. Ensure the table exists
+    await ensureTable();
 
-  // 2. Get a database connection
-  const db = getDb();
+    // 2. Get a database connection
+    const db = getDb();
 
-  // 3. Fetch all schools, ordered by newest first
-  const rows = await db.all(
-    "SELECT * FROM schools ORDER BY created_at DESC"
-  );
+    // 3. Fetch all schools, ordered by newest first
+    const rows = await db.all(
+      "SELECT * FROM schools ORDER BY created_at DESC"
+    );
 
-  // 4. Return all schools as JSON
-  return NextResponse.json(rows);
+    // 4. Return all schools as JSON
+    return NextResponse.json(rows);
+  } catch (err: any) {
+    console.error("GET /api/schools failed", err);
+    const message = err?.message || 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 
