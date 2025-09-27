@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: { levelId: st
   await ensureLevelsSchema();
   const levelId = Number(params.levelId);
   const rows = await db.all(
-    `SELECT c.* FROM level_courses lc
+    `SELECT c.*, lc.label FROM level_courses lc
      JOIN courses c ON c.id::text = lc.course_id
      WHERE lc.level_id = $1
      ORDER BY c.title ASC`,
@@ -27,12 +27,15 @@ export async function POST(req: NextRequest, { params }: { params: { levelId: st
     const levelId = Number(params.levelId);
     const body = await req.json();
     const courseId = String(body.course_id || '').trim();
+    const label = String(body.label || 'Easy').trim();
     if (!courseId) {
       return NextResponse.json({ error: 'course_id is required' }, { status: 400 });
     }
     await db.run(
-      "INSERT INTO level_courses (level_id, course_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-      [levelId, courseId]
+      `INSERT INTO level_courses (level_id, course_id, label)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (level_id, course_id) DO UPDATE SET label = $3`,
+      [levelId, courseId, label]
     );
     return NextResponse.json({ success: true });
   } catch (e: any) {

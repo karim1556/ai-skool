@@ -45,6 +45,17 @@ export default function LevelDetailsPage() {
     }
   };
 
+  // Group courses by label for three columns
+  const groupedCourses = useMemo(() => {
+    const groups: Record<string, any[]> = { Easy: [], Intermediate: [], Advanced: [] };
+    courses.forEach((c) => {
+      const label = c.label || "Easy";
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(c);
+    });
+    return groups;
+  }, [courses]);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Breadcrumbs */}
@@ -198,42 +209,77 @@ export default function LevelDetailsPage() {
             <div className="sticky top-6">
               <Card>
                 <CardContent className="p-3">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-base">Courses in this level</h3>
-                    {courses.length > 0 && (
-                      <span className="text-sm text-gray-500">{courses.length}</span>
-                    )}
-                  </div>
-                  {courses.length === 0 ? (
-                    <div className="text-sm text-gray-600">No courses assigned yet.</div>
-                  ) : (
-                    <div className="space-y-3 max-h-[70vh] overflow-auto pr-1">
-                      {courses.map((c) => (
-                        <Link key={c.id} href={`/courses/${c.id}`} className="block">
-                          <div className="flex gap-3 p-3 rounded-lg border hover:bg-gray-50 transition bg-white">
-                            <Image src={c.image || '/placeholder.svg'} alt={c.title} width={96} height={60} className="rounded object-cover w-[96px] h-[60px]" />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-base font-semibold text-gray-900 leading-5 line-clamp-2">{c.title}</p>
-                              <div className="mt-1.5 flex items-center justify-between">
-                                {c.is_free ? (
-                                  <span className="text-sm font-semibold text-green-600">Free</span>
-                                ) : (
-                                  <div className="flex items-baseline gap-2">
-                                    <span className="text-base font-bold text-pink-600">₹{c.price}</span>
-                                    {c.original_price && <span className="text-sm text-gray-400 line-through">₹{c.original_price}</span>}
+                  <h3 className="font-semibold text-base mb-3">Courses in this level</h3>
+                  {Object.entries(groupedCourses).map(([label, group]) => (
+                    group.length > 0 && (
+                      <div key={label} className="mb-4">
+                        <div className={`font-bold text-sm mb-2 px-2 py-1 rounded ${label === 'Easy' ? 'bg-blue-50 border border-blue-300' : label === 'Intermediate' ? 'bg-green-50 border border-green-300' : 'bg-orange-50 border border-orange-300'}`}>{label}</div>
+                        <div className="space-y-3">
+                          {group.map((c) => (
+                            <Link key={c.id} href={`/courses/${c.id}`} className="block">
+                              <div className="flex gap-3 p-3 rounded-lg border hover:bg-gray-50 transition bg-white">
+                                <Image src={c.image || '/placeholder.svg'} alt={c.title} width={96} height={60} className="rounded object-cover w-[96px] h-[60px]" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-base font-semibold text-gray-900 leading-5 line-clamp-2">{c.title}</p>
+                                  <div className="mt-1.5 flex items-center justify-between">
+                                    {c.is_free ? (
+                                      <span className="text-sm font-semibold text-green-600">Free</span>
+                                    ) : (
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="text-base font-bold text-pink-600">₹{c.price}</span>
+                                        {c.original_price && <span className="text-sm text-gray-400 line-through">₹{c.original_price}</span>}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  ))}
+                  {courses.length === 0 && (
+                    <div className="text-sm text-gray-600">No courses assigned yet.</div>
                   )}
                 </CardContent>
               </Card>
             </div>
           </aside>
+        </div>
+
+        {/* New Section: Courses by Difficulty */}
+        <div className="my-12">
+          <h2 className="text-3xl font-bold text-center mb-2">Courses by Difficulty</h2>
+          <p className="text-center text-gray-600 mb-8">Choose a course based on your skill level and interests.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { label: "Easy", color: "blue" },
+              { label: "Intermediate", color: "green" },
+              { label: "Advanced", color: "orange" }
+            ].map(({ label, color }) => (
+              <div key={label} className={`rounded-xl border-2 border-${color}-400 bg-white shadow-sm p-6 min-h-[320px] flex flex-col`}>
+                <h3 className="text-xl font-bold mb-4 text-center">{label}</h3>
+                {groupedCourses[label].length === 0 ? (
+                  <div className="text-gray-400 text-center">No {label.toLowerCase()} courses yet.</div>
+                ) : (
+                  groupedCourses[label].map((c) => (
+                    <div key={c.id} className="mb-6 last:mb-0 flex flex-col items-center">
+                      <Image src={c.image || '/placeholder.svg'} alt={c.title} width={64} height={64} className="rounded-full mb-2 object-cover" />
+                      <div className="font-semibold text-lg text-gray-900 text-center">{c.title}</div>
+                      {c.label === 'Easy' && (
+                        <span className="bg-yellow-300 text-xs font-bold px-2 py-1 rounded mt-1 mb-1">Most Beginners Start Here</span>
+                      )}
+                      <div className="text-gray-600 text-sm text-center mb-2">{c.description || c.provider || ''}</div>
+                      <Link href={`/courses/${c.id}`}>
+                        <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded shadow">Learn More</Button>
+                      </Link>
+                    </div>
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

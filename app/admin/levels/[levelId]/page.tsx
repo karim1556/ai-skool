@@ -18,6 +18,8 @@ export default function ManageLevelCoursesPage() {
   const [allCourses, setAllCourses] = useState<any[]>([]);
   const [assigned, setAssigned] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
+  const [labelSelections, setLabelSelections] = useState<Record<string, string>>({});
+  const labelOptions = ["Easy", "Intermediate", "Advanced"];
 
   useEffect(() => {
     if (!Number.isFinite(levelId)) return;
@@ -50,10 +52,11 @@ export default function ManageLevelCoursesPage() {
   }, [allCourses, query]);
 
   const assign = async (courseId: string | number) => {
+    const label = labelSelections[String(courseId)] || "Easy";
     await fetch(`/api/levels/${levelId}/courses`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ course_id: courseId }),
+      body: JSON.stringify({ course_id: courseId, label }),
     });
     setAssigned({ ...assigned, [String(courseId)]: true });
   };
@@ -122,6 +125,17 @@ export default function ManageLevelCoursesPage() {
                           <td className="p-3">{c.category}</td>
                           <td className="p-3">{c.level || <span className="text-gray-400">—</span>}</td>
                           <td className="p-3">
+                            {!isAssigned && (
+                              <select
+                                className="border rounded px-2 py-1 text-sm mr-2"
+                                value={labelSelections[String(c.id)] || "Easy"}
+                                onChange={e => setLabelSelections(ls => ({ ...ls, [String(c.id)]: e.target.value }))}
+                              >
+                                {labelOptions.map(opt => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            )}
                             {isAssigned ? (
                               <Button variant="destructive" size="sm" onClick={() => unassign(c.id)}>
                                 <Trash2 className="h-4 w-4 mr-1" /> Remove
