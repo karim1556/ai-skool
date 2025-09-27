@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from "react"
+import { Country, State, City } from 'country-state-city';
 import { MultiStepForm } from "@/components/forms/multi-step-form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,7 +16,7 @@ export type SchoolFormValues = {
   board: string
   country: string
   stateVal: string
-  district: string
+  city: string
   description: string
   address: string
   logoFile: File | null
@@ -44,9 +45,28 @@ export function SchoolForm({
 }) {
   const [name, setName] = useState(initial?.name ?? "")
   const [board, setBoard] = useState(initial?.board ?? "cbse")
-  const [country, setCountry] = useState(initial?.country ?? "india")
+  const [country, setCountry] = useState(initial?.country ?? "IN")
   const [stateVal, setStateVal] = useState(initial?.stateVal ?? "")
-  const [district, setDistrict] = useState(initial?.district ?? "")
+  const [city, setCity] = useState(initial?.city ?? "")
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  // Load states when country changes
+  useEffect(() => {
+    if (!country) return;
+    const stateList = State.getStatesOfCountry(country);
+    setStates(stateList);
+    setStateVal("");
+    setCities([]);
+    setCity("");
+  }, [country]);
+
+  // Load cities when state changes
+  useEffect(() => {
+    if (!country || !stateVal) return;
+    const cityList = City.getCitiesOfState(country, stateVal);
+    setCities(cityList);
+    setCity("");
+  }, [country, stateVal]);
   const [description, setDescription] = useState(initial?.description ?? "")
   const [address, setAddress] = useState(initial?.address ?? "")
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -89,7 +109,7 @@ export function SchoolForm({
     if (!name.trim()) errs.push("School name is required")
     if (!country) errs.push("Country is required")
     if (!stateVal) errs.push("State is required")
-    if (!district) errs.push("District is required")
+    if (!city) errs.push("District is required")
     if (!address.trim()) errs.push("Address is required")
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.push("Invalid email format")
     const urlOk = (u: string) => /^https?:\/\//i.test(u)
@@ -100,7 +120,7 @@ export function SchoolForm({
     if (errs.length) { alert(errs.join("\n")); return }
 
     await onSubmit({
-      name, board, country, stateVal, district, description, address,
+      name, board, country, stateVal, city, description, address,
       logoFile, bannerFile, email, phone, contactPerson,
       website, facebook, instagram, twitter,
       banner_focal_x: Math.round(bannerFocalX),
@@ -144,10 +164,9 @@ export function SchoolForm({
             <SelectValue placeholder="Choose Country" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="india">India</SelectItem>
-            <SelectItem value="usa">United States</SelectItem>
-            <SelectItem value="uk">United Kingdom</SelectItem>
-            <SelectItem value="uae">United Arab Emirates</SelectItem>
+            {Country.getAllCountries().map((c) => (
+              <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -156,32 +175,30 @@ export function SchoolForm({
         <Label htmlFor="state">
           State<span className="text-red-500">*</span>
         </Label>
-        <Select value={stateVal} onValueChange={setStateVal}>
+        <Select value={stateVal} onValueChange={setStateVal} disabled={!states.length}>
           <SelectTrigger>
             <SelectValue placeholder="Choose State" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="maharashtra">Maharashtra</SelectItem>
-            <SelectItem value="gujarat">Gujarat</SelectItem>
-            <SelectItem value="karnataka">Karnataka</SelectItem>
-            <SelectItem value="delhi">Delhi</SelectItem>
+            {states.map((s) => (
+              <SelectItem key={s.isoCode} value={s.isoCode}>{s.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="district">
-          District<span className="text-red-500">*</span>
+        <Label htmlFor="city">
+          City<span className="text-red-500">*</span>
         </Label>
-        <Select value={district} onValueChange={setDistrict}>
+        <Select value={city} onValueChange={setCity} disabled={!cities.length}>
           <SelectTrigger>
-            <SelectValue placeholder="Choose District" />
+            <SelectValue placeholder="Choose City" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="mumbai">Mumbai</SelectItem>
-            <SelectItem value="pune">Pune</SelectItem>
-            <SelectItem value="nashik">Nashik</SelectItem>
-            <SelectItem value="nagpur">Nagpur</SelectItem>
+            {cities.map((ct) => (
+              <SelectItem key={ct.name} value={ct.name}>{ct.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
