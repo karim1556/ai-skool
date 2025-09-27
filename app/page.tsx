@@ -29,6 +29,8 @@ import {
   Cloud,
   BarChart3,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   LayoutDashboard,
   Smartphone,
   BookMarked,
@@ -54,13 +56,41 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
   const [courseLevel, setCourseLevel] = useState<'all' | 'beginner' | 'intermediate' | 'advanced'>("all");
-  const [selectedLevelId, setSelectedLevelId] = useState<1 | 2 | 3>(1);
+  const [levels, setLevels] = useState<any[]>([]);
+  const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null);
   const [levelCourses, setLevelCourses] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  // Number of level pills per page
+  const pageSize = 3;
 
-  // Fetch courses by level from API
+  // Fetch all levels from API
   useEffect(() => {
     let ignore = false;
-    async function load() {
+    async function loadLevels() {
+      try {
+        const res = await fetch('/api/levels', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to load levels');
+        let data = await res.json();
+        if (!Array.isArray(data)) data = [];
+        // Sort strictly by id ascending so Level {id} matches API id
+        data.sort((a: any, b: any) => a.id - b.id);
+        if (!ignore) {
+          setLevels(data);
+          if (data.length > 0 && selectedLevelId === null) setSelectedLevelId(data[0].id);
+        }
+      } catch (_e) {
+        if (!ignore) setLevels([]);
+      }
+    }
+    loadLevels();
+    return () => { ignore = true; };
+  }, []);
+
+  // Fetch courses by selected level
+  useEffect(() => {
+    if (selectedLevelId == null) return;
+    let ignore = false;
+    async function loadCourses() {
       try {
         const res = await fetch(`/api/levels/${selectedLevelId}/courses`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`Failed to load courses for level ${selectedLevelId}`);
@@ -70,7 +100,7 @@ export default function HomePage() {
         if (!ignore) setLevelCourses([]);
       }
     }
-    load();
+    loadCourses();
     return () => { ignore = true; };
   }, [selectedLevelId]);
 
@@ -471,30 +501,64 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
-              Browse by Level 1, Level 2, and Level 3
+              Browse by Level
             </p>
-
-            <div className="flex items-center justify-center gap-6">
-              {[1,2,3].map((lvl) => (
+            <div className="flex items-center justify-center">
+              <div className="flex items-center space-x-3">
                 <button
-                  key={lvl}
-                  onClick={() => setSelectedLevelId(lvl as 1|2|3)}
-                  className={`text-sm md:text-base font-semibold tracking-tight border-b-2 pb-1 transition-colors ${
-                    selectedLevelId === lvl
-                      ? 'text-sky-600 border-sky-600'
-                      : 'text-gray-500 border-transparent hover:text-gray-700'
-                  }`}
+                  onClick={() => setPage(Math.max(0, page - 1))}
+                  disabled={page === 0}
+                  className="p-2 rounded bg-white border shadow-sm disabled:opacity-50"
+                  aria-label="Previous levels"
                 >
-                  {`Level ${lvl}`}
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
-              ))}
+
+                <div className="flex overflow-x-auto no-scrollbar space-x-3 py-2 px-1">
+                  {levels
+                    .slice(page * pageSize, (page + 1) * pageSize)
+                    .map((lvl: any) => {
+                      const levelId = lvl.id; // actual DB id
+                      const label = `Level ${levelId}`;
+                      const isSelected = selectedLevelId === levelId;
+                      return (
+                        <button
+                          key={levelId}
+                          onClick={() => setSelectedLevelId(levelId)}
+                          data-level-id={levelId}
+                          className={`flex items-center gap-3 min-w-[120px] px-4 py-2 rounded-xl transition-all shadow-sm border ${isSelected ? 'bg-sky-50 border-sky-300 text-sky-700' : 'bg-white border-transparent text-gray-600 hover:shadow-md'}`}
+                        >
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold ${isSelected ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                            {levelId}
+                          </div>
+                          <div className="text-left">
+                            <div className="text-sm font-semibold">{label}</div>
+                            <div className="text-xs text-gray-500">{lvl.category || ''}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={(page + 1) * pageSize >= levels.length}
+                  className="p-2 rounded bg-white border shadow-sm disabled:opacity-50"
+                  aria-label="Next levels"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+            {levels.length > pageSize && (
+              <p className="mt-3 text-sm text-gray-500">Showing {page * pageSize + 1} - {Math.min((page + 1) * pageSize, levels.length)} of {levels.length} levels</p>
+            )}
           </div>
 
           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
             {displayedCourses.length === 0 && (
               <div className="col-span-full text-center text-gray-600">
-                No courses found for Level {selectedLevelId}. Please check back later.
+                {`No courses found for Level ${selectedLevelId}. Please check back later.`}
               </div>
             )}
             {displayedCourses.map((course: any) => (
