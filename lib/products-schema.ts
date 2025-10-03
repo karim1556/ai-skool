@@ -12,6 +12,25 @@ export async function ensureProductsSchema() {
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       slug TEXT NOT NULL,
+      -- e-commerce / listing fields
+      price NUMERIC,
+      original_price NUMERIC,
+      rating NUMERIC,
+      reviews INTEGER,
+      image TEXT,
+      category TEXT,
+      is_best_seller BOOLEAN DEFAULT FALSE,
+      is_new BOOLEAN DEFAULT FALSE,
+      in_stock BOOLEAN DEFAULT TRUE,
+      features JSONB,
+      delivery TEXT,
+      level TEXT,
+      instructor TEXT,
+      duration TEXT,
+      students INTEGER,
+      tags JSONB,
+      discount NUMERIC,
+      video_preview TEXT,
       tagline TEXT,
       description TEXT,
       hero_image TEXT,
@@ -50,6 +69,25 @@ export async function ensureProductsSchema() {
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS kits JSONB`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS addons JSONB`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS tech_specs JSONB`)
+  // Listing / ecommerce fields
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS price NUMERIC`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price NUMERIC`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS rating NUMERIC`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS reviews INTEGER`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS image TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS category TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS is_best_seller BOOLEAN DEFAULT FALSE`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS is_new BOOLEAN DEFAULT FALSE`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS in_stock BOOLEAN DEFAULT TRUE`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS features JSONB`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS level TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS instructor TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS duration TEXT`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS students INTEGER`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS tags JSONB`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS discount NUMERIC`)
+  await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS video_preview TEXT`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`)
   await db.run(`ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`)
 

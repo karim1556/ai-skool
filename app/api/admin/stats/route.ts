@@ -1,58 +1,97 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 import { getDb } from "@/lib/db"
 
-// Server-side Supabase client using the service role to bypass RLS for admin stats
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
-
-if (!supabaseUrl || !serviceKey) {
-  console.warn("Supabase admin stats route: Missing SUPABASE envs")
-}
+// Server-side Supabase configuration (optional). Use server-only env vars to avoid
+// exposing Supabase config to the client bundle at build time.
+const supabaseUrl = process.env.SUPABASE_URL as string | undefined
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined
 
 export async function GET() {
   try {
-    const supabase = createClient(supabaseUrl!, serviceKey!, { auth: { persistSession: false } })
+    // If Supabase envs are configured, dynamically import the client and use it.
+    // Dynamic import avoids bundling client-only realtime modules at build time.
+    let coursesRes: any = { count: 0, data: [] }
+    let studentsRes: any = { count: 0 }
+    let trainersRes: any = { count: 0 }
+    let coordsRes: any = { count: 0 }
+    let schoolsRes: any = { count: 0 }
+    let enrollRes: any = { count: 0 }
+    let assignmentsRes: any = { count: 0 }
+    let activeBatchesCourseIds: any = { data: [] }
+    let pendingBatchesCourseIds: any = { data: [] }
+    let distinctTrainerIds: any = { data: [] }
+    let distinctCoordinatorIds: any = { data: [] }
 
-    const [coursesRes, studentsRes, trainersRes, coordsRes, schoolsRes, enrollRes, assignmentsRes, activeBatchesCourseIds, pendingBatchesCourseIds, distinctTrainerIds, distinctCoordinatorIds] = await Promise.all([
-      supabase.from("courses").select("id", { count: "exact", head: true }),
-      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
-      supabase.from("profiles").select("id", { count: "exact", head: true }).in("role", ["trainer", "instructor"]),
-      supabase.from("profiles").select("id", { count: "exact", head: true }).in("role", ["coordinator", "school_coordinator", "camp_coordinator"]),
-      supabase.from("schools").select("id", { count: "exact", head: true }),
-      supabase.from("batch_enrollments").select("id", { count: "exact", head: true }),
-      supabase.from("assignments").select("id", { count: "exact", head: true }),
-      // Compute active/pending courses via batches since courses.status may not exist
-      supabase.from("batches").select("course_id", { head: false }).eq("status", "active"),
-      supabase.from("batches").select("course_id", { head: false }).in("status", ["pending", "approved"]),
-      supabase.from("batches").select("trainer_id", { head: false }).not("trainer_id", "is", null),
-      supabase.from("batches").select("coordinator_id", { head: false }).not("coordinator_id", "is", null),
-    ])
+    if (supabaseUrl && serviceKey) {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+
+      ;[coursesRes, studentsRes, trainersRes, coordsRes, schoolsRes, enrollRes, assignmentsRes, activeBatchesCourseIds, pendingBatchesCourseIds, distinctTrainerIds, distinctCoordinatorIds] = await Promise.all([
+        supabase.from("courses").select("id", { count: "exact", head: true }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).in("role", ["trainer", "instructor"]),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).in("role", ["coordinator", "school_coordinator", "camp_coordinator"]),
+        supabase.from("schools").select("id", { count: "exact", head: true }),
+        supabase.from("batch_enrollments").select("id", { count: "exact", head: true }),
+        supabase.from("assignments").select("id", { count: "exact", head: true }),
+        // Compute active/pending courses via batches since courses.status may not exist
+        supabase.from("batches").select("course_id", { head: false }).eq("status", "active"),
+        supabase.from("batches").select("course_id", { head: false }).in("status", ["pending", "approved"]),
+        supabase.from("batches").select("trainer_id", { head: false }).not("trainer_id", "is", null),
+        supabase.from("batches").select("coordinator_id", { head: false }).not("coordinator_id", "is", null),
+      ])
+    } else {
+      // Supabase not configured; fall back to local DB-derived counts where possible
+      console.warn('Supabase admin stats route: Missing SUPABASE envs — falling back to local DB counts')
+    }
 
     let lessonsCount = 0
     try {
-      const lessonsRes = await supabase.from("lessons").select("id", { count: "exact", head: true })
-      lessonsCount = lessonsRes.count ?? 0
+      if (typeof (globalThis as any).supabase !== 'undefined') {
+        // noop: keep for environments where supabase may be global
+      }
+      if (supabaseUrl && serviceKey) {
+        const { createClient } = await import('@supabase/supabase-js')
+        const tmp = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+        const lessonsRes = await tmp.from("lessons").select("id", { count: "exact", head: true })
+        lessonsCount = lessonsRes.count ?? 0
+      }
     } catch {
       lessonsCount = 0
     }
 
     // Additional lists for dashboard sections
-    const [{ data: latestCourses }, { data: activeBatches }, { data: upcomingSessions }] = await Promise.all([
-      supabase.from("courses").select("id,title,created_at").order("created_at", { ascending: false }).limit(5),
-      supabase
-        .from("batches")
-        .select("id,name,status,created_at, course:courses (title), trainer:profiles!batches_trainer_id_fkey(full_name)")
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
-        .from("sessions")
-        .select("id,title,scheduled_date,status, batch:batches(name)")
-        .gt("scheduled_date", new Date().toISOString())
-        .order("scheduled_date", { ascending: true })
-        .limit(5),
-    ])
+    let latestCourses: any[] = []
+    let activeBatches: any[] = []
+    let upcomingSessions: any[] = []
+    if (supabaseUrl && serviceKey) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js')
+        const tmp = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+        const results = await Promise.all([
+          tmp.from("courses").select("id,title,created_at").order("created_at", { ascending: false }).limit(5),
+          tmp
+            .from("batches")
+            .select("id,name,status,created_at, course:courses (title), trainer:profiles!batches_trainer_id_fkey(full_name)")
+            .eq("status", "active")
+            .order("created_at", { ascending: false })
+            .limit(5),
+          tmp
+            .from("sessions")
+            .select("id,title,scheduled_date,status, batch:batches(name)")
+            .gt("scheduled_date", new Date().toISOString())
+            .order("scheduled_date", { ascending: true })
+            .limit(5),
+        ])
+        latestCourses = results[0].data ?? []
+        activeBatches = results[1].data ?? []
+        upcomingSessions = results[2].data ?? []
+      } catch {
+        latestCourses = []
+        activeBatches = []
+        upcomingSessions = []
+      }
+    }
 
     // Derive distinct counts from batches in case profile roles are missing
     const trainerDistinct = Array.isArray(distinctTrainerIds.data)

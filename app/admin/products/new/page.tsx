@@ -6,9 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Protect } from "@clerk/nextjs"
 
@@ -16,43 +15,32 @@ export default function NewProductPage() {
   const router = useRouter()
   const { toast } = useToast()
 
+  // Basic product fields used in public listing
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
-  const [tagline, setTagline] = useState("")
   const [description, setDescription] = useState("")
   const [heroImage, setHeroImage] = useState("")
 
-  // Theme simple fields
-  const [themeFrom, setThemeFrom] = useState("from-pink-500")
-  const [themeTo, setThemeTo] = useState("to-purple-600")
-  const [themeAccent, setThemeAccent] = useState("text-purple-600")
-  const [themeSoft, setThemeSoft] = useState("from-pink-50 to-white")
-  const [themeGradient, setThemeGradient] = useState("bg-gradient-to-r from-pink-500 to-purple-600")
-  const [themeLight, setThemeLight] = useState("bg-pink-100")
+  const [price, setPrice] = useState<number | "">("")
+  const [originalPrice, setOriginalPrice] = useState<number | "">("")
+  const [rating, setRating] = useState<number | "">("")
+  const [reviews, setReviews] = useState<number | "">("")
+  const [image, setImage] = useState("")
+  const [categoryField, setCategoryField] = useState("")
 
-  // Section headings/subtitles
-  const [technologiesTitle, setTechnologiesTitle] = useState("Technologies at Focus")
-  const [technologiesSubtitle, setTechnologiesSubtitle] = useState("Gain hands-on experience with advanced, 21st-century technologies that offer engaging and practical ways for kids to apply their learning.")
-  const [highlightsTitle, setHighlightsTitle] = useState("Why choose this product?")
-  const [highlightsSubtitle, setHighlightsSubtitle] = useState("Learn 21st-century technologies with a fun and structured experience.")
-  const [techOverview, setTechOverview] = useState("This product is a powerful, portable device that allows users to create complex projects with modern connectivity and sensors.")
+  const [isBestSeller, setIsBestSeller] = useState(false)
+  const [isNewField, setIsNewField] = useState(false)
+  const [inStockField, setInStockField] = useState(true)
 
-  // Repeatable groups
-  const [highlights, setHighlights] = useState<Array<{ title: string; subtitle?: string }>>([
-    { title: "Fun Learning For Ages 7+", subtitle: "Engaging, age-appropriate projects" },
-  ])
-  const [technologies, setTechnologies] = useState<Array<{ title: string; image?: string; icon?: string }>>([
-    { title: "Artificial Intelligence", image: "/uploads/img-intro-removebg-preview.png", icon: "brain" },
-  ])
-  const [kits, setKits] = useState<Array<{ title: string; description?: string; age?: string; courses: string[]; features: string[] }>>([
-    { title: "Ultimate Kit", description: "Hands-on AI, Robotics & Coding", age: "7-15 Years", courses: ["2 Graphical Courses"], features: ["Robot with multiple configurations"] },
-  ])
-  const [addons, setAddons] = useState<Array<{ title: string; description?: string; icon?: string }>>([
-    { title: "Mecanum Wheel Robot", description: "Multi-directional movement", icon: "car" },
-  ])
-  const [techSpecs, setTechSpecs] = useState<Array<{ text: string }>>([
-    { text: "Powerful processor" },
-  ])
+  const [featuresField, setFeaturesField] = useState<string[]>([])
+  const [deliveryField, setDeliveryField] = useState("")
+  const [levelField, setLevelField] = useState("")
+  const [instructorField, setInstructorField] = useState("")
+  const [durationField, setDurationField] = useState("")
+  const [studentsField, setStudentsField] = useState<number | "">("")
+  const [tagsField, setTagsField] = useState<string[]>([])
+  const [discountField, setDiscountField] = useState<number | "">("")
+  const [videoPreviewField, setVideoPreviewField] = useState("")
 
   const onSubmit = async () => {
     try {
@@ -64,27 +52,26 @@ export default function NewProductPage() {
       const body = {
         name,
         slug,
-        tagline: tagline || null,
         description: description || null,
         hero_image: heroImage || null,
-        technologies_title: technologiesTitle || null,
-        technologies_subtitle: technologiesSubtitle || null,
-        highlights_title: highlightsTitle || null,
-        highlights_subtitle: highlightsSubtitle || null,
-        tech_overview: techOverview || null,
-        theme: {
-          from: themeFrom,
-          to: themeTo,
-          accent: themeAccent,
-          soft: themeSoft,
-          gradient: themeGradient,
-          light: themeLight,
-        },
-        highlights,
-        technologies,
-        kits,
-        addons,
-        tech_specs: techSpecs,
+        price: price || null,
+        original_price: originalPrice || null,
+        rating: rating || null,
+        reviews: reviews || null,
+        image: image || null,
+        category: categoryField || null,
+        is_best_seller: isBestSeller,
+        is_new: isNewField,
+        in_stock: inStockField,
+        features: featuresField || null,
+        delivery: deliveryField || null,
+        level: levelField || null,
+        instructor: instructorField || null,
+        duration: durationField || null,
+        students: studentsField || null,
+        tags: tagsField || null,
+        discount: discountField || null,
+        video_preview: videoPreviewField || null,
       }
 
       const res = await fetch("/api/products", {
@@ -99,20 +86,72 @@ export default function NewProductPage() {
       }
 
       toast({ title: "Product saved" })
-      router.push(`/admin/products`)
-    } catch (e: any) {
-      toast({ title: "Error", description: e?.message || String(e), variant: "destructive" })
+      router.push("/admin")
+    } catch (err: any) {
+      toast({ title: err?.message || String(err), variant: "destructive" })
     }
   }
 
+  // sample dropdown options - try to derive categories from existing products or use static list
+  const [categories, setCategories] = useState<string[]>(["Physical Product", "Course", "Accessory"])
+  const [levels, setLevels] = useState<string[]>(["Beginner", "Intermediate", "Advanced"])
+  const [deliveries, setDeliveries] = useState<string[]>(["2-3 days", "Pickup", "Ships in 1 week"])
+
+  useEffect(() => {
+    // attempt to fetch existing products to derive categories (non-blocking)
+    const load = async () => {
+      try {
+        const res = await fetch('/api/products')
+        if (!res.ok) return
+        const data = await res.json()
+        if (Array.isArray(data)) {
+          const cats = Array.from(new Set(data.map((p: any) => p.category).filter(Boolean)))
+          if (cats.length) setCategories((c) => Array.from(new Set([...c, ...cats])))
+        }
+      } catch (_) {}
+    }
+    load()
+  }, [])
+
+  // upload helpers using existing supabase client and bucket used elsewhere in the app
+  const uploadToSupabase = async (file: File, pathPrefix = 'products') => {
+    try {
+      const { supabase } = await import('@/lib/supabase')
+      const path = `${pathPrefix}/${Date.now()}-${file.name}`
+      const { error } = await supabase.storage.from('course-thumbnails').upload(path, file)
+      if (error) throw error
+      const { data } = supabase.storage.from('course-thumbnails').getPublicUrl(path)
+      return data?.publicUrl || null
+    } catch (err) {
+      console.error('upload error', err)
+      return null
+    }
+  }
+
+  // file input handlers
+  const handleImageFile = async (f?: File) => {
+    if (!f) return
+    const url = await uploadToSupabase(f, 'product-images')
+    if (url) setImage(url)
+  }
+
+  const handleHeroFile = async (f?: File) => {
+    if (!f) return
+    const url = await uploadToSupabase(f, 'product-hero')
+    if (url) setHeroImage(url)
+  }
+
+  const handleVideoFile = async (f?: File) => {
+    if (!f) return
+    const url = await uploadToSupabase(f, 'product-videos')
+    if (url) setVideoPreviewField(url)
+  }
+
   return (
-    <Protect role="admin" fallback={<p>Access denied</p>}>
+    <Protect>
       <AdminLayout>
-        <div className="max-w-5xl mx-auto space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">Add new product</h1>
-            <p className="text-gray-600">Create a product and it will appear in the navbar and public products pages.</p>
-          </div>
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-2xl font-semibold mb-4">New product</h1>
 
           <Card>
             <CardContent className="p-6 space-y-6">
@@ -128,11 +167,6 @@ export default function NewProductPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tagline">Tagline</Label>
-                <Input id="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Educational Robot" />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="description">Short description</Label>
                 <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
@@ -142,213 +176,185 @@ export default function NewProductPage() {
                 <Input id="hero" value={heroImage} onChange={(e) => setHeroImage(e.target.value)} placeholder="/images/quarky-hero.png" />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Technologies section title</Label>
-                  <Input value={technologiesTitle} onChange={(e)=>setTechnologiesTitle(e.target.value)} />
+                  <Label>Price</Label>
+                  <Input value={price as any} onChange={(e) => setPrice(Number(e.target.value) || "")} placeholder="199" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Highlights section title</Label>
-                  <Input value={highlightsTitle} onChange={(e)=>setHighlightsTitle(e.target.value)} />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Technologies section subtitle</Label>
-                  <Textarea rows={2} value={technologiesSubtitle} onChange={(e)=>setTechnologiesSubtitle(e.target.value)} />
+                  <Label>Original Price</Label>
+                  <Input value={originalPrice as any} onChange={(e) => setOriginalPrice(Number(e.target.value) || "")} placeholder="249" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Highlights section subtitle</Label>
-                  <Textarea rows={2} value={highlightsSubtitle} onChange={(e)=>setHighlightsSubtitle(e.target.value)} />
+                  <Label>Rating</Label>
+                  <Input value={rating as any} onChange={(e) => setRating(Number(e.target.value) || "")} placeholder="4.7" />
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Reviews</Label>
+                  <Input value={reviews as any} onChange={(e) => setReviews(Number(e.target.value) || "")} placeholder="128" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Image (main)</Label>
+                  {image && (
+                    <div className="mb-2">
+                      <img src={image} alt="image" className="h-28 w-36 object-cover rounded border" />
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Input value={image} onChange={(e) => setImage(e.target.value)} placeholder="/images/kids-tablet.jpg" />
+                    <Input id="imageFile" type="file" accept="image/*" onChange={async (e) => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      await handleImageFile(f)
+                    }} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <select value={categoryField} onChange={(e) => setCategoryField(e.target.value)} className="w-full border rounded px-2 py-1">
+                    <option value="">Select category</option>
+                    {categories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label>Tech overview paragraph (left of specs)</Label>
-                <Textarea rows={3} value={techOverview} onChange={(e)=>setTechOverview(e.target.value)} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6 space-y-8">
-              {/* Theme fields */}
-              <div>
-                <h3 className="font-semibold mb-3">Theme</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                  <div className="space-y-1 md:col-span-1">
-                    <Label>Preset</Label>
-                    <Select onValueChange={(v)=>{
-                      const map:any = {
-                        pink: { from:"from-pink-500", to:"to-purple-600", accent:"text-purple-600", soft:"from-pink-50 to-white", gradient:"bg-gradient-to-r from-pink-500 to-purple-600", light:"bg-pink-100" },
-                        purple: { from:"from-violet-500", to:"to-fuchsia-600", accent:"text-violet-600", soft:"from-violet-50 to-white", gradient:"bg-gradient-to-r from-violet-500 to-fuchsia-600", light:"bg-violet-100" },
-                        blue: { from:"from-sky-500", to:"to-indigo-600", accent:"text-indigo-600", soft:"from-sky-50 to-white", gradient:"bg-gradient-to-r from-sky-500 to-indigo-600", light:"bg-sky-100" },
-                        emerald: { from:"from-emerald-500", to:"to-teal-600", accent:"text-emerald-600", soft:"from-emerald-50 to-white", gradient:"bg-gradient-to-r from-emerald-500 to-teal-600", light:"bg-emerald-100" },
-                        orange: { from:"from-orange-500", to:"to-amber-600", accent:"text-orange-600", soft:"from-orange-50 to-white", gradient:"bg-gradient-to-r from-orange-500 to-amber-600", light:"bg-orange-100" },
-                      }
-                      const p = map[v]
-                      if (p){
-                        setThemeFrom(p.from); setThemeTo(p.to); setThemeAccent(p.accent); setThemeSoft(p.soft); setThemeGradient(p.gradient); setThemeLight(p.light)
-                      }
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="Choose a preset" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pink">Pink</SelectItem>
-                        <SelectItem value="purple">Purple</SelectItem>
-                        <SelectItem value="blue">Blue</SelectItem>
-                        <SelectItem value="emerald">Emerald</SelectItem>
-                        <SelectItem value="orange">Orange</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <Label>Tags</Label>
+                <div className="flex gap-2">
+                  <input placeholder="Add tag" id="tag-input" className="flex-1 border rounded px-2 py-1" onKeyDown={async (e:any) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const v = e.target.value.trim()
+                      if (!v) return
+                      setTagsField((t) => Array.from(new Set([...t, v])))
+                      e.target.value = ''
+                    }
+                  }} />
+                  <button onClick={() => {
+                    const el = document.getElementById('tag-input') as HTMLInputElement | null
+                    const v = el?.value.trim()
+                    if (!v) return
+                    setTagsField((t) => Array.from(new Set([...t, v])))
+                    if (el) el.value = ''
+                  }} className="px-3 py-1 border rounded">+</button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <Label>From</Label>
-                    <Input value={themeFrom} onChange={(e) => setThemeFrom(e.target.value)} placeholder="from-pink-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>To</Label>
-                    <Input value={themeTo} onChange={(e) => setThemeTo(e.target.value)} placeholder="to-purple-600" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Accent</Label>
-                    <Input value={themeAccent} onChange={(e) => setThemeAccent(e.target.value)} placeholder="text-purple-600" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Soft</Label>
-                    <Input value={themeSoft} onChange={(e) => setThemeSoft(e.target.value)} placeholder="from-pink-50 to-white" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Gradient</Label>
-                    <Input value={themeGradient} onChange={(e) => setThemeGradient(e.target.value)} placeholder="bg-gradient-to-r from-pink-500 to-purple-600" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Light</Label>
-                    <Input value={themeLight} onChange={(e) => setThemeLight(e.target.value)} placeholder="bg-pink-100" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Highlights */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Highlights</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setHighlights((p) => [...p, { title: "" }])}>Add</Button>
-                </div>
-                <div className="space-y-3">
-                  {highlights.map((h, idx) => (
-                    <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Input placeholder="Title" value={h.title} onChange={(e) => setHighlights((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
-                      <div className="flex gap-2">
-                        <Input placeholder="Subtitle (optional)" value={h.subtitle || ""} onChange={(e) => setHighlights((p) => p.map((x, i) => i===idx ? { ...x, subtitle: e.target.value } : x))} />
-                        <Button variant="ghost" onClick={() => setHighlights((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
-                      </div>
-                    </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tagsField.map((t) => (
+                    <span key={t} className="bg-gray-100 px-2 py-1 rounded flex items-center gap-2">
+                      <span>{t}</span>
+                      <button className="text-red-500" onClick={() => setTagsField((s) => s.filter(x => x !== t))}>×</button>
+                    </span>
                   ))}
                 </div>
               </div>
 
-              {/* Technologies */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Technologies</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setTechnologies((p) => [...p, { title: "" }])}>Add</Button>
+              <div className="space-y-2">
+                <Label>Features</Label>
+                <div className="flex gap-2">
+                  <input placeholder="Add feature" id="feature-input" className="flex-1 border rounded px-2 py-1" onKeyDown={async (e:any) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const v = e.target.value.trim()
+                      if (!v) return
+                      setFeaturesField((t) => Array.from(new Set([...t, v])))
+                      e.target.value = ''
+                    }
+                  }} />
+                  <button onClick={() => {
+                    const el = document.getElementById('feature-input') as HTMLInputElement | null
+                    const v = el?.value.trim()
+                    if (!v) return
+                    setFeaturesField((t) => Array.from(new Set([...t, v])))
+                    if (el) el.value = ''
+                  }} className="px-3 py-1 border rounded">+</button>
                 </div>
-                <div className="space-y-3">
-                  {technologies.map((t, idx) => (
-                    <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <Input placeholder="Title" value={t.title} onChange={(e) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
-                      <Input placeholder="Image URL (optional)" value={t.image || ""} onChange={(e) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, image: e.target.value } : x))} />
-                      <div className="flex gap-2 items-center">
-                        <Select value={t.icon || undefined} onValueChange={(v) => setTechnologies((p) => p.map((x, i) => i===idx ? { ...x, icon: v } : x))}>
-                          <SelectTrigger><SelectValue placeholder="Icon (optional)" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="code">Coding</SelectItem>
-                            <SelectItem value="brain">AI</SelectItem>
-                            <SelectItem value="robotics">Robotics</SelectItem>
-                            <SelectItem value="car">Self Driving</SelectItem>
-                            <SelectItem value="users">Interactive AI</SelectItem>
-                            <SelectItem value="wifi">Localization/Automation</SelectItem>
-                            <SelectItem value="rocket">Rocket</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button variant="ghost" onClick={() => setTechnologies((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
-                      </div>
-                    </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {featuresField.map((t) => (
+                    <span key={t} className="bg-gray-100 px-2 py-1 rounded flex items-center gap-2">
+                      <span>{t}</span>
+                      <button className="text-red-500" onClick={() => setFeaturesField((s) => s.filter(x => x !== t))}>×</button>
+                    </span>
                   ))}
                 </div>
               </div>
 
-              {/* Kits */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Kits</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setKits((p) => [...p, { title: "", courses: [], features: [] }])}>Add</Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Delivery</Label>
+                  <select value={deliveryField} onChange={(e) => setDeliveryField(e.target.value)} className="w-full border rounded px-2 py-1">
+                    <option value="">Select delivery</option>
+                    {deliveries.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="space-y-4">
-                  {kits.map((k, idx) => (
-                    <div key={idx} className="border rounded-md p-3 space-y-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Input placeholder="Title" value={k.title} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
-                        <Input placeholder="Age (optional)" value={k.age || ""} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, age: e.target.value } : x))} />
-                      </div>
-                      <Textarea placeholder="Description (optional)" value={k.description || ""} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, description: e.target.value } : x))} />
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Input placeholder="Courses (comma separated)" value={k.courses.join(", ")} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, courses: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) } : x))} />
-                        <Input placeholder="Features (comma separated)" value={k.features.join(", ")} onChange={(e) => setKits((p) => p.map((x, i) => i===idx ? { ...x, features: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) } : x))} />
-                      </div>
-                      <div className="flex justify-end">
-                        <Button variant="ghost" onClick={() => setKits((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  <Label>Level</Label>
+                  <select value={levelField} onChange={(e) => setLevelField(e.target.value)} className="w-full border rounded px-2 py-1">
+                    <option value="">Select level</option>
+                    {levels.map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {/* Add-ons */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Add-ons</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setAddons((p) => [...p, { title: "" }])}>Add</Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Instructor</Label>
+                  <Input value={instructorField} onChange={(e) => setInstructorField(e.target.value)} placeholder="Dr. Someone" />
                 </div>
-                <div className="space-y-3">
-                  {addons.map((a, idx) => (
-                    <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <Input placeholder="Title" value={a.title} onChange={(e) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, title: e.target.value } : x))} />
-                      <Input placeholder="Description (optional)" value={a.description || ""} onChange={(e) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, description: e.target.value } : x))} />
-                      <div className="flex gap-2 items-center">
-                        <Select value={a.icon || undefined} onValueChange={(v) => setAddons((p) => p.map((x, i) => i===idx ? { ...x, icon: v } : x))}>
-                          <SelectTrigger><SelectValue placeholder="Icon (optional)" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="car">Car</SelectItem>
-                            <SelectItem value="users">Users</SelectItem>
-                            <SelectItem value="rocket">Rocket</SelectItem>
-                            <SelectItem value="globe">Globe</SelectItem>
-                            <SelectItem value="bot">Bot</SelectItem>
-                            <SelectItem value="house">House</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button variant="ghost" onClick={() => setAddons((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  <Label>Duration</Label>
+                  <Input value={durationField} onChange={(e) => setDurationField(e.target.value)} placeholder="12 weeks" />
                 </div>
               </div>
 
-              {/* Tech specs */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Tech specs</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setTechSpecs((p) => [...p, { text: "" }])}>Add</Button>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Students</Label>
+                  <Input value={studentsField as any} onChange={(e) => setStudentsField(Number(e.target.value) || "")} placeholder="2500" />
                 </div>
-                <div className="space-y-3">
-                  {techSpecs.map((s, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <Input placeholder="Spec text" value={s.text} onChange={(e) => setTechSpecs((p) => p.map((x, i) => i===idx ? { ...x, text: e.target.value } : x))} />
-                      <Button variant="ghost" onClick={() => setTechSpecs((p) => p.filter((_, i) => i!==idx))}>Remove</Button>
+                <div className="space-y-2">
+                  <Label>Discount %</Label>
+                  <Input value={discountField as any} onChange={(e) => setDiscountField(Number(e.target.value) || "")} placeholder="20" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Video Preview URL</Label>
+                  {videoPreviewField && (
+                    <div className="mb-2">
+                      <video src={videoPreviewField} controls className="max-h-40" />
                     </div>
-                  ))}
+                  )}
+                  <div className="flex gap-2">
+                    <Input value={videoPreviewField} onChange={(e) => setVideoPreviewField(e.target.value)} placeholder="/videos/course-preview.mp4" />
+                    <Input id="videoFile" type="file" accept="video/*" onChange={async (e) => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      await handleVideoFile(f)
+                    }} />
+                  </div>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={isBestSeller} onChange={(e)=>setIsBestSeller(e.target.checked)} />
+                  <span>Best seller</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={isNewField} onChange={(e)=>setIsNewField(e.target.checked)} />
+                  <span>New</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={inStockField} onChange={(e)=>setInStockField(e.target.checked)} />
+                  <span>In stock</span>
+                </label>
               </div>
 
               <div className="flex justify-end gap-3">
