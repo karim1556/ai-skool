@@ -1,0 +1,631 @@
+"use client";
+
+import { AdminLayout } from "@/components/layout/admin-layout"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useParams, useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { Protect } from "@clerk/nextjs"
+import { Plus, Minus, X, Trash2 } from "lucide-react"
+
+export default function FillProductDetailsPage() {
+  const router = useRouter()
+  const params = useParams<{ slug: string }>()
+  const currentSlug = String(params.slug)
+  const { toast } = useToast()
+
+  const [loading, setLoading] = useState(true)
+  const [basicProduct, setBasicProduct] = useState<any>({})
+
+  // Product Details Fields
+  const [tagline, setTagline] = useState("")
+  const [fullDescription, setFullDescription] = useState("")
+  
+  // Highlights & Features
+  const [highlights, setHighlights] = useState<string[]>([])
+  const [features, setFeatures] = useState<string[]>([])
+  const [newHighlight, setNewHighlight] = useState("")
+  const [newFeature, setNewFeature] = useState("")
+
+  // Specifications
+  const [specifications, setSpecifications] = useState<Array<{key: string, value: string}>>([])
+  const [newSpecKey, setNewSpecKey] = useState("")
+  const [newSpecValue, setNewSpecValue] = useState("")
+
+  // What's in the Box
+  const [whatInBox, setWhatInBox] = useState<string[]>([])
+  const [newBoxItem, setNewBoxItem] = useState("")
+
+  // Delivery & Stock
+  const [deliveryInfo, setDeliveryInfo] = useState("")
+  const [deliveryDate, setDeliveryDate] = useState("")
+  const [stockQuantity, setStockQuantity] = useState<number | "">("")
+  const [warranty, setWarranty] = useState("")
+
+  // Seller Information
+  const [sellerName, setSellerName] = useState("")
+  const [sellerRating, setSellerRating] = useState<number | "">("")
+  const [sellerReviews, setSellerReviews] = useState<number | "">("")
+
+  // Images & Media
+  const [additionalImages, setAdditionalImages] = useState<string[]>([])
+  const [newImageUrl, setNewImageUrl] = useState("")
+  const [videoPreview, setVideoPreview] = useState("")
+
+  useEffect(() => {
+    let ignore = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/products/${currentSlug}`, { cache: 'no-store' })
+        if (!res.ok) throw new Error(await res.text())
+        const p = await res.json()
+        if (ignore) return
+        
+        setBasicProduct(p)
+        setTagline(p.tagline || '')
+        setFullDescription(p.full_description || p.long_description || '')
+        
+        // Highlights & Features
+        setHighlights(Array.isArray(p.highlights) ? p.highlights : [])
+        setFeatures(Array.isArray(p.features) ? p.features : [])
+        
+        // Specifications
+        if (p.specifications && typeof p.specifications === 'object') {
+          const specsArray = Object.entries(p.specifications).map(([key, value]) => ({
+            key,
+            value: String(value)
+          }))
+          setSpecifications(specsArray)
+        } else {
+          setSpecifications([])
+        }
+        
+        // What's in the Box
+        setWhatInBox(Array.isArray(p.what_in_box) ? p.what_in_box : [])
+        
+        // Delivery & Stock
+        setDeliveryInfo(p.delivery || 'FREE delivery')
+        setDeliveryDate(p.delivery_date || '')
+        setStockQuantity(p.stock_quantity || p.stockQuantity || "")
+        setWarranty(p.warranty || '1 year manufacturer warranty')
+        
+        // Seller Information
+        if (p.seller && typeof p.seller === 'object') {
+          setSellerName(p.seller.name || '')
+          setSellerRating(p.seller.rating || "")
+          setSellerReviews(p.seller.reviews || "")
+        }
+        
+        // Images & Media
+        setAdditionalImages(Array.isArray(p.images) ? p.images : [])
+        setVideoPreview(p.video_preview || p.videoPreview || '')
+        
+      } catch (e: any) {
+        toast({ title: 'Failed to load product details', description: e?.message || String(e), variant: 'destructive' })
+      } finally {
+        if (!ignore) setLoading(false)
+      }
+    })()
+    return () => { ignore = true }
+  }, [currentSlug, toast])
+
+  const addHighlight = () => {
+    if (newHighlight.trim()) {
+      setHighlights(prev => [...prev, newHighlight.trim()])
+      setNewHighlight("")
+    }
+  }
+
+  const removeHighlight = (index: number) => {
+    setHighlights(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const addFeature = () => {
+    if (newFeature.trim()) {
+      setFeatures(prev => [...prev, newFeature.trim()])
+      setNewFeature("")
+    }
+  }
+
+  const removeFeature = (index: number) => {
+    setFeatures(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const addSpecification = () => {
+    if (newSpecKey.trim() && newSpecValue.trim()) {
+      setSpecifications(prev => [...prev, { key: newSpecKey.trim(), value: newSpecValue.trim() }])
+      setNewSpecKey("")
+      setNewSpecValue("")
+    }
+  }
+
+  const removeSpecification = (index: number) => {
+    setSpecifications(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const addBoxItem = () => {
+    if (newBoxItem.trim()) {
+      setWhatInBox(prev => [...prev, newBoxItem.trim()])
+      setNewBoxItem("")
+    }
+  }
+
+  const removeBoxItem = (index: number) => {
+    setWhatInBox(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const addImage = () => {
+    if (newImageUrl.trim()) {
+      setAdditionalImages(prev => [...prev, newImageUrl.trim()])
+      setNewImageUrl("")
+    }
+  }
+
+  const removeImage = (index: number) => {
+    setAdditionalImages(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const onSubmit = async () => {
+    try {
+      // Convert specifications array to object
+      const specsObject = specifications.reduce((acc, spec) => {
+        acc[spec.key] = spec.value
+        return acc
+      }, {} as Record<string, string>)
+
+      // Map to the API / DB column names that the product detail page expects.
+      // - description instead of full_description
+      // - tech_specs instead of specifications
+      // - kits (or addons) is used for "what in box"
+      // - theme holds warranty, delivery_date, stock_quantity and seller info
+      // - hero_image / image will be set to the first additional image if provided
+      const body = {
+        name: basicProduct.name || currentSlug,
+        slug: currentSlug,
+        tagline: tagline || null,
+        description: fullDescription || null,
+        highlights: highlights.length ? highlights : null,
+        features: features.length ? features : null,
+        tech_specs: Object.keys(specsObject).length ? specsObject : null,
+        kits: whatInBox.length ? whatInBox : null,
+        delivery: deliveryInfo || null,
+        // theme JSONB carries a few UI-driven properties the product page reads from p.theme
+        theme: (warranty || deliveryDate || stockQuantity || sellerName || sellerRating || sellerReviews) ? {
+          warranty: warranty || null,
+          delivery_date: deliveryDate || null,
+          stock_quantity: stockQuantity || null,
+          seller: (sellerName || sellerRating || sellerReviews) ? {
+            name: sellerName || '',
+            rating: sellerRating || 0,
+            reviews: sellerReviews || 0,
+          } : null,
+        } : null,
+        // set hero/image from first additional image when available
+        hero_image: additionalImages.length ? additionalImages[0] : null,
+        image: additionalImages.length ? additionalImages[0] : null,
+        // still include full images array (DB may ignore it if no column exists)
+        images: additionalImages.length ? additionalImages : null,
+        video_preview: videoPreview || null,
+      }
+
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || data?.message || `Failed (${res.status})`)
+
+  toast({ title: 'Product details saved successfully!' })
+  // Go straight to product detail so the admin can verify the dynamic data
+  router.push(`/product/${currentSlug}`)
+    } catch (e: any) {
+      toast({ title: 'Failed to save details', description: e?.message || String(e), variant: 'destructive' })
+    }
+  }
+
+  if (loading) return (
+    <Protect>
+      <AdminLayout>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-500">Loading product details...</p>
+        </div>
+      </AdminLayout>
+    </Protect>
+  )
+
+  return (
+    <Protect>
+      <AdminLayout>
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold">Edit Product Details</h1>
+              <p className="text-gray-600">Complete Amazon-style product information for {basicProduct.name}</p>
+            </div>
+            <Button variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
+          </div>
+
+          {/* Product Overview */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Product Overview</h2>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tagline">Tagline / Short Description</Label>
+                  <Input
+                    id="tagline"
+                    value={tagline}
+                    onChange={(e) => setTagline(e.target.value)}
+                    placeholder="Brief, compelling description that appears below the title"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fullDescription">Full Product Description</Label>
+                  <Textarea
+                    id="fullDescription"
+                    rows={6}
+                    value={fullDescription}
+                    onChange={(e) => setFullDescription(e.target.value)}
+                    placeholder="Detailed product description with features, benefits, and usage scenarios..."
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Highlights & Key Features */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Highlights & Key Features</h2>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Highlights */}
+                <div className="space-y-4">
+                  <Label>Product Highlights (Appears in "About this item")</Label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newHighlight}
+                        onChange={(e) => setNewHighlight(e.target.value)}
+                        placeholder="Add a highlight point"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            addHighlight()
+                          }
+                        }}
+                      />
+                      <Button onClick={addHighlight} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {highlights.map((highlight, index) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                          <span className="text-sm">{highlight}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeHighlight(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Features */}
+                <div className="space-y-4">
+                  <Label>Key Features (Technical Features)</Label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newFeature}
+                        onChange={(e) => setNewFeature(e.target.value)}
+                        placeholder="Add a key feature"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            addFeature()
+                          }
+                        }}
+                      />
+                      <Button onClick={addFeature} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {features.map((feature, index) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                          <span className="text-sm">{feature}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFeature(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Specifications */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Technical Specifications</h2>
+              
+              <div className="space-y-4">
+                <Label>Product Specifications (Key-Value Pairs)</Label>
+                
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <Input
+                    value={newSpecKey}
+                    onChange={(e) => setNewSpecKey(e.target.value)}
+                    placeholder="Specification name (e.g., Age Range)"
+                  />
+                  <div className="flex gap-2">
+                    <Input
+                      value={newSpecValue}
+                      onChange={(e) => setNewSpecValue(e.target.value)}
+                      placeholder="Specification value (e.g., 8-16 years)"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addSpecification()
+                        }
+                      }}
+                    />
+                    <Button onClick={addSpecification}>
+                      Add
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 border rounded-lg p-4">
+                  {specifications.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">No specifications added yet</p>
+                  ) : (
+                    specifications.map((spec, index) => (
+                      <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                        <div className="flex-1 grid grid-cols-2 gap-4">
+                          <span className="font-medium">{spec.key}</span>
+                          <span className="text-gray-600">{spec.value}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeSpecification(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* What's in the Box */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">What's in the Box</h2>
+              
+              <div className="space-y-4">
+                <Label>Items Included in the Package</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={newBoxItem}
+                    onChange={(e) => setNewBoxItem(e.target.value)}
+                    placeholder="Add an item included in the box"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addBoxItem()
+                      }
+                    }}
+                  />
+                  <Button onClick={addBoxItem}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="grid gap-2">
+                  {whatInBox.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                      <span>{item}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeBoxItem(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Delivery & Stock Information */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Delivery & Stock Information</h2>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <Label htmlFor="deliveryInfo">Delivery Information</Label>
+                  <Input
+                    id="deliveryInfo"
+                    value={deliveryInfo}
+                    onChange={(e) => setDeliveryInfo(e.target.value)}
+                    placeholder="e.g., FREE delivery, Express delivery"
+                  />
+                  
+                  <Label htmlFor="deliveryDate">Expected Delivery Date</Label>
+                  <Input
+                    id="deliveryDate"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    placeholder="e.g., Tomorrow, 25 December"
+                  />
+                </div>
+                
+                <div className="space-y-4">
+                  <Label htmlFor="stockQuantity">Stock Quantity</Label>
+                  <Input
+                    id="stockQuantity"
+                    type="number"
+                    value={stockQuantity}
+                    onChange={(e) => setStockQuantity(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="Available quantity"
+                  />
+                  
+                  <Label htmlFor="warranty">Warranty Information</Label>
+                  <Input
+                    id="warranty"
+                    value={warranty}
+                    onChange={(e) => setWarranty(e.target.value)}
+                    placeholder="e.g., 1 year manufacturer warranty"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seller Information */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Seller Information</h2>
+              
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="sellerName">Seller Name</Label>
+                  <Input
+                    id="sellerName"
+                    value={sellerName}
+                    onChange={(e) => setSellerName(e.target.value)}
+                    placeholder="e.g., STEMLearning Official"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="sellerRating">Seller Rating (1-5)</Label>
+                  <Input
+                    id="sellerRating"
+                    type="number"
+                    min="1"
+                    max="5"
+                    step="0.1"
+                    value={sellerRating}
+                    onChange={(e) => setSellerRating(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="4.8"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="sellerReviews">Seller Reviews Count</Label>
+                  <Input
+                    id="sellerReviews"
+                    type="number"
+                    value={sellerReviews}
+                    onChange={(e) => setSellerReviews(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="1250"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Media & Images */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Media & Images</h2>
+              
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <Label>Additional Product Images</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newImageUrl}
+                      onChange={(e) => setNewImageUrl(e.target.value)}
+                      placeholder="Image URL"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addImage()
+                        }
+                      }}
+                    />
+                    <Button onClick={addImage}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {additionalImages.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={image}
+                          alt={`Product view ${index + 1}`}
+                          className="w-full h-24 object-cover rounded border"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeImage(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="videoPreview">Video Preview URL</Label>
+                  <Input
+                    id="videoPreview"
+                    value={videoPreview}
+                    onChange={(e) => setVideoPreview(e.target.value)}
+                    placeholder="URL to product video preview"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Submit Button */}
+          <div className="flex justify-end gap-3 pt-6 border-t">
+            <Button variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
+            <Button onClick={onSubmit} size="lg">
+              Save All Product Details
+            </Button>
+          </div>
+        </div>
+      </AdminLayout>
+    </Protect>
+  )
+}

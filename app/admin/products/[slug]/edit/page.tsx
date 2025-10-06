@@ -182,8 +182,8 @@ export default function EditProductPage() {
       }
 
       toast({ title: "Product saved", description: `slug: ${data?.slug || slug}` })
-      // Navigate to public product detail to confirm listing
-      router.push(`/products/${encodeURIComponent(data?.slug || slug)}`)
+  // Navigate to public product detail to confirm listing
+  router.push(`/product/${encodeURIComponent(data?.slug || slug)}`)
     } catch (err: any) {
       toast({ title: err?.message || String(err), variant: "destructive" })
     }

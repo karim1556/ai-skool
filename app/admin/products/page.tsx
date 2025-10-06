@@ -85,7 +85,8 @@ export default function AdminProductsPage() {
                       <td className="px-4 py-3 text-gray-600">{p.updated_at ? new Date(p.updated_at).toLocaleString() : "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
-                          <Link href={`/products/${p.slug}`}><Button variant="outline" size="sm">View</Button></Link>
+                          <Link href={`/product/${p.slug}`}><Button variant="outline" size="sm">View</Button></Link>
+                          <Link href={`/admin/products/${p.slug}/fill`}><Button variant="outline" size="sm">Fill details</Button></Link>
                           <Link href={`/admin/products/${p.slug}/edit`}><Button size="sm">Edit</Button></Link>
                           <Button size="sm" variant="destructive" onClick={async () => {
                             if (!confirm(`Delete ${p.name}?`)) return;

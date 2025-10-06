@@ -94,7 +94,7 @@ export function Header() {
                         { name: 'Wizbot', slug: 'wizbot', hero_image: '/uploads/img-intro-removebg-preview.png' },
                         { name: 'Skillful Minds Books', slug: 'skillful-minds-books', hero_image: '/placeholder-logo.svg' },
                       ]).map((p) => (
-                        <Link key={p.slug} href={`/products/${p.slug}`} className="group block rounded-md border hover:shadow-sm transition overflow-hidden bg-white">
+                        <Link key={p.slug} href={`/product/${p.slug}`} className="group block rounded-md border hover:shadow-sm transition overflow-hidden bg-white">
                           <div className="aspect-square w-full bg-gray-50 flex items-center justify-center">
                             <Image src={p.hero_image || '/placeholder-logo.png'} alt={p.name} width={160} height={160} className="object-contain p-3" />
                           </div>
