@@ -63,6 +63,9 @@ interface Product {
     rating: number;
     reviews: number;
   };
+  whyChoose?: string[];
+  learningOutcomes?: string[];
+  customerReviews?: Array<{ name: string; rating: number; title: string; body: string; date?: string }>;
 }
 
 export default function ProductDetailPage() {
@@ -100,6 +103,36 @@ export default function ProductDetailPage() {
         if (ignore) return
 
         // map DB row to UI product shape
+        const parseArray = (v:any) => {
+          if (Array.isArray(v)) return v
+          if (typeof v === 'string') {
+            try { const parsed = JSON.parse(v); return Array.isArray(parsed) ? parsed : [] } catch { return [] }
+          }
+          return []
+        }
+
+        const parseTheme = (t:any) => {
+          if (!t) return {}
+          if (typeof t === 'string') {
+            try { return JSON.parse(t) } catch { return {} }
+          }
+          return t
+        }
+
+        const theme = parseTheme(p.theme)
+
+        // helper to normalize potential arrays that may be stringified or contain objects
+        const normalizeToStringArray = (v:any) => {
+          const a = parseArray(v)
+          return a.map((it:any) => {
+            if (!it) return ''
+            if (typeof it === 'string') return it
+            if (typeof it === 'object' && it.slug) return String(it.slug)
+            if (typeof it === 'object' && it.name) return String(it.name)
+            return String(it)
+          }).filter(Boolean)
+        }
+
         const mapped: Product = {
           id: p.id,
           name: p.name,
@@ -114,15 +147,25 @@ export default function ProductDetailPage() {
           isBestSeller: Boolean(p.is_best_seller),
           isNew: Boolean(p.is_new),
           inStock: p.in_stock ?? true,
-          stockQuantity: (p.theme && p.theme.stock_quantity) ?? p.students ?? 0,
+          stockQuantity: (theme && theme.stock_quantity) ?? p.students ?? 0,
           features: Array.isArray(p.features) ? p.features : [],
-          delivery: p.delivery || (p.theme && p.theme.delivery_date) || '',
-          deliveryDate: (p.theme && p.theme.delivery_date) || '',
-          warranty: (p.theme && p.theme.warranty) || '',
+          delivery: p.delivery || (theme && theme.delivery_date) || '',
+          deliveryDate: (theme && theme.delivery_date) || '',
+          warranty: (theme && theme.warranty) || '',
           specifications: (p.tech_specs && typeof p.tech_specs === 'object') ? p.tech_specs : {},
           highlights: Array.isArray(p.highlights) ? p.highlights : [],
-          whatInBox: Array.isArray(p.kits) ? p.kits : (Array.isArray(p.addons) ? p.addons : []),
-          seller: (p.theme && p.theme.seller) ? p.theme.seller : (p.seller || { name: '', rating: 0, reviews: 0 }),
+          whatInBox: normalizeToStringArray(p.addons ?? p.kits ?? p.what_in_box ?? []),
+          seller: (theme && theme.seller) ? theme.seller : (p.seller || { name: '', rating: 0, reviews: 0 }),
+          // admin-managed fields
+          whyChoose: parseArray(theme.why_choose ?? theme.whyChoose ?? p.why_choose ?? []),
+          learningOutcomes: parseArray(p.technologies ?? theme.technologies ?? []),
+          customerReviews: (parseArray(theme.customer_reviews ?? theme.reviewsList ?? p.customer_reviews ?? [])).map((r:any) => ({
+            name: r?.name ?? r?.author ?? '',
+            rating: r?.rating ? Number(r.rating) : 0,
+            title: r?.title ?? '',
+            body: r?.body ?? r?.text ?? '',
+            date: r?.date ?? undefined,
+          })),
         }
 
         setProduct(mapped)
@@ -134,6 +177,31 @@ export default function ProductDetailPage() {
     })()
     return () => { ignore = true }
   }, [productSlug]);
+
+  // fetch frequently bought product data if product.addons contains slugs
+  const [freqProducts, setFreqProducts] = useState<Array<any>>([])
+  useEffect(() => {
+    let ignore = false
+    ;(async () => {
+      if (!product) return
+      try {
+        const slugs = Array.isArray((product as any).whatInBox) ? (product as any).whatInBox : []
+        // if whatInBox is used for kits, we expect addons are stored separately; try using product.whatInBox as fallback
+        // In our admin flow, frequently bought slugs are stored in DB column 'addons'. The server maps that into p.addons but our mapping earlier put kits/addons into whatInBox.
+        const res = await Promise.all((slugs || []).slice(0, 8).map(async (s:any) => {
+          if (!s) return null
+          const r = await fetch(`/api/products/${encodeURIComponent(String(s))}`, { cache: 'no-store' })
+          if (!r.ok) return null
+          return r.json()
+        }))
+        if (ignore) return
+        setFreqProducts(res.filter(Boolean) as any)
+      } catch (e) {
+        // ignore
+      }
+    })()
+    return () => { ignore = true }
+  }, [product])
 
   const handleAddToCart = () => {
     if (product) {
@@ -646,36 +714,58 @@ export default function ProductDetailPage() {
                   <div>
                     <h4 className="font-semibold mb-3">Why choose this product?</h4>
                     <ul className="space-y-2">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>Comprehensive STEM learning experience</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>Age-appropriate programming challenges</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>Professional customer support</span>
-                      </li>
+                      {product.whyChoose && product.whyChoose.length > 0 ? (
+                        product.whyChoose.map((w, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>{w}</span>
+                          </li>
+                        ))
+                      ) : (
+                        <>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>Comprehensive STEM learning experience</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>Age-appropriate programming challenges</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>Professional customer support</span>
+                          </li>
+                        </>
+                      )}
                     </ul>
                   </div>
                   
                   <div>
                     <h4 className="font-semibold mb-3">Learning Outcomes</h4>
                     <ul className="space-y-2">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                        <span>Develops logical thinking and problem-solving skills</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                        <span>Introduces AI and machine learning concepts</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                        <span>Enhances creativity and innovation</span>
-                      </li>
+                      {product.learningOutcomes && product.learningOutcomes.length > 0 ? (
+                        product.learningOutcomes.map((o, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                            <span>{o}</span>
+                          </li>
+                        ))
+                      ) : (
+                        <>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                            <span>Develops logical thinking and problem-solving skills</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                            <span>Introduces AI and machine learning concepts</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                            <span>Enhances creativity and innovation</span>
+                          </li>
+                        </>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -739,36 +829,65 @@ export default function ProductDetailPage() {
 
                   {/* Reviews List */}
                   <div className="md:w-2/3 space-y-6">
-                    {/* Sample Reviews */}
                     <div className="space-y-4">
-                      <div className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center gap-4 mb-3">
-                          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                            AS
+                      {product.customerReviews && product.customerReviews.length > 0 ? (
+                        product.customerReviews.map((r, i) => (
+                          <div key={i} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center gap-4 mb-3">
+                              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                {r.name ? r.name.split(' ').map(s=>s[0]).slice(0,2).join('') : 'US'}
+                              </div>
+                              <div>
+                                <div className="font-semibold">{r.name}</div>
+                                <div className="flex items-center gap-1">
+                                  {[...Array(5)].map((_, j) => (
+                                    <Star key={j} className={`h-4 w-4 ${j < Math.floor(r.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <h4 className="font-semibold mb-2">{r.title}</h4>
+                            <p className="text-gray-700">{r.body}</p>
+                            {r.date && (
+                              <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                                <span>Reviewed on {r.date}</span>
+                                <span>|</span>
+                                <span>Verified Purchase</span>
+                              </div>
+                            )}
                           </div>
-                          <div>
-                            <div className="font-semibold">Aarav Sharma</div>
-                            <div className="flex items-center gap-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className="h-4 w-4 text-yellow-400 fill-yellow-400"
-                                />
-                              ))}
+                        ))
+                      ) : (
+                        // fallback sample review
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center gap-4 mb-3">
+                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                              AS
+                            </div>
+                            <div>
+                              <div className="font-semibold">Aarav Sharma</div>
+                              <div className="flex items-center gap-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className="h-4 w-4 text-yellow-400 fill-yellow-400"
+                                  />
+                                ))}
+                              </div>
                             </div>
                           </div>
+                          <h4 className="font-semibold mb-2">Excellent learning tool!</h4>
+                          <p className="text-gray-700">
+                            My 10-year-old absolutely loves this robotics kit. The instructions are clear, 
+                            and the programming interface is intuitive. Great value for money!
+                          </p>
+                          <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                            <span>Reviewed on 15 December 2024</span>
+                            <span>|</span>
+                            <span>Verified Purchase</span>
+                          </div>
                         </div>
-                        <h4 className="font-semibold mb-2">Excellent learning tool!</h4>
-                        <p className="text-gray-700">
-                          My 10-year-old absolutely loves this robotics kit. The instructions are clear, 
-                          and the programming interface is intuitive. Great value for money!
-                        </p>
-                        <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-                          <span>Reviewed on 15 December 2024</span>
-                          <span>|</span>
-                          <span>Verified Purchase</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -783,38 +902,25 @@ export default function ProductDetailPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-sm text-gray-500">Item 1</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Advanced Coding Cards</p>
-                    <p className="text-green-600 font-semibold">₹1,299</p>
-                  </div>
-                </div>
-                <Plus className="h-5 w-5 text-gray-400" />
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-sm text-gray-500">Item 2</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Sensor Expansion Pack</p>
-                    <p className="text-green-600 font-semibold">₹2,499</p>
-                  </div>
-                </div>
-                <Plus className="h-5 w-5 text-gray-400" />
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-sm text-gray-500">Item 3</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Carrying Case</p>
-                    <p className="text-green-600 font-semibold">₹899</p>
-                  </div>
-                </div>
+                {freqProducts.length === 0 ? (
+                  <p className="text-gray-500">No frequently bought items configured for this product.</p>
+                ) : (
+                  freqProducts.map((fp, i) => (
+                    <div key={fp?.slug || i} className="flex items-center gap-2">
+                      <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                        <Image src={fp?.image || fp?.hero_image || '/placeholder.jpg'} alt={fp?.name || 'item'} width={64} height={64} className="object-cover" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{fp?.name}</p>
+                        <p className="text-green-600 font-semibold">₹{(fp?.price ? Number(fp.price) : 0).toLocaleString('en-IN')}</p>
+                      </div>
+                      {i < freqProducts.length - 1 && <Plus className="h-5 w-5 text-gray-400" />}
+                    </div>
+                  ))
+                )}
               </div>
               <div className="mt-4 flex items-center gap-4">
-                <p className="font-semibold">Total: ₹{(product.price + 1299 + 2499 + 899).toLocaleString('en-IN')}</p>
+                <p className="font-semibold">Total: ₹{([product, ...freqProducts].reduce((sum, it) => sum + (it?.price ? Number(it.price) : 0), 0)).toLocaleString('en-IN')}</p>
                 <Button className="bg-orange-500 hover:bg-orange-600">
                   Add all to cart
                 </Button>

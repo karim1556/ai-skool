@@ -31,6 +31,13 @@ export default function FillProductDetailsPage() {
   const [features, setFeatures] = useState<string[]>([])
   const [newHighlight, setNewHighlight] = useState("")
   const [newFeature, setNewFeature] = useState("")
+  // Learning Outcomes (separate from technical features)
+  const [learningOutcomes, setLearningOutcomes] = useState<string[]>([])
+  const [newOutcome, setNewOutcome] = useState("")
+
+  // Why Choose This Product (customer-facing bullets)
+  const [whyChoose, setWhyChoose] = useState<string[]>([])
+  const [newWhy, setNewWhy] = useState("")
 
   // Specifications
   const [specifications, setSpecifications] = useState<Array<{key: string, value: string}>>([])
@@ -57,6 +64,17 @@ export default function FillProductDetailsPage() {
   const [newImageUrl, setNewImageUrl] = useState("")
   const [videoPreview, setVideoPreview] = useState("")
 
+  // Customer Reviews (admin can add full review entries)
+  const [customerReviews, setCustomerReviews] = useState<Array<{name:string,rating:number|string,title:string,body:string}>>([])
+  const [reviewName, setReviewName] = useState("")
+  const [reviewRating, setReviewRating] = useState<number | "">("")
+  const [reviewTitle, setReviewTitle] = useState("")
+  const [reviewBody, setReviewBody] = useState("")
+
+  // Frequently bought together selection
+  const [allProducts, setAllProducts] = useState<Array<{id:number,name:string,slug:string}>>([])
+  const [frequentlyBought, setFrequentlyBought] = useState<string[]>([])
+
   useEffect(() => {
     let ignore = false
     ;(async () => {
@@ -67,43 +85,79 @@ export default function FillProductDetailsPage() {
         if (ignore) return
         
         setBasicProduct(p)
-        setTagline(p.tagline || '')
-        setFullDescription(p.full_description || p.long_description || '')
-        
+        setTagline(p.tagline ?? '')
+        setFullDescription(p.full_description ?? p.long_description ?? '')
+
+        // helper parsers for DB fields that may be strings (JSON) or native objects
+        const parseArray = (v: any) => {
+          if (Array.isArray(v)) return v
+          if (typeof v === 'string') {
+            try { const parsed = JSON.parse(v); return Array.isArray(parsed) ? parsed : [] } catch { return [] }
+          }
+          return []
+        }
+        const parseObject = (v: any) => {
+          if (v && typeof v === 'object') return v
+          if (typeof v === 'string') {
+            try { return JSON.parse(v) } catch { return {} }
+          }
+          return {}
+        }
+
         // Highlights & Features
-        setHighlights(Array.isArray(p.highlights) ? p.highlights : [])
-        setFeatures(Array.isArray(p.features) ? p.features : [])
-        
-        // Specifications
-        if (p.specifications && typeof p.specifications === 'object') {
-          const specsArray = Object.entries(p.specifications).map(([key, value]) => ({
-            key,
-            value: String(value)
-          }))
-          setSpecifications(specsArray)
+        setHighlights(parseArray(p.highlights))
+        setFeatures(parseArray(p.features))
+
+        // Specifications (key-value)
+        const specsSource = p.specifications ?? p.tech_specs
+        if (specsSource) {
+          const specsObj = typeof specsSource === 'string' ? (() => { try { return JSON.parse(specsSource) } catch { return {} } })() : specsSource
+          if (specsObj && typeof specsObj === 'object') {
+            const specsArray = Object.entries(specsObj).map(([key, value]) => ({ key, value: String(value) }))
+            setSpecifications(specsArray)
+          } else {
+            setSpecifications([])
+          }
         } else {
           setSpecifications([])
         }
-        
-        // What's in the Box
-        setWhatInBox(Array.isArray(p.what_in_box) ? p.what_in_box : [])
-        
-        // Delivery & Stock
-        setDeliveryInfo(p.delivery || 'FREE delivery')
-        setDeliveryDate(p.delivery_date || '')
-        setStockQuantity(p.stock_quantity || p.stockQuantity || "")
-        setWarranty(p.warranty || '1 year manufacturer warranty')
-        
-        // Seller Information
-        if (p.seller && typeof p.seller === 'object') {
-          setSellerName(p.seller.name || '')
-          setSellerRating(p.seller.rating || "")
-          setSellerReviews(p.seller.reviews || "")
+
+        // What's in the Box (kits/addons)
+        setWhatInBox(parseArray(p.kits ?? p.addons ?? p.what_in_box))
+
+        // Delivery & Stock (preserve 0 values)
+        setDeliveryInfo(p.delivery ?? 'FREE delivery')
+        setDeliveryDate(p.delivery_date ?? '')
+        setStockQuantity(p.stock_quantity ?? p.stockQuantity ?? "")
+        setWarranty(p.warranty ?? '1 year manufacturer warranty')
+
+        // Seller Information (may live inside theme or seller)
+        const themeSource = p.theme && (typeof p.theme === 'string' ? (() => { try { return JSON.parse(p.theme) } catch { return null } })() : p.theme)
+        const sellerSource = (themeSource) || p.seller
+        if (sellerSource && typeof sellerSource === 'object') {
+          setSellerName(sellerSource.name ?? '')
+          setSellerRating(sellerSource.rating ?? "")
+          setSellerReviews(sellerSource.reviews ?? "")
         }
-        
+
         // Images & Media
-        setAdditionalImages(Array.isArray(p.images) ? p.images : [])
-        setVideoPreview(p.video_preview || p.videoPreview || '')
+        setAdditionalImages(parseArray(p.images))
+        setVideoPreview(p.video_preview ?? p.videoPreview ?? '')
+        // Learning outcomes (map to p.technologies if present)
+        setLearningOutcomes(parseArray(p.technologies))
+        // Frequently bought together (store as addons slugs)
+        setFrequentlyBought(parseArray(p.addons))
+        // Why Choose (may live inside theme)
+        setWhyChoose(parseArray((themeSource && (themeSource.why_choose || themeSource.whyChoose)) ?? p.why_choose ?? []))
+        // Customer reviews (may live inside theme.customer_reviews)
+        const reviewsRaw = (themeSource && (themeSource.customer_reviews || themeSource.reviewsList)) ?? p.customer_reviews ?? []
+        const parsedReviews = parseArray(reviewsRaw).map((r:any) => ({
+          name: r?.name ?? '',
+          rating: r?.rating ?? '',
+          title: r?.title ?? '',
+          body: r?.body ?? '',
+        }))
+        setCustomerReviews(parsedReviews)
         
       } catch (e: any) {
         toast({ title: 'Failed to load product details', description: e?.message || String(e), variant: 'destructive' })
@@ -113,6 +167,23 @@ export default function FillProductDetailsPage() {
     })()
     return () => { ignore = true }
   }, [currentSlug, toast])
+
+  // load all products for frequently-bought selector
+  useEffect(() => {
+    let ignore = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/products', { cache: 'no-store' })
+        if (!res.ok) return
+        const list = await res.json()
+        if (ignore) return
+        setAllProducts(Array.isArray(list) ? list.map((p:any) => ({ id: p.id, name: p.name, slug: p.slug })) : [])
+      } catch (e) {
+        // ignore
+      }
+    })()
+    return () => { ignore = true }
+  }, [])
 
   const addHighlight = () => {
     if (newHighlight.trim()) {
@@ -129,6 +200,13 @@ export default function FillProductDetailsPage() {
     if (newFeature.trim()) {
       setFeatures(prev => [...prev, newFeature.trim()])
       setNewFeature("")
+    }
+  }
+
+  const addOutcome = () => {
+    if (newOutcome.trim()) {
+      setLearningOutcomes(prev => [...prev, newOutcome.trim()])
+      setNewOutcome("")
     }
   }
 
@@ -170,6 +248,30 @@ export default function FillProductDetailsPage() {
     setAdditionalImages(prev => prev.filter((_, i) => i !== index))
   }
 
+  const toggleFrequentlyBought = (slug: string) => {
+    setFrequentlyBought(prev => prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug])
+  }
+
+  // Why choose helpers
+  const addWhy = () => {
+    if (newWhy.trim()) {
+      setWhyChoose(prev => [...prev, newWhy.trim()])
+      setNewWhy("")
+    }
+  }
+  const removeWhy = (index:number) => setWhyChoose(prev => prev.filter((_,i)=>i!==index))
+
+  // Customer reviews helpers
+  const addReview = () => {
+    if (!reviewName.trim() || !reviewTitle.trim() || !reviewBody.trim() || reviewRating === "") return
+    setCustomerReviews(prev => [...prev, { name: reviewName.trim(), rating: reviewRating, title: reviewTitle.trim(), body: reviewBody.trim() }])
+    setReviewName("")
+    setReviewRating("")
+    setReviewTitle("")
+    setReviewBody("")
+  }
+  const removeReview = (index:number) => setCustomerReviews(prev => prev.filter((_,i)=>i!==index))
+
   const onSubmit = async () => {
     try {
       // Convert specifications array to object
@@ -191,8 +293,12 @@ export default function FillProductDetailsPage() {
         description: fullDescription || null,
         highlights: highlights.length ? highlights : null,
         features: features.length ? features : null,
+        // persist learning outcomes into 'technologies' JSONB (used here for learning outcomes)
+        technologies: learningOutcomes.length ? learningOutcomes : null,
         tech_specs: Object.keys(specsObject).length ? specsObject : null,
         kits: whatInBox.length ? whatInBox : null,
+        // use 'addons' column to store frequently bought product slugs
+        addons: frequentlyBought.length ? frequentlyBought : null,
         delivery: deliveryInfo || null,
         // theme JSONB carries a few UI-driven properties the product page reads from p.theme
         theme: (warranty || deliveryDate || stockQuantity || sellerName || sellerRating || sellerReviews) ? {
@@ -204,6 +310,9 @@ export default function FillProductDetailsPage() {
             rating: sellerRating || 0,
             reviews: sellerReviews || 0,
           } : null,
+          // include admin-managed why-choose bullets and customer reviews
+          why_choose: whyChoose.length ? whyChoose : null,
+          customer_reviews: customerReviews.length ? customerReviews : null,
         } : null,
         // set hero/image from first additional image when available
         hero_image: additionalImages.length ? additionalImages[0] : null,
@@ -279,6 +388,87 @@ export default function FillProductDetailsPage() {
                     onChange={(e) => setFullDescription(e.target.value)}
                     placeholder="Detailed product description with features, benefits, and usage scenarios..."
                   />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Learning Outcomes (customer-facing benefits) */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Learning Outcomes</h2>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={newOutcome}
+                    onChange={(e) => setNewOutcome(e.target.value)}
+                    placeholder="Add a learning outcome"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addOutcome()
+                      }
+                    }}
+                  />
+                  <Button onClick={addOutcome} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="grid gap-2 max-h-40 overflow-y-auto">
+                  {learningOutcomes.map((o, i) => (
+                    <div key={i} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                      <span className="text-sm">{o}</span>
+                      <Button variant="ghost" size="sm" onClick={() => setLearningOutcomes(prev => prev.filter((_, idx) => idx !== i))}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Why Choose This Product */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Why choose this product</h2>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={newWhy}
+                    onChange={(e) => setNewWhy(e.target.value)}
+                    placeholder="Add a short bullet that explains why customers should choose this product"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWhy() } }}
+                  />
+                  <Button onClick={addWhy} size="sm"><Plus className="h-4 w-4" /></Button>
+                </div>
+                <div className="grid gap-2 max-h-40 overflow-y-auto">
+                  {whyChoose.map((w, i) => (
+                    <div key={i} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                      <span className="text-sm">{w}</span>
+                      <Button variant="ghost" size="sm" onClick={() => removeWhy(i)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Frequently bought together selector */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Frequently bought together</h2>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">Select products to show as "Frequently bought together" on the product page.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2">
+                  {allProducts.map((p) => (
+                    <label key={p.slug} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
+                      <input type="checkbox" checked={frequentlyBought.includes(p.slug)} onChange={() => toggleFrequentlyBought(p.slug)} />
+                      <span className="text-sm">{p.name}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             </CardContent>
@@ -610,6 +800,43 @@ export default function FillProductDetailsPage() {
                     onChange={(e) => setVideoPreview(e.target.value)}
                     placeholder="URL to product video preview"
                   />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Customer Reviews (admin-managed) */}
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold border-b pb-2">Customer reviews</h2>
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-4 gap-2">
+                  <Input value={reviewName} onChange={(e) => setReviewName(e.target.value)} placeholder="Reviewer name" />
+                  <Input type="number" value={String(reviewRating)} onChange={(e) => setReviewRating(e.target.value ? Number(e.target.value) : "")} placeholder="Rating (1-5)" />
+                  <Input value={reviewTitle} onChange={(e) => setReviewTitle(e.target.value)} placeholder="Review title" />
+                  <Button onClick={addReview}><Plus className="h-4 w-4" /></Button>
+                </div>
+                <div>
+                  <Textarea value={reviewBody} onChange={(e) => setReviewBody(e.target.value)} placeholder="Review body" rows={3} />
+                </div>
+
+                <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-3">
+                  {customerReviews.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">No customer reviews added yet</p>
+                  ) : (
+                    customerReviews.map((r, i) => (
+                      <div key={i} className="border-b last:border-b-0 py-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{r.name} <span className="text-sm text-gray-500">• {r.rating}★</span></div>
+                            <div className="text-sm font-semibold">{r.title}</div>
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={() => removeReview(i)}><X className="h-4 w-4" /></Button>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">{r.body}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </CardContent>
