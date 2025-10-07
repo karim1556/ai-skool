@@ -540,7 +540,7 @@ export default function ProductDetailPage() {
                 )}
               </div>
               <p className="text-sm text-gray-600">Inclusive of all taxes</p>
-              <p className="text-green-600 font-medium">EMI starts at ₹2,166. No Cost EMI available</p>
+              {/* EMI line removed */}
             </div>
 
             {/* Highlights */}
@@ -627,14 +627,14 @@ export default function ProductDetailPage() {
                 <Button
                   onClick={handleAddToCart}
                   disabled={!product.inStock}
-                  className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-medium py-3 rounded-lg border border-yellow-500 shadow-sm"
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium py-3 rounded-lg shadow-sm"
                 >
                   <ShoppingCart className="h-5 w-5 mr-2" />
                   Add to Cart
                 </Button>
                 <Button
                   disabled={!product.inStock}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 rounded-lg shadow-sm"
+                  className="flex-1 bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white font-medium py-3 rounded-lg shadow-sm"
                 >
                   Buy Now
                 </Button>
@@ -644,10 +644,6 @@ export default function ProductDetailPage() {
                 <div className="flex items-center gap-1">
                   <Shield className="h-4 w-4" />
                   <span>Secure transaction</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <CreditCard className="h-4 w-4" />
-                  <span>EMI available</span>
                 </div>
               </div>
             </div>
