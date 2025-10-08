@@ -9,7 +9,7 @@ export type CartItem = {
   originalPrice?: number | null
   image?: string | null
   provider?: string | null
-  type?: "course" | "level" | "product"
+  type?: "course" | "level" | "product" | "lab-package"
   quantity: number
 }
 
