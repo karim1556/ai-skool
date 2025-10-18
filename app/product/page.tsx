@@ -56,6 +56,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Bebas_Neue } from "next/font/google";
 import { useCart } from "@/hooks/use-cart";
 import { motion, AnimatePresence, useInView } from "framer-motion";
+import { PRODUCT_CATEGORIES } from '@/lib/product-categories';
 
 // Load condensed font
 const bebas = Bebas_Neue({
@@ -496,41 +497,83 @@ export default function ProductsPage() {
                 {/* active filters UI removed */}
               </motion.div>
 
-              {/* Products Grid/List */}
+              {/* Products grouped by category (canonical order) */}
               {filteredProducts.length === 0 ? (
-                <EmptyState 
-                  searchQuery={searchQuery}
-                />
+                <EmptyState searchQuery={searchQuery} />
               ) : (
-                <motion.div 
-                  layout
-                  className={viewMode === 'grid' 
-                    ? "grid gap-6 md:grid-cols-2 xl:grid-cols-2" 
-                    : "space-y-6"
-                  }
-                >
-                  <AnimatePresence mode="popLayout">
-                    {filteredProducts.map((product, index) => (
-                      <motion.div
-                        key={product.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                      >
-                        <ProductCard 
-                          product={product}
-                          viewMode={viewMode}
-                          wishlist={wishlist}
-                          onWishlistToggle={toggleWishlist}
-                          onQuickView={setQuickViewProduct}
-                          onAddToCart={addItem}
-                        />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
+                <div className="space-y-12">
+                  {PRODUCT_CATEGORIES.map((cat) => {
+                    const catKey = (cat || '').toLowerCase().trim();
+                    const items = filteredProducts.filter(p => ((p.category || '').toLowerCase().trim()) === catKey);
+                    if (!items.length) return null;
+                    return (
+                      <section key={cat}>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-4">{cat}</h2>
+                        <motion.div
+                          layout
+                          className={viewMode === 'grid' ? 'grid gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3' : 'space-y-6'}
+                        >
+                          <AnimatePresence mode="popLayout">
+                            {items.map((product, index) => (
+                              <motion.div
+                                key={product.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.3, delay: index * 0.03 }}
+                              >
+                                <ProductCard
+                                  product={product}
+                                  viewMode={viewMode}
+                                  wishlist={wishlist}
+                                  onWishlistToggle={toggleWishlist}
+                                  onQuickView={setQuickViewProduct}
+                                  onAddToCart={addItem}
+                                />
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      </section>
+                    )
+                  })}
+
+                  {/* Uncategorized / other categories */}
+                  {(() => {
+                    const known = new Set(PRODUCT_CATEGORIES.map(c => (c || '').toLowerCase().trim()));
+                    const others = filteredProducts.filter(p => !known.has((p.category || '').toLowerCase().trim()));
+                    if (!others.length) return null;
+                    return (
+                      <section>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Other</h2>
+                        <motion.div className={viewMode === 'grid' ? 'grid gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3' : 'space-y-6'} layout>
+                          <AnimatePresence mode="popLayout">
+                            {others.map((product, index) => (
+                              <motion.div
+                                key={product.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.3, delay: index * 0.03 }}
+                              >
+                                <ProductCard
+                                  product={product}
+                                  viewMode={viewMode}
+                                  wishlist={wishlist}
+                                  onWishlistToggle={toggleWishlist}
+                                  onQuickView={setQuickViewProduct}
+                                  onAddToCart={addItem}
+                                />
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      </section>
+                    )
+                  })()}
+                </div>
               )}
             </div>
           </div>
@@ -724,12 +767,12 @@ function ProductCard({ product, viewMode, wishlist, onWishlistToggle, onQuickVie
       whileHover={{ y: -5 }}
     >
       <Card className={`group overflow-hidden rounded-3xl border-0 bg-white shadow-lg hover:shadow-2xl transition-all duration-300 ${
-        viewMode === 'list' ? 'flex flex-col md:flex-row' : ''
+        viewMode === 'list' ? 'flex flex-col md:flex-row' : 'h-full flex flex-col'
       }`}>
-        <CardContent className={`p-0 ${viewMode === 'list' ? 'flex flex-col md:flex-row flex-1' : ''}`}>
+        <CardContent className={`p-0 flex-1 flex flex-col ${viewMode === 'list' ? 'md:flex-row' : ''}`}>
           {/* Product Image */}
-          <div className={`relative overflow-hidden ${
-            viewMode === 'list' ? 'md:w-80 md:flex-shrink-0' : 'aspect-square'
+            <div className={`relative overflow-hidden ${
+            viewMode === 'list' ? 'md:w-80 md:flex-shrink-0' : 'aspect-[5/6] w-full max-h-[420px]'
           }`}>
             <Image
               src={product.image || "/placeholder.svg"}
@@ -860,7 +903,7 @@ function ProductCard({ product, viewMode, wishlist, onWishlistToggle, onQuickVie
           </div>
 
           {/* Product Info */}
-          <div className={`p-6 ${viewMode === 'list' ? 'flex-1 flex flex-col' : ''}`}>
+          <div className={`p-6 ${viewMode === 'list' ? 'flex-1 flex flex-col' : 'flex-1 flex flex-col justify-between'}`}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-1 mb-2">
