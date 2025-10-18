@@ -535,7 +535,7 @@ export default function FillProductDetailsPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Highlights */}
                 <div className="space-y-4">
-                  <Label>Product Highlights (Appears in "About this item")</Label>
+                  <Label>Product Highlights (Appears in "About this items")</Label>
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <Input
