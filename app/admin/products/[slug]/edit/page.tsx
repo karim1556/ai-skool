@@ -145,29 +145,38 @@ export default function EditProductPage() {
         return
       }
 
+      // Merge with any existing product data so we don't wipe fields edited via the Fill form
+      // Fetch the current product to merge (server has the latest row)
+      let existing: any = {}
+      try {
+        const r = await fetch(`/api/products/${encodeURIComponent(currentSlug)}`, { cache: 'no-store' })
+        if (r.ok) existing = await r.json()
+      } catch (_) {}
+
       const body = {
+        ...existing,
         name,
         slug,
-        description: description || null,
-        hero_image: heroImage || null,
-        price: price || null,
-        original_price: originalPrice || null,
-        rating: rating || null,
-        reviews: reviews || null,
-        image: image || null,
-        category: categoryField || null,
-        is_best_seller: isBestSeller,
-        is_new: isNewField,
-        in_stock: inStockField,
-        features: featuresField || null,
-        delivery: deliveryField || null,
-        level: levelField || null,
-        instructor: instructorField || null,
-        duration: durationField || null,
-        students: studentsField || null,
-        tags: tagsField || null,
-        discount: discountField || null,
-        video_preview: videoPreviewField || null,
+        description: description || existing.description || null,
+        hero_image: heroImage || existing.hero_image || existing.image || null,
+        price: price !== "" ? price : (existing.price ?? null),
+        original_price: originalPrice !== "" ? originalPrice : (existing.original_price ?? null),
+        rating: rating !== "" ? rating : (existing.rating ?? null),
+        reviews: reviews !== "" ? reviews : (existing.reviews ?? null),
+        image: image || existing.image || null,
+        category: categoryField || existing.category || null,
+        is_best_seller: isBestSeller ?? existing.is_best_seller,
+        is_new: isNewField ?? existing.is_new,
+        in_stock: inStockField ?? (existing.in_stock === undefined ? true : existing.in_stock),
+        features: (featuresField && featuresField.length) ? featuresField : (existing.features ?? null),
+        delivery: deliveryField || existing.delivery || null,
+        level: levelField || existing.level || null,
+        instructor: instructorField || existing.instructor || null,
+        duration: durationField || existing.duration || null,
+        students: studentsField !== "" ? studentsField : (existing.students ?? null),
+        tags: (tagsField && tagsField.length) ? tagsField : (existing.tags ?? null),
+        discount: discountField !== "" ? discountField : (existing.discount ?? null),
+        video_preview: videoPreviewField || existing.video_preview || null,
       }
 
       const res = await fetch("/api/products", {

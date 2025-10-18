@@ -292,37 +292,49 @@ export default function FillProductDetailsPage() {
       // - kits (or addons) is used for "what in box"
       // - theme holds warranty, delivery_date, stock_quantity and seller info
       // - hero_image / image will be set to the first additional image if provided
+      // Merge with existing product data so we don't clobber unrelated fields
+      const existing = basicProduct || {}
       const body = {
-        name: basicProduct.name || currentSlug,
+        // keep existing top-level fields unless explicitly changed in this form
+        ...existing,
+        name: existing.name || currentSlug,
         slug: currentSlug,
-        category: category || null,
-        tagline: tagline || null,
-        description: fullDescription || null,
-        highlights: highlights.length ? highlights : null,
-        features: features.length ? features : null,
-        technologies: learningOutcomes.length ? learningOutcomes : null,
-        tech_specs: Object.keys(specsObject).length ? specsObject : null,
-        kits: whatInBox.length ? whatInBox : null,
-        addons: frequentlyBought.length ? frequentlyBought : null,
-        delivery: deliveryInfo || null,
-        theme: (warranty || deliveryDate || stockQuantity || sellerName || sellerRating || sellerReviews) ? {
-          warranty: warranty || null,
-          delivery_date: deliveryDate || null,
-          stock_quantity: stockQuantity || null,
+        category: category || existing.category || null,
+        tagline: tagline || existing.tagline || null,
+        // use description from this form or preserve existing description/full_description
+        description: fullDescription || existing.description || existing.full_description || null,
+        highlights: highlights.length ? highlights : (existing.highlights ?? null),
+        features: features.length ? features : (existing.features ?? null),
+        technologies: learningOutcomes.length ? learningOutcomes : (existing.technologies ?? null),
+        tech_specs: Object.keys(specsObject).length ? specsObject : (existing.tech_specs ?? existing.specifications ?? null),
+        kits: whatInBox.length ? whatInBox : (existing.kits ?? existing.addons ?? null),
+        addons: frequentlyBought.length ? frequentlyBought : (existing.addons ?? null),
+        delivery: deliveryInfo || existing.delivery || null,
+        // Merge theme but prefer values set in this form
+        theme: {
+          ...(existing.theme || {}),
+          warranty: warranty || existing?.theme?.warranty || null,
+          delivery_date: deliveryDate || existing?.theme?.delivery_date || null,
+          stock_quantity: stockQuantity !== "" ? stockQuantity : (existing?.theme?.stock_quantity ?? null),
           seller: (sellerName || sellerRating || sellerReviews) ? {
-            name: sellerName || '',
-            rating: sellerRating || 0,
-            reviews: sellerReviews || 0,
-          } : null,
-          why_choose: whyChoose.length ? whyChoose : null,
-          customer_reviews: customerReviews.length ? customerReviews : null,
-        } : null,
-        hero_image: additionalImages.length ? additionalImages[0] : null,
-        image: additionalImages.length ? additionalImages[0] : null,
-        images: additionalImages.length ? additionalImages : null,
-        video_preview: videoPreview || null,
-        // in_stock is a top-level boolean column; when isOutOfStock is true we set it to false
-        in_stock: isOutOfStock ? false : true,
+            name: sellerName || existing?.theme?.seller?.name || '',
+            rating: sellerRating || existing?.theme?.seller?.rating || 0,
+            reviews: sellerReviews || existing?.theme?.seller?.reviews || 0,
+          } : (existing?.theme?.seller ?? null),
+          why_choose: whyChoose.length ? whyChoose : (existing?.theme?.why_choose ?? null),
+          customer_reviews: customerReviews.length ? customerReviews : (existing?.theme?.customer_reviews ?? null),
+        },
+        hero_image: additionalImages.length ? additionalImages[0] : (existing.hero_image || existing.image || null),
+        image: additionalImages.length ? additionalImages[0] : (existing.image || null),
+        images: additionalImages.length ? additionalImages : (existing.images ?? null),
+        video_preview: videoPreview || existing.video_preview || null,
+        // in_stock: if admin marked out of stock set it to false, otherwise preserve existing value or default true
+        in_stock: isOutOfStock ? false : (existing.in_stock === undefined ? true : existing.in_stock),
+        // Preserve storefront pricing & ratings if present
+        price: existing.price ?? null,
+        original_price: existing.original_price ?? null,
+        rating: existing.rating ?? null,
+        reviews: existing.reviews ?? null,
       }
 
       const res = await fetch('/api/products', {
