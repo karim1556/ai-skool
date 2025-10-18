@@ -55,6 +55,8 @@ export default function FillProductDetailsPage() {
   const [deliveryDate, setDeliveryDate] = useState("")
   const [stockQuantity, setStockQuantity] = useState<number | "">("")
   const [warranty, setWarranty] = useState("")
+  // Out of stock toggle (admin) - when true the product will be marked out of stock
+  const [isOutOfStock, setIsOutOfStock] = useState(false)
 
   // Seller Information
   const [sellerName, setSellerName] = useState("")
@@ -90,6 +92,7 @@ export default function FillProductDetailsPage() {
   setTagline(p.tagline ?? '')
   setFullDescription(p.full_description ?? p.long_description ?? '')
   setCategory(p.category ?? "")
+  setIsOutOfStock(p.in_stock === false)
 
         // helper parsers for DB fields that may be strings (JSON) or native objects
         const parseArray = (v: any) => {
@@ -318,6 +321,8 @@ export default function FillProductDetailsPage() {
         image: additionalImages.length ? additionalImages[0] : null,
         images: additionalImages.length ? additionalImages : null,
         video_preview: videoPreview || null,
+        // in_stock is a top-level boolean column; when isOutOfStock is true we set it to false
+        in_stock: isOutOfStock ? false : true,
       }
 
       const res = await fetch('/api/products', {
@@ -706,6 +711,17 @@ export default function FillProductDetailsPage() {
                     onChange={(e) => setWarranty(e.target.value)}
                     placeholder="e.g., 1 year manufacturer warranty"
                   />
+                  
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      id="outOfStock"
+                      type="checkbox"
+                      checked={isOutOfStock}
+                      onChange={(e) => setIsOutOfStock(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <Label htmlFor="outOfStock" className="mb-0">Mark as Out of Stock (hide 'Out of Stock' badge when unchecked)</Label>
+                  </div>
                 </div>
               </div>
             </CardContent>

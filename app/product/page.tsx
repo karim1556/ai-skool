@@ -183,7 +183,21 @@ export default function ProductsPage() {
         }
         const data = await res.json();
         if (!mounted) return;
-        setProducts(Array.isArray(data) ? data : []);
+        const parseArray = (v: any) => {
+          if (Array.isArray(v)) return v
+          if (typeof v === 'string') {
+            try { const parsed = JSON.parse(v); return Array.isArray(parsed) ? parsed : [] } catch { return [] }
+          }
+          return []
+        }
+        const normalized = (Array.isArray(data) ? data : []).map((p: any) => ({
+          ...p,
+          inStock: p.in_stock === undefined ? true : Boolean(p.in_stock),
+          tags: parseArray(p.tags),
+          features: parseArray(p.features),
+          price: p.price ? Number(p.price) : 0,
+        }))
+        setProducts(normalized);
         const max = (Array.isArray(data) ? data : []).reduce((m: number, p: any) => Math.max(m, Number(p?.price || 0)), 0);
         setPriceMax(max || 1000);
         setLoading(false);
