@@ -219,10 +219,14 @@ export default function ProductsPage() {
       .filter(product => {
         const q = debouncedSearchQuery.trim().toLowerCase();
         if (q === '') return true;
+        // defensive: product fields may be null/undefined from the API
+        const name = (product.name ?? '').toString().toLowerCase();
+        const description = (product.description ?? '').toString().toLowerCase();
+        const tagsInclude = Array.isArray(product.tags) && product.tags.some(tag => (tag ?? '').toString().toLowerCase().includes(q));
         return (
-          product.name.toLowerCase().includes(q) ||
-          product.description.toLowerCase().includes(q) ||
-          product.tags.some(tag => tag.toLowerCase().includes(q))
+          name.includes(q) ||
+          description.includes(q) ||
+          tagsInclude
         );
       })
       .sort((a, b) => {
