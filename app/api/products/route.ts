@@ -171,7 +171,9 @@ export async function POST(req: Request) {
 
     const saved = await db.get<any>(`SELECT * FROM products WHERE slug = $1`, [slug])
     // Invalidate cache after write
-    productsCache = null
+  productsCache = null
+  // clear per-slug cache if present
+  try { (global as any).bySlugCache?.delete(slug) } catch {}
     // Helpful server-side log
     console.log('[API] Saved product', saved?.slug || slug, 'id=', saved?.id)
     return NextResponse.json(saved, { status: 201 })

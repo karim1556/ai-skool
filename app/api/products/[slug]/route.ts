@@ -4,6 +4,8 @@ import { ensureProductsSchema } from "@/lib/products-schema"
 
 // Tiny per-slug cache for 10s to reduce DB churn
 const bySlugCache = new Map<string, { data: any; ts: number }>()
+// expose on global so other modules (POST/PUT handlers) can invalidate entries
+try { (global as any).bySlugCache = (global as any).bySlugCache || bySlugCache } catch {}
 const TTL = 10_000
 
 export async function GET(
@@ -179,9 +181,10 @@ export async function PUT(
 
     const saved = await db.get<any>(`SELECT * FROM products WHERE slug = $1`, [slug])
     // Invalidate caches
-    try { (global as any).productsCache = null } catch {}
-    // Also clear per-slug cache if present
-    try { (global as any).bySlugCache?.delete(slug) } catch {}
+      try { (global as any).productsCache = null } catch {}
+      // Also clear per-slug cache if present (delete local and global entry)
+      try { bySlugCache.delete(slug) } catch {}
+      try { (global as any).bySlugCache?.delete(slug) } catch {}
 
     console.log('[API] PUT saved product', saved?.slug || slug)
     return NextResponse.json(saved)

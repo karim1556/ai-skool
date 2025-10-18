@@ -250,6 +250,33 @@ export default function FillProductDetailsPage() {
     }
   }
 
+  // Supabase upload helpers (same approach used in other admin pages)
+  const uploadToSupabase = async (file: File, pathPrefix = 'products') => {
+    try {
+      const { supabase } = await import('@/lib/supabase')
+      const path = `${pathPrefix}/${Date.now()}-${file.name}`
+      const { error } = await supabase.storage.from('course-thumbnails').upload(path, file)
+      if (error) throw error
+      const { data } = supabase.storage.from('course-thumbnails').getPublicUrl(path)
+      return data?.publicUrl || null
+    } catch (err) {
+      console.error('upload error', err)
+      return null
+    }
+  }
+
+  const handleImageFile = async (f?: File) => {
+    if (!f) return
+    const url = await uploadToSupabase(f, 'product-images')
+    if (url) setAdditionalImages((prev) => [...prev, url])
+  }
+
+  const handleVideoFile = async (f?: File) => {
+    if (!f) return
+    const url = await uploadToSupabase(f, 'product-videos')
+    if (url) setVideoPreview(url)
+  }
+
   const removeImage = (index: number) => {
     setAdditionalImages(prev => prev.filter((_, i) => i !== index))
   }
@@ -806,6 +833,11 @@ export default function FillProductDetailsPage() {
                     <Button onClick={addImage}>
                       <Plus className="h-4 w-4" />
                     </Button>
+                    <Input id="imageFile" type="file" accept="image/*" onChange={async (e) => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      await handleImageFile(f)
+                    }} />
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -837,6 +869,11 @@ export default function FillProductDetailsPage() {
                     onChange={(e) => setVideoPreview(e.target.value)}
                     placeholder="URL to product video preview"
                   />
+                  <Input id="videoFile" type="file" accept="video/*" onChange={async (e) => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    await handleVideoFile(f)
+                  }} />
                 </div>
               </div>
             </CardContent>
