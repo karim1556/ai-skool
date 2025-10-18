@@ -53,7 +53,6 @@ import {
   Pause,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { Bebas_Neue } from "next/font/google";
 import { useCart } from "@/hooks/use-cart";
 import { motion, AnimatePresence, useInView } from "framer-motion";
@@ -147,15 +146,10 @@ export default function ProductsPage() {
   const { addItem } = useCart();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('featured');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -173,132 +167,48 @@ export default function ProductsPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Load products with better error handling
+  // derive categories for quick stats
+  const categories = useMemo(() => Array.from(new Set(products.map(p => p.category).filter(Boolean))), [products]);
+
+  // Load products from API on mount
   useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    setError(null)
-    
-    fetch('/api/products')
-      .then(r => {
-        if (!r.ok) throw new Error(`Failed to load products: ${r.status}`)
-        return r.json()
-      })
-      .then((data) => {
-        if (!mounted) return
-        
-        if (!Array.isArray(data)) {
-          throw new Error('Invalid data format received')
+    let mounted = true;
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/products');
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || 'Failed to load products');
         }
-
-        // Map DB fields to UI Product shape
-        const mapped = data.map((p: any) => ({
-          id: p.id,
-          // preserve slug if present, otherwise generate from name
-          slug: p.slug || (p.name ? String(p.name).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') : ''),
-          name: p.name || 'Unnamed Product',
-          description: p.description || p.tagline || 'No description available',
-          price: Number(p.price) || 0,
-          originalPrice: Number(p.original_price) || Number(p.originalPrice) || 0,
-          rating: Math.min(5, Math.max(0, Number(p.rating) || 0)),
-          reviews: Math.max(0, Number(p.reviews) || 0),
-          image: p.image || p.hero_image || '/placeholder.svg',
-          category: p.category || 'Uncategorized',
-          isBestSeller: !!p.is_best_seller || !!p.isBestSeller,
-          isNew: !!p.is_new || !!p.isNew,
-          inStock: p.in_stock === undefined ? true : !!p.in_stock,
-          features: Array.isArray(p.features) ? p.features : (p.features ? JSON.parse(p.features) : []),
-          delivery: p.delivery || 'Instant',
-          level: p.level || 'All Levels',
-          instructor: p.instructor || p.instructor_name,
-          duration: p.duration || undefined,
-          students: p.students || undefined,
-          tags: Array.isArray(p.tags) ? p.tags : (p.tags ? JSON.parse(p.tags) : []),
-          discount: p.discount || 0,
-          videoPreview: p.video_preview || p.videoPreview || undefined,
-        }))
-
-        // Normalize category and level strings
-        const normalized = mapped.map((p: any) => {
-          const cat = (p.category || 'Uncategorized').toString().trim()
-          const catName = cat.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
-          const levelRaw = (p.level || 'All Levels').toString().trim()
-          const levelName = levelRaw.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
-          return { ...p, category: catName, level: levelName }
-        })
-
-        setProducts(normalized)
-        
-        // Calculate dynamic price range
-        const maxPrice = normalized.reduce((m: number, p: any) => Math.max(m, Number(p.price) || 0), 0)
-        const upper = Math.max(1000, Math.ceil(maxPrice * 1.1)) // Add 10% buffer
-        setPriceMax(upper)
-        setPriceRange((prev) => prev[1] === 10000 ? [0, upper] : prev)
-      })
-      .catch((err) => {
-        if (mounted) {
-          setError(err.message)
-          console.error('Failed to load products:', err)
-        }
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-      
-    return () => { mounted = false }
-  }, [])
-
-  // Memoized computed values
-  const categories = useMemo(() => {
-    const counts: Record<string, number> = {}
-    products.forEach(p => { counts[p.category] = (counts[p.category] || 0) + 1 })
-    return PRODUCT_CATEGORIES.map((name) => ({ id: name.toLowerCase().replace(/\s+/g, '-'), name, count: counts[name] || 0 }))
-  }, [products])
-
-  const levels = useMemo(() => {
-    const counts: Record<string, number> = {}
-    products.forEach(p => { 
-      const lvl = p.level || 'All Levels'; 
-      counts[lvl] = (counts[lvl] || 0) + 1 
-    })
-    return Object.keys(counts).map((k) => ({ 
-      id: k.toLowerCase().replace(/\s+/g, '-'), 
-      name: k, 
-      count: counts[k], 
-      icon: k.toLowerCase().includes('beginner') ? Rocket : 
-            k.toLowerCase().includes('advanced') ? Crown : TrendingUp 
-    }))
-  }, [products])
-
-
-  const allTags = useMemo(() => 
-    Array.from(new Set(products.flatMap(p => p.tags))).slice(0, 12), 
-    [products]
-  )
+        const data = await res.json();
+        if (!mounted) return;
+        setProducts(Array.isArray(data) ? data : []);
+        const max = (Array.isArray(data) ? data : []).reduce((m: number, p: any) => Math.max(m, Number(p?.price || 0)), 0);
+        setPriceMax(max || 1000);
+        setLoading(false);
+      } catch (err: any) {
+        if (!mounted) return;
+        setError(err?.message || String(err));
+        setLoading(false);
+      }
+    }
+    loadProducts();
+    return () => { mounted = false };
+  }, []);
 
   // Filter and sort products with useMemo for performance
   const filteredProducts = useMemo(() => {
-    if (!products.length) return []
-    
+    if (!products.length) return [];
+
     return products
       .filter(product => {
-        const matchesSearch = debouncedSearchQuery === '' || 
-          product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-          product.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-          product.tags.some(tag => tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
-        
-        const matchesCategory = selectedCategories.length === 0 || 
-          selectedCategories.includes(product.category);
-        
-        const matchesLevel = selectedLevels.length === 0 || 
-          selectedLevels.includes(product.level);
-        
-        const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
-        
-        const matchesTags = selectedTags.length === 0 || 
-          selectedTags.some(tag => product.tags.includes(tag));
-        
-        return matchesSearch && matchesCategory && matchesLevel && matchesPrice && matchesTags;
+        const q = debouncedSearchQuery.trim().toLowerCase();
+        if (q === '') return true;
+        return (
+          product.name.toLowerCase().includes(q) ||
+          product.description.toLowerCase().includes(q) ||
+          product.tags.some(tag => tag.toLowerCase().includes(q))
+        );
       })
       .sort((a, b) => {
         switch (sortBy) {
@@ -318,20 +228,8 @@ export default function ProductsPage() {
             if (a.rating !== b.rating) return b.rating - a.rating;
             return (b.reviews || 0) - (a.reviews || 0);
         }
-      })
-  }, [products, debouncedSearchQuery, selectedCategories, selectedLevels, priceRange, selectedTags, sortBy])
-
-  // Group products by fixed categories for display
-  const groupedProducts = useMemo(() => {
-    const map: Record<string, any[]> = {}
-    PRODUCT_CATEGORIES.forEach(cat => map[cat] = [])
-    filteredProducts.forEach(p => {
-      const cat = PRODUCT_CATEGORIES.includes(p.category) ? p.category : 'Uncategorized'
-      if (!map[cat]) map[cat] = []
-      map[cat].push(p)
-    })
-    return map
-  }, [filteredProducts])
+      });
+  }, [products, debouncedSearchQuery, sortBy]);
 
   // Memoized event handlers
   const toggleWishlist = useCallback((productId: number) => {
@@ -342,37 +240,7 @@ export default function ProductsPage() {
     )
   }, [])
 
-  const toggleCategory = useCallback((category: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    )
-  }, [])
-
-  const toggleLevel = useCallback((level: string) => {
-    setSelectedLevels(prev =>
-      prev.includes(level)
-        ? prev.filter(l => l !== level)
-        : [...prev, level]
-    )
-  }, [])
-
-  const toggleTag = useCallback((tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag)
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    )
-  }, [])
-
-  const clearAllFilters = useCallback(() => {
-    setSelectedCategories([])
-    setSelectedLevels([])
-    setSelectedTags([])
-    setPriceRange([0, priceMax])
-    setSearchQuery('')
-  }, [priceMax])
+  // removed category/level/tag/price filters for a simpler search + grid UX
 
   const featuredProducts = useMemo(() => 
     products.filter(p => p.isBestSeller || p.isNew).slice(0, 3), 
@@ -564,147 +432,6 @@ export default function ProductsPage() {
       <section className="px-4 py-12 md:px-6 md:py-20">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Filters Sidebar */}
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              className={`lg:w-80 space-y-6 ${showFilters ? 'block' : 'hidden lg:block'}`}
-            >
-              <Card className="rounded-3xl border-0 shadow-lg backdrop-blur-sm bg-white/80">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-gray-900">Filters</h3>
-                    <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-sky-600 hover:text-sky-700">
-                      Clear All
-                    </Button>
-                  </div>
-
-                  {/* Price Range */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-gray-900">Price Range</h4>
-                    <Slider
-                      value={[priceRange[0], priceRange[1]]}
-                      min={0}
-                      max={priceMax}
-                      step={Math.max(1, Math.floor(priceMax / 100))}
-                      onValueChange={(value) => setPriceRange([value[0], value[1]])}
-                      className="my-6"
-                    />
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(priceRange[0])}</span>
-                      <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(priceRange[1])}</span>
-                    </div>
-                  </div>
-
-                  {/* Categories */}
-                  {categories.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900">Categories</h4>
-                      {categories.map((category) => {
-                        return (
-                          <motion.button
-                            key={category.id}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => toggleCategory(category.name)}
-                            className={`flex items-center justify-between w-full p-3 rounded-2xl transition-all duration-200 ${
-                              selectedCategories.includes(category.name)
-                                ? 'bg-sky-100 text-sky-700 border border-sky-200 shadow-md'
-                                : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="text-left">{category.name}</span>
-                              <span className="ml-2 text-sm text-gray-500">({category.count})</span>
-                            </div>
-                            <Badge variant="secondary" className="text-xs">
-                              {category.count}
-                            </Badge>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Levels */}
-                  {levels.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900">Level</h4>
-                      {levels.map((level) => {
-                        const Icon = level.icon;
-                        return (
-                          <motion.button
-                            key={level.id}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => toggleLevel(level.name)}
-                            className={`flex items-center justify-between w-full p-3 rounded-2xl transition-all duration-200 ${
-                              selectedLevels.includes(level.name)
-                                ? 'bg-sky-100 text-sky-700 border border-sky-200 shadow-md'
-                                : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <Icon className="h-4 w-4" />
-                              <span className="text-left">{level.name}</span>
-                            </div>
-                            <Badge variant="secondary" className="text-xs">
-                              {level.count}
-                            </Badge>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Popular Tags */}
-                  {allTags.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900">Popular Tags</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {allTags.map((tag) => (
-                          <motion.div
-                            key={tag}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Badge
-                              variant={selectedTags.includes(tag) ? "default" : "outline"}
-                              className="cursor-pointer hover:bg-sky-100 hover:text-sky-700 transition-colors"
-                              onClick={() => toggleTag(tag)}
-                            >
-                              <Tag className="w-3 h-3 mr-1" />
-                              {tag}
-                            </Badge>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Special Offers */}
-              <motion.div
-                whileHover={{ y: -5 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Card className="rounded-3xl border-0 bg-gradient-to-br from-orange-500 to-pink-500 text-white shadow-lg overflow-hidden">
-                  <CardContent className="p-6 relative">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-                    <div className="relative z-10 text-center space-y-3">
-                      <Sparkles className="h-8 w-8 mx-auto" />
-                      <h3 className="text-xl font-bold">Special Offer!</h3>
-                      <p className="text-sm opacity-90">Get 20% off on your first purchase with code WELCOME20</p>
-                      <Button className="w-full bg-white text-orange-600 hover:bg-gray-100 font-semibold transition-all duration-300 hover:scale-105">
-                        Claim Offer
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
 
             {/* Products Grid */}
             <div className="flex-1">
@@ -716,14 +443,7 @@ export default function ProductsPage() {
               >
                 <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <Button
-                      variant="outline"
-                      className="lg:hidden"
-                      onClick={() => setShowFilters(!showFilters)}
-                    >
-                      <Filter className="h-4 w-4 mr-2" />
-                      Filters
-                    </Button>
+                        {/* filters removed for simplified UX on this page */}
                     <div className="text-sm text-gray-600">
                       Showing <span className="font-semibold text-gray-900">{filteredProducts.length}</span> of <span className="font-semibold">{products.length}</span> products
                     </div>
@@ -773,79 +493,13 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                {/* Active Filters */}
-                <AnimatePresence>
-                  {(selectedCategories.length > 0 || selectedLevels.length > 0 || selectedTags.length > 0 || priceRange[0] > 0 || priceRange[1] < priceMax) && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="flex flex-wrap gap-2 mt-4"
-                    >
-                      {selectedCategories.map(category => (
-                        <motion.div
-                          key={category}
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.8, opacity: 0 }}
-                        >
-                          <Badge variant="secondary" className="gap-1">
-                            {category}
-                            <X className="w-3 h-3 cursor-pointer" onClick={() => toggleCategory(category)} />
-                          </Badge>
-                        </motion.div>
-                      ))}
-                      {selectedLevels.map(level => (
-                        <motion.div
-                          key={level}
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.8, opacity: 0 }}
-                        >
-                          <Badge variant="secondary" className="gap-1">
-                            {level}
-                            <X className="w-3 h-3 cursor-pointer" onClick={() => toggleLevel(level)} />
-                          </Badge>
-                        </motion.div>
-                      ))}
-                      {selectedTags.map(tag => (
-                        <motion.div
-                          key={tag}
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.8, opacity: 0 }}
-                        >
-                          <Badge variant="secondary" className="gap-1">
-                            {tag}
-                            <X className="w-3 h-3 cursor-pointer" onClick={() => toggleTag(tag)} />
-                          </Badge>
-                        </motion.div>
-                      ))}
-                      {(priceRange[0] > 0 || priceRange[1] < priceMax) && (
-                        <motion.div
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.8, opacity: 0 }}
-                        >
-                          <Badge variant="secondary" className="gap-1">
-                            {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(priceRange[0])} - {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(priceRange[1])}
-                            <X className="w-3 h-3 cursor-pointer" onClick={() => setPriceRange([0, priceMax])} />
-                          </Badge>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* active filters UI removed */}
               </motion.div>
 
               {/* Products Grid/List */}
               {filteredProducts.length === 0 ? (
                 <EmptyState 
                   searchQuery={searchQuery}
-                  selectedCategories={selectedCategories}
-                  selectedLevels={selectedLevels}
-                  selectedTags={selectedTags}
-                  onClearFilters={clearAllFilters}
                 />
               ) : (
                 <motion.div 
@@ -1235,7 +889,7 @@ function ProductCard({ product, viewMode, wishlist, onWishlistToggle, onQuickVie
             </p>
 
             {/* Features */}
-            {product.features.length > 0 && (
+            {product.features && product.features.length > 0 && (
               <div className="mb-4">
                 <div className="flex flex-wrap gap-2">
                   {product.features.slice(0, viewMode === 'list' ? 6 : 3).map((feature, index) => (
@@ -1273,7 +927,7 @@ function ProductCard({ product, viewMode, wishlist, onWishlistToggle, onQuickVie
             </div>
 
             {/* Tags */}
-            {product.tags.length > 0 && (
+            {product.tags && product.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-4">
                 {product.tags.slice(0, 3).map((tag, index) => (
                   <Badge key={index} variant="outline" className="text-xs">
@@ -1343,18 +997,12 @@ function ProductCard({ product, viewMode, wishlist, onWishlistToggle, onQuickVie
 // Empty State Component
 function EmptyState({ 
   searchQuery, 
-  selectedCategories, 
-  selectedLevels, 
-  selectedTags, 
   onClearFilters 
 }: {
   searchQuery: string;
-  selectedCategories: string[];
-  selectedLevels: string[];
-  selectedTags: string[];
-  onClearFilters: () => void;
+  onClearFilters?: () => void;
 }) {
-  const hasActiveFilters = selectedCategories.length > 0 || selectedLevels.length > 0 || selectedTags.length > 0 || searchQuery.length > 0;
+  const hasActiveFilters = searchQuery.length > 0;
 
   return (
     <motion.div 
@@ -1374,13 +1022,13 @@ function EmptyState({
           : 'Check back later for new products and updates.'
         }
       </p>
-      {hasActiveFilters && (
+      {hasActiveFilters && onClearFilters && (
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button
             onClick={onClearFilters}
             className="rounded-full bg-sky-600 text-white hover:bg-sky-700"
           >
-            Clear All Filters
+            Clear
           </Button>
         </motion.div>
       )}
@@ -1509,7 +1157,7 @@ function QuickViewModal({ product, onClose, onAddToCart, wishlist, onWishlistTog
               </div>
 
               {/* Features */}
-              {product.features.length > 0 && (
+              {product.features && product.features.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="font-semibold text-gray-900">Features:</h3>
                   <div className="grid grid-cols-2 gap-2">
@@ -1552,7 +1200,7 @@ function QuickViewModal({ product, onClose, onAddToCart, wishlist, onWishlistTog
               </div>
 
               {/* Tags */}
-              {product.tags.length > 0 && (
+              {product.tags && product.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {product.tags.map((tag, index) => (
                     <Badge key={index} variant="outline">
