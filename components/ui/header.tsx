@@ -80,8 +80,10 @@ export function Header() {
               {/* Products Mega Menu */}
               <NavigationMenuItem>
                 <NavigationMenuTrigger className="bg-transparent hover:bg-gray-100">
-                  <Boxes className="w-4 h-4 mr-2" />
-                  Products
+                  <Link href="/product" className="flex items-center bg-transparent hover:bg-gray-100 px-0 py-0">
+                    <Boxes className="w-4 h-4 mr-2" />
+                    Shop
+                  </Link>
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="w-[720px] p-6">
@@ -258,8 +260,10 @@ export function Header() {
 
                 <div className="space-y-2">
                   <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
-                    <Boxes className="w-5 h-5" />
-                    <span>Products</span>
+                    <Link href="/product" className="flex items-center">
+                      <Boxes className="w-5 h-5" />
+                      <span>Shop</span>
+                    </Link>
                   </h3>
                   <div className="pl-7 grid grid-cols-1 gap-2">
                     <Link href="/products/pictoblox" className="block text-gray-600 hover:text-gray-900 transition-colors" onClick={() => setMobileMenuOpen(false)}>

@@ -12,8 +12,10 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Protect } from "@clerk/nextjs"
 import { Plus, Minus, X, Trash2 } from "lucide-react"
+import { PRODUCT_CATEGORIES } from "../../../../../lib/product-categories"
 
 export default function FillProductDetailsPage() {
+  const [category, setCategory] = useState("");
   const router = useRouter()
   const params = useParams<{ slug: string }>()
   const currentSlug = String(params.slug)
@@ -84,9 +86,10 @@ export default function FillProductDetailsPage() {
         const p = await res.json()
         if (ignore) return
         
-        setBasicProduct(p)
-        setTagline(p.tagline ?? '')
-        setFullDescription(p.full_description ?? p.long_description ?? '')
+  setBasicProduct(p)
+  setTagline(p.tagline ?? '')
+  setFullDescription(p.full_description ?? p.long_description ?? '')
+  setCategory(p.category ?? "")
 
         // helper parsers for DB fields that may be strings (JSON) or native objects
         const parseArray = (v: any) => {
@@ -289,18 +292,16 @@ export default function FillProductDetailsPage() {
       const body = {
         name: basicProduct.name || currentSlug,
         slug: currentSlug,
+        category: category || null,
         tagline: tagline || null,
         description: fullDescription || null,
         highlights: highlights.length ? highlights : null,
         features: features.length ? features : null,
-        // persist learning outcomes into 'technologies' JSONB (used here for learning outcomes)
         technologies: learningOutcomes.length ? learningOutcomes : null,
         tech_specs: Object.keys(specsObject).length ? specsObject : null,
         kits: whatInBox.length ? whatInBox : null,
-        // use 'addons' column to store frequently bought product slugs
         addons: frequentlyBought.length ? frequentlyBought : null,
         delivery: deliveryInfo || null,
-        // theme JSONB carries a few UI-driven properties the product page reads from p.theme
         theme: (warranty || deliveryDate || stockQuantity || sellerName || sellerRating || sellerReviews) ? {
           warranty: warranty || null,
           delivery_date: deliveryDate || null,
@@ -310,14 +311,11 @@ export default function FillProductDetailsPage() {
             rating: sellerRating || 0,
             reviews: sellerReviews || 0,
           } : null,
-          // include admin-managed why-choose bullets and customer reviews
           why_choose: whyChoose.length ? whyChoose : null,
           customer_reviews: customerReviews.length ? customerReviews : null,
         } : null,
-        // set hero/image from first additional image when available
         hero_image: additionalImages.length ? additionalImages[0] : null,
         image: additionalImages.length ? additionalImages[0] : null,
-        // still include full images array (DB may ignore it if no column exists)
         images: additionalImages.length ? additionalImages : null,
         video_preview: videoPreview || null,
       }
@@ -367,8 +365,20 @@ export default function FillProductDetailsPage() {
           <Card>
             <CardContent className="p-6 space-y-6">
               <h2 className="text-lg font-semibold border-b pb-2">Product Overview</h2>
-              
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Product Category</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRODUCT_CATEGORIES.map((cat: string) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="tagline">Tagline / Short Description</Label>
                   <Input
@@ -378,7 +388,6 @@ export default function FillProductDetailsPage() {
                     placeholder="Brief, compelling description that appears below the title"
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="fullDescription">Full Product Description</Label>
                   <Textarea
