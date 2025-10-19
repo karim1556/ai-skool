@@ -4,14 +4,20 @@ import * as React from "react"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-interface ToastProps {
-  title?: string
-  description?: string
+export interface ToastProps {
+  id?: string
+  title?: React.ReactNode
+  description?: React.ReactNode
   variant?: "default" | "destructive"
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onClose?: () => void
+  action?: React.ReactNode
 }
 
-export function Toast({ title, description, variant = "default", onClose }: ToastProps) {
+export type ToastActionElement = React.ReactNode
+
+export function Toast({ title, description, variant = "default", onClose, children }: ToastProps & { children?: React.ReactNode }) {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       onClose?.()
@@ -30,11 +36,18 @@ export function Toast({ title, description, variant = "default", onClose }: Toas
     >
       <div className="flex items-start gap-3">
         <div className="flex-1">
-          {title && <div className={cn("font-semibold", variant === "destructive" && "text-red-900")}>{title}</div>}
-          {description && (
-            <div className={cn("text-sm", variant === "destructive" ? "text-red-700" : "text-gray-600")}>
-              {description}
-            </div>
+          {/* If consumers pass children (ToastTitle/ToastDescription), render them; otherwise fallback to props */}
+          {children ? (
+            children
+          ) : (
+            <>
+              {title && <div className={cn("font-semibold", variant === "destructive" && "text-red-900")}>{title}</div>}
+              {description && (
+                <div className={cn("text-sm", variant === "destructive" ? "text-red-700" : "text-gray-600")}>
+                  {description}
+                </div>
+              )}
+            </>
           )}
         </div>
         <button
@@ -70,3 +83,22 @@ export function useToast() {
     toasts,
   }
 }
+
+// Lightweight compatibility components expected by other parts of the app
+export const ToastProvider = ({ children }: { children?: React.ReactNode }) => <>{children}</>
+
+export const ToastTitle = ({ children }: { children?: React.ReactNode }) => (
+  <div className="font-semibold">{children}</div>
+)
+
+export const ToastDescription = ({ children }: { children?: React.ReactNode }) => (
+  <div className="text-sm">{children}</div>
+)
+
+export const ToastClose = ({ onClick }: { onClick?: () => void }) => (
+  <button onClick={onClick} className={cn("rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 text-gray-900")}>
+    <X className="h-4 w-4" />
+  </button>
+)
+
+export const ToastViewport = () => <div aria-hidden />

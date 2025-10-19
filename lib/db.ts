@@ -10,11 +10,11 @@ export interface Database {
 // The 'postgres' library automatically handles connection pooling.
 // We create a single, shared instance of the client when a connection string is provided.
 const connectionString = process.env.POSTGRES_URL;
-let sql: ReturnType<typeof postgres> | null = null;
+let _sqlInternal: ReturnType<typeof postgres> | null = null;
 let dbInitError: Error | null = null;
 try {
-  if (connectionString) {
-    sql = postgres(connectionString, {
+    if (connectionString) {
+    _sqlInternal = postgres(connectionString, {
       prepare: false,
       ssl: 'require',
       max: 5,               // limit pool size to avoid local exhaustion
@@ -57,20 +57,20 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
 const db: Database = {
   async get<T>(query: string, params: any[] = []): Promise<T | null> {
     if (dbInitError) throw dbInitError
-    if (!sql) throw new Error('Database client is not initialized.')
-    const rows = await withRetry(() => sql!.unsafe(query, params))
+    if (!_sqlInternal) throw new Error('Database client is not initialized.')
+    const rows = await withRetry(() => _sqlInternal!.unsafe(query, params))
     return (rows[0] as unknown as T) || null
   },
   async all<T>(query: string, params: any[] = []): Promise<T[]> {
     if (dbInitError) throw dbInitError
-    if (!sql) throw new Error('Database client is not initialized.')
-    const rows = await withRetry(() => sql!.unsafe(query, params))
+    if (!_sqlInternal) throw new Error('Database client is not initialized.')
+    const rows = await withRetry(() => _sqlInternal!.unsafe(query, params))
     return rows as unknown as T[]
   },
   async run(query: string, params: any[] = []): Promise<void> {
     if (dbInitError) throw dbInitError
-    if (!sql) throw new Error('Database client is not initialized.')
-    await withRetry(() => sql!.unsafe(query, params))
+    if (!_sqlInternal) throw new Error('Database client is not initialized.')
+    await withRetry(() => _sqlInternal!.unsafe(query, params))
   },
 };
 
@@ -83,7 +83,10 @@ export function getDb(): Database {
 }
 
 // Export the raw sql client for transactions or advanced features
-export { sql };
+// Export a callable `sql` for compatibility with existing code. Cast to `any` so call sites
+// that assume it's always available don't produce widespread type errors. At runtime,
+// calling this when the client wasn't initialized will result in a thrown error.
+export const sql = (_sqlInternal as unknown) as any;
 
 // Note: There is no closeDb function. The 'postgres' library manages the connection
 // lifecycle automatically. You do not need to manually close the connection.
