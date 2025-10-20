@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { getCurrentMockUser } from '@/lib/mock-auth'
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -47,6 +48,14 @@ const navigationItems = [
     items: [
       { title: "Products", href: "/admin/products" },
       { title: "Add new product", href: "/admin/products/new" },
+    ],
+  },
+  {
+    title: "Projects",
+    icon: BookOpen,
+    items: [
+      { title: "Projects", href: "/admin/projects" },
+      { title: "Add new project", href: "/admin/projects/add" },
     ],
   },
   {
@@ -129,6 +138,14 @@ export function AdminSidebar() {
   const [openItems, setOpenItems] = useState<string[]>(["Dashboard"])
   const [levelsOpen, setLevelsOpen] = useState<boolean>(false)
   const [levels, setLevels] = useState<Array<{ id: number; name: string }>>([])
+  const currentUser = getCurrentMockUser()
+  const visibleNav = navigationItems.filter((item) => {
+    // Only show Projects to mock admin users in demo mode
+    if (item.title === 'Projects') {
+      return currentUser?.role === 'admin'
+    }
+    return true
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -165,7 +182,7 @@ export function AdminSidebar() {
         <div className="space-y-1">
           <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Navigation</div>
 
-          {navigationItems.map((item) => (
+          {visibleNav.map((item) => (
             <div key={item.title}>
               {item.items ? (
                 <Collapsible open={openItems.includes(item.title)} onOpenChange={() => toggleItem(item.title)}>

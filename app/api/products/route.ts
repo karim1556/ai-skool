@@ -37,7 +37,17 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const db = getDb()
-    await ensureProductsSchema()
+    // Ensure schema but don't let a long migration block the function invocation.
+    // If schema setup takes longer than SCHEMA_TIMEOUT_MS, fail fast with 503.
+    const SCHEMA_TIMEOUT_MS = 3000
+    const ensure = ensureProductsSchema()
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('schema-timeout')), SCHEMA_TIMEOUT_MS))
+    try {
+      await Promise.race([ensure, timeout])
+    } catch (err: any) {
+      console.error('[API] ensureProductsSchema timeout or error', err)
+      return NextResponse.json({ error: 'Service busy, try again shortly' }, { status: 503 })
+    }
     const body = await req.json()
   const {
     name,
