@@ -218,8 +218,8 @@ export default function HomePage() {
     },
   ];
 
-  // New product data for e-commerce listing
-  const ecommerceProducts = [
+  // Default e-commerce products used as a fallback if the API is unavailable
+  const defaultEcommerceProducts = [
     {
       id: 1,
       name: "Premium Online Course Bundle",
@@ -305,6 +305,49 @@ export default function HomePage() {
       inStock: true
     }
   ];
+
+  // Stateful ecommerce products list — fetch from API and fall back to defaults
+  const [ecommerceProducts, setEcommerceProducts] = useState(defaultEcommerceProducts);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/products?limit=6', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to load products');
+        const data = await res.json();
+
+        // Accept several possible shapes from the API: array, { products: [] }, { items: [] }
+        let items: any[] = [];
+        if (Array.isArray(data)) items = data;
+        else if (Array.isArray(data.products)) items = data.products;
+        else if (Array.isArray(data.items)) items = data.items;
+
+        const mapped = items.map((item: any) => ({
+          id: item.id ?? item._id ?? Math.random(),
+          name: item.name || item.title || 'Product',
+          description: item.description || item.short_description || '',
+          price: Number(item.price ?? item.price_cents ?? 0),
+          originalPrice: Number(item.originalPrice ?? item.list_price ?? item.original_price ?? 0),
+          rating: Number(item.rating ?? 0),
+          reviews: Number(item.reviews ?? item.review_count ?? 0),
+          image: item.image || item.image_url || item.thumbnail || '/images/placeholder.svg',
+          category: item.category || item.provider || '',
+          isBestSeller: Boolean(item.isBestSeller || item.best_seller || item.is_best_seller),
+          isNew: Boolean(item.isNew || item.new),
+          inStock: 'in_stock' in item ? Boolean(item.in_stock) : (item.inStock ?? true),
+        }));
+
+        if (!ignore && mapped.length > 0) setEcommerceProducts(mapped.slice(0, 6));
+      } catch (_e) {
+        // keep defaults on error
+      }
+    }
+
+    loadProducts();
+    return () => { ignore = true; };
+  }, []);
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 ${bebas.variable} font-sans`}>
