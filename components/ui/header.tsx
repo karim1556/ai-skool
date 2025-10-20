@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 import Image from "next/image"
-import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info, Boxes, FolderOpen } from "lucide-react"
+import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info, Boxes, FolderOpen, ChevronDown } from "lucide-react"
 import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 import { useEffect, useState } from "react"
 import { useCart } from "@/hooks/use-cart"
@@ -21,6 +21,7 @@ import { useCart } from "@/hooks/use-cart"
 export function Header() {
   const { count: cartCount } = useCart()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [projectsOpen, setProjectsOpen] = useState(false)
   const [products, setProducts] = useState<Array<{ name: string; slug: string; hero_image?: string }>>([])
 
   useEffect(() => {
@@ -86,7 +87,7 @@ export function Header() {
                   </Link>
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="w-[720px] p-6">
+                  <div className="w-[720px] p-6 rounded-md border bg-white shadow-lg z-50">
                     <h3 className="font-medium text-gray-900 mb-4">Our Products</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                       {(products.length ? products : [
@@ -115,7 +116,7 @@ export function Header() {
                   Learn
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid gap-3 p-6 w-[400px]">
+                  <div className="grid gap-3 p-6 w-[400px] rounded-md border bg-white shadow-lg z-50">
                     <div className="grid gap-1">
                       <h3 className="font-medium leading-none mb-2 text-gray-900">Learning Options</h3>
                       <Link
@@ -148,7 +149,7 @@ export function Header() {
                   Programs
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid gap-3 p-6 w-[500px]">
+                  <div className="grid gap-3 p-6 w-[500px] rounded-md border bg-white shadow-lg z-50">
                     <div className="grid gap-1">
                       <h3 className="font-medium leading-none mb-2 text-gray-900">Our Programs</h3>
                       <Link
@@ -183,38 +184,49 @@ export function Header() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              {/* Projects & Resources Dropdown (replaces About) */}
-              <NavigationMenuItem>
-                <NavigationMenuTrigger className="bg-transparent hover:bg-gray-100">
+              {/* Projects & Resources (custom dropdown to avoid Radix viewport centering) */}
+              <div className="relative" onMouseEnter={() => setProjectsOpen(true)} onMouseLeave={() => setProjectsOpen(false)}>
+                <button
+                  type="button"
+                  aria-expanded={projectsOpen}
+                  aria-haspopup="true"
+                  className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
+                >
                   <FolderOpen className="w-4 h-4 mr-2" />
                   Projects & Resources
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <div className="grid gap-3 p-6 w-[420px]">
-                    <div className="grid gap-1">
-                      <h3 className="font-medium leading-none mb-2 text-gray-900">Projects & Resources</h3>
-                      <Link
-                        href="/competitions"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
-                      >
-                        <div className="text-sm font-medium leading-none">Competitions</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">
-                          View upcoming competitions, rules and how to register your team
-                        </p>
-                      </Link>
-                      <Link
-                        href="/resources"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
-                      >
-                        <div className="text-sm font-medium leading-none">Resources</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">
-                          Free downloads, books, tutorials and tools to help you learn and build
-                        </p>
-                      </Link>
-                    </div>
+                  <ChevronDown className={`ml-2 h-3 w-3 transition-transform ${projectsOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                <div
+                  role="menu"
+                  className={`absolute left-0 mt-2 w-[420px] rounded-md border bg-white shadow-lg p-6 transition-opacity duration-150 ${projectsOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+                  style={{ zIndex: 10050 }}
+                  onFocus={() => setProjectsOpen(true)}
+                  onBlur={() => setProjectsOpen(false)}
+                >
+                  <div className="grid gap-1">
+                    <h3 className="font-medium leading-none mb-2 text-gray-900">Projects & Resources</h3>
+                    <Link
+                      href="/competitions"
+                      className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
+                    >
+                      <div className="text-sm font-medium leading-none">Competitions</div>
+                      <p className="line-clamp-2 text-sm leading-snug text-gray-600">
+                        View upcoming competitions, rules and how to register your team
+                      </p>
+                    </Link>
+                    <Link
+                      href="/resources"
+                      className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
+                    >
+                      <div className="text-sm font-medium leading-none">Resources</div>
+                      <p className="line-clamp-2 text-sm leading-snug text-gray-600">
+                        Free downloads, books, tutorials and tools to help you learn and build
+                      </p>
+                    </Link>
                   </div>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
+                </div>
+              </div>
             </NavigationMenuList>
           </NavigationMenu>
         </nav>
