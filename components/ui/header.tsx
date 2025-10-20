@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 import Image from "next/image"
-import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info, Boxes } from "lucide-react"
+import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info, Boxes, FolderOpen } from "lucide-react"
 import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 import { useEffect, useState } from "react"
 import { useCart } from "@/hooks/use-cart"
@@ -183,14 +183,37 @@ export function Header() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              {/* About */}
+              {/* Projects & Resources Dropdown (replaces About) */}
               <NavigationMenuItem>
-                <Link href="/about" legacyBehavior passHref>
-                  <NavigationMenuLink className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900 focus:outline-none disabled:pointer-events-none disabled:opacity-50">
-                    <Info className="w-4 h-4 mr-2" />
-                    About
-                  </NavigationMenuLink>
-                </Link>
+                <NavigationMenuTrigger className="bg-transparent hover:bg-gray-100">
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                  Projects & Resources
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <div className="grid gap-3 p-6 w-[420px]">
+                    <div className="grid gap-1">
+                      <h3 className="font-medium leading-none mb-2 text-gray-900">Projects & Resources</h3>
+                      <Link
+                        href="/competitions"
+                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
+                      >
+                        <div className="text-sm font-medium leading-none">Competitions</div>
+                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">
+                          View upcoming competitions, rules and how to register your team
+                        </p>
+                      </Link>
+                      <Link
+                        href="/resources"
+                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
+                      >
+                        <div className="text-sm font-medium leading-none">Resources</div>
+                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">
+                          Free downloads, books, tutorials and tools to help you learn and build
+                        </p>
+                      </Link>
+                    </div>
+                  </div>
+                </NavigationMenuContent>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
@@ -337,14 +360,28 @@ export function Header() {
                   </div>
                 </div>
 
-                <Link
-                  href="/about"
-                  className="flex items-center space-x-2 text-lg font-medium hover:text-sky-600 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Info className="w-5 h-5" />
-                  <span>About</span>
-                </Link>
+                <div className="space-y-2">
+                    <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
+                    <FolderOpen className="w-5 h-5" />
+                    <span>Projects & Resources</span>
+                  </h3>
+                  <div className="pl-7 space-y-2">
+                    <Link
+                      href="/competitions"
+                      className="block text-gray-600 hover:text-gray-900 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Competitions
+                    </Link>
+                    <Link
+                      href="/resources"
+                      className="block text-gray-600 hover:text-gray-900 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Resources
+                    </Link>
+                  </div>
+                </div>
 
                 <div className="pt-6 border-t border-gray-200 space-y-3">
                   <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
