@@ -1,0 +1,27 @@
+[
+  {
+    "id": 1,
+    "title": "Obstacle Avoiding Robot",
+    "description": "A smart car that uses an ultrasonic sensor to detect and avoid obstacles in its path autonomously. Built by our student as part of the Robotics Summer Camp 2024.",
+    "shortDescription": "Autonomous robot that navigates around obstacles",
+    "category": "Arduino",
+    "difficulty": "Beginner",
+    "duration": "2-3 hours",
+    "components": ["Arduino Uno", "HC-SR04 Ultrasonic Sensor", "L298N Motor Driver", "DC Motors", "Robot Chassis"],
+    "youtubeLink": "https://youtube.com/watch?v=example1",
+    "codeDownloadLink": "#",
+    "circuitDiagramLink": "#",
+    "instructionsLink": "#",
+    "image": "/images/obstacle-robot.jpg",
+    "views": "44,000",
+    "likes": "43,000",
+    "featured": true,
+    "tags": ["Robotics", "Autonomous", "Sensors", "Arduino"],
+    "studentName": "Rahul Sharma",
+    "studentAge": "14 years",
+    "school": "Delhi Public School",
+    "usesOurComponents": true,
+    "componentsFromUs": ["Arduino Uno Kit", "HC-SR04 Sensor", "L298N Motor Driver"],
+    "achievement": "Winner - School Science Fair 2024"
+  }
+]
