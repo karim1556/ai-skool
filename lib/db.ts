@@ -82,11 +82,16 @@ export function getDb(): Database {
   return db;
 }
 
-// Export the raw sql client for transactions or advanced features
-// Export a callable `sql` for compatibility with existing code. Cast to `any` so call sites
-// that assume it's always available don't produce widespread type errors. At runtime,
-// calling this when the client wasn't initialized will result in a thrown error.
-export const sql = (_sqlInternal as unknown) as any;
+// Export the raw sql client for transactions or advanced features.
+// Provide a concrete typed export based on the `postgres` factory return type so
+// call sites (sql.begin, tagged templates, trx callbacks) receive proper types
+// instead of implicit `any` in strict mode.
+type PostgresClient = ReturnType<typeof postgres>;
+// We cast here so TypeScript has the correct shape at compile time. At runtime,
+// if the client wasn't initialized (no POSTGRES_URL), attempts to use `sql` will
+// throw from the underlying `_sqlInternal` usage elsewhere. This keeps ergonomics
+// for existing code while restoring type-safety for transactions and template tags.
+export const sql = (_sqlInternal as unknown) as PostgresClient;
 
 // Note: There is no closeDb function. The 'postgres' library manages the connection
 // lifecycle automatically. You do not need to manually close the connection.

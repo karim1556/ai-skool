@@ -17,6 +17,7 @@ export type SchoolFormValues = {
   country: string
   stateVal: string
   city: string
+  district?: string
   description: string
   address: string
   logoFile: File | null
@@ -120,7 +121,7 @@ export function SchoolForm({
     if (errs.length) { alert(errs.join("\n")); return }
 
     await onSubmit({
-      name, board, country, stateVal, city, description, address,
+      name, board, country, stateVal, city, district: city, description, address,
       logoFile, bannerFile, email, phone, contactPerson,
       website, facebook, instagram, twitter,
       banner_focal_x: Math.round(bannerFocalX),

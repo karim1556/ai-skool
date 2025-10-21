@@ -1,41 +1,5 @@
 [
   {
-    "id": 4,
-    "title": "",
-    "shortDescription": "",
-    "description": "",
-    "category": "Arduino",
-    "difficulty": "Beginner",
-    "image": "/images/placeholder.svg",
-    "components": [],
-    "tags": [],
-    "featured": false
-  },
-  {
-    "id": 3,
-    "title": "",
-    "shortDescription": "",
-    "description": "",
-    "category": "Arduino",
-    "difficulty": "Beginner",
-    "image": "/images/placeholder.svg",
-    "components": [],
-    "tags": [],
-    "featured": false
-  },
-  {
-    "id": 2,
-    "title": "",
-    "shortDescription": "",
-    "description": "",
-    "category": "Arduino",
-    "difficulty": "Beginner",
-    "image": "/images/placeholder.svg",
-    "components": [],
-    "tags": [],
-    "featured": false
-  },
-  {
     "id": 1,
     "title": "Obstacle Avoiding Robot",
     "description": "A smart car that uses an ultrasonic sensor to detect and avoid obstacles in its path autonomously. Built by our student as part of the Robotics Summer Camp 2024.",
