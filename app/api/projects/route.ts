@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { supabase, hasSupabase } from '@/lib/supabase'
+import { toDbProject, fromDbProject } from '@/lib/projects'
 
 const DATA_PATH = path.join(process.cwd(), 'data', 'projects.json')
 
@@ -25,7 +26,8 @@ export async function GET() {
       console.error('[API] supabase GET /projects error', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-    return NextResponse.json({ projects: data || [] })
+    const projects = (data || []).map((r: any) => fromDbProject(r))
+    return NextResponse.json({ projects })
   }
 
   const projects = await readProjectsFile()
@@ -35,19 +37,19 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    if (supabase) {
-      const toInsert = { ...body }
+    if (hasSupabase && supabase) {
+      const toInsert = toDbProject(body)
       const { data, error } = await supabase.from('projects').insert([toInsert]).select().limit(1)
       if (error) {
         console.error('[API] supabase POST /projects error', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
       }
-      return NextResponse.json({ project: data ? data[0] : null }, { status: 201 })
+      return NextResponse.json({ project: fromDbProject(data ? data[0] : null) }, { status: 201 })
     }
 
     const projects = await readProjectsFile()
-    const nextId = projects.length ? Math.max(...projects.map((p: any) => p.id)) + 1 : 1
-    const newProject = { id: nextId, ...body }
+  const nextId = projects.length ? Math.max(...projects.map((p: any) => Number(p.id))) + 1 : 1
+  const newProject = { id: nextId, ...body }
     projects.unshift(newProject)
     await writeProjectsFile(projects)
     return NextResponse.json({ project: newProject }, { status: 201 })
