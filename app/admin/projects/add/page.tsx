@@ -125,6 +125,24 @@ export default function AddProjectPage() {
     }
   }
 
+  async function uploadFile(file: File | null) {
+    if (!file) return null
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/projects/upload', { method: 'POST', body: fd })
+      if (!res.ok) {
+        console.error('Upload failed')
+        return null
+      }
+      const data = await res.json()
+      return data?.url || null
+    } catch (err) {
+      console.error('Upload error', err)
+      return null
+    }
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -203,6 +221,30 @@ export default function AddProjectPage() {
                   placeholder="Brief description for project cards"
                   required
                 />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-medium">Project Image</label>
+                <input type="file" accept="image/*" onChange={async (e) => {
+                  const f = e.target.files ? e.target.files[0] : null
+                  const url = await uploadFile(f)
+                  if (url) handleChange('image', url)
+                }} />
+                {formData.image && (
+                  <img src={formData.image} alt="preview" className="mt-2 max-h-40" />
+                )}
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-medium">Circuit Diagram</label>
+                <input type="file" accept="image/*,application/pdf" onChange={async (e) => {
+                  const f = e.target.files ? e.target.files[0] : null
+                  const url = await uploadFile(f)
+                  if (url) handleChange('circuitDiagramLink', url)
+                }} />
+                {formData.circuitDiagramLink && (
+                  <a href={formData.circuitDiagramLink} target="_blank" rel="noreferrer" className="text-blue-600">View diagram</a>
+                )}
               </div>
 
               <div className="space-y-2 md:col-span-2">

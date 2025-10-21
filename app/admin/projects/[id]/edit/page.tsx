@@ -141,6 +141,24 @@ export default function EditProjectPage() {
     }
   }
 
+  async function uploadFile(file: File | null) {
+    if (!file) return null
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/projects/upload', { method: 'POST', body: fd })
+      if (!res.ok) {
+        console.error('Upload failed')
+        return null
+      }
+      const data = await res.json()
+      return data?.url || null
+    } catch (err) {
+      console.error('Upload error', err)
+      return null
+    }
+  }
+
   if (loading) return (
     <div className="p-8 max-w-6xl mx-auto text-center">
       <div className="text-lg">Loading project details...</div>
@@ -231,6 +249,30 @@ export default function EditProjectPage() {
                   className="w-full border rounded-lg p-3"
                   required
                 />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-medium">Project Image</label>
+                <input type="file" accept="image/*" onChange={async (e) => {
+                  const f = e.target.files ? e.target.files[0] : null
+                  const url = await uploadFile(f)
+                  if (url) handleChange('image', url)
+                }} />
+                {formData.image && (
+                  <img src={formData.image} alt="preview" className="mt-2 max-h-40" />
+                )}
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-medium">Circuit Diagram</label>
+                <input type="file" accept="image/*,application/pdf" onChange={async (e) => {
+                  const f = e.target.files ? e.target.files[0] : null
+                  const url = await uploadFile(f)
+                  if (url) handleChange('circuitDiagramLink', url)
+                }} />
+                {formData.circuitDiagramLink && (
+                  <a href={formData.circuitDiagramLink} target="_blank" rel="noreferrer" className="text-blue-600">View diagram</a>
+                )}
               </div>
 
               <div className="space-y-2 md:col-span-2">
