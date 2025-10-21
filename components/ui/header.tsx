@@ -46,6 +46,24 @@ export function Header() {
         if (!ignore) setProducts(Array.isArray(data) ? data : [])
       } catch (e) { /* swallow transient errors */ }
     })()
+                    {/* Services Section */}
+                    <div className="pt-2 border-t border-gray-100 mt-2">
+                      <h4 className="text-sm font-medium mb-1">Services</h4>
+                      <Link
+                        href="/lab-setup"
+                        className="block select-none space-y-1 rounded-md p-2 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        <div className="text-sm">Lab Setup</div>
+                        <p className="text-xs text-gray-600">End-to-end lab installation & support</p>
+                      </Link>
+                      <Link
+                        href="/franchise"
+                        className="block select-none space-y-1 rounded-md p-2 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        <div className="text-sm">Franchise</div>
+                        <p className="text-xs text-gray-600">Partner with us as a franchisee</p>
+                      </Link>
+                    </div>
     return () => { ignore = true }
   }, [])
 
@@ -178,6 +196,35 @@ export function Header() {
                         <p className="line-clamp-2 text-sm leading-snug text-gray-600">
                           Classroom management tools and curriculum resources
                         </p>
+                      </Link>
+                    </div>
+                  </div>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+
+              {/* Services Dropdown (visible) */}
+              <NavigationMenuItem>
+                <NavigationMenuTrigger className="bg-transparent hover:bg-gray-100">
+                  <Info className="w-4 h-4 mr-2" />
+                  Services
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <div className="grid gap-3 p-6 w-[420px] rounded-md border bg-white shadow-lg z-50">
+                    <div className="grid gap-1">
+                      <h3 className="font-medium leading-none mb-2 text-gray-900">Services</h3>
+                      <Link
+                        href="/lab-setup"
+                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        <div className="text-sm font-medium leading-none">Lab Setup</div>
+                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">End-to-end lab installation and support</p>
+                      </Link>
+                      <Link
+                        href="/franchise"
+                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        <div className="text-sm font-medium leading-none">Franchise</div>
+                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">Partner with us as a franchisee</p>
                       </Link>
                     </div>
                   </div>
@@ -408,6 +455,23 @@ export function Header() {
                     >
                       Resources
                     </Link>
+                    <div className="pt-2 border-t border-gray-100 mt-2">
+                      <h4 className="text-sm font-medium mb-1">Services</h4>
+                      <Link
+                        href="/lab-setup"
+                        className="block text-gray-600 hover:text-gray-900 transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Lab Setup
+                      </Link>
+                      <Link
+                        href="/franchise"
+                        className="block text-gray-600 hover:text-gray-900 transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Franchise
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
