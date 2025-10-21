@@ -207,6 +207,15 @@ export function Header() {
                   <div className="grid gap-1">
                     <h3 className="font-medium leading-none mb-2 text-gray-900">Projects & Resources</h3>
                     <Link
+                      href="/projects"
+                      className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
+                    >
+                      <div className="text-sm font-medium leading-none">Projects</div>
+                      <p className="line-clamp-2 text-sm leading-snug text-gray-600">
+                        Student projects, tutorials and community builds
+                      </p>
+                    </Link>
+                    <Link
                       href="/competitions"
                       className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
                     >
@@ -378,6 +387,13 @@ export function Header() {
                     <span>Projects & Resources</span>
                   </h3>
                   <div className="pl-7 space-y-2">
+                    <Link
+                      href="/projects"
+                      className="block text-gray-600 hover:text-gray-900 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Projects
+                    </Link>
                     <Link
                       href="/competitions"
                       className="block text-gray-600 hover:text-gray-900 transition-colors"
