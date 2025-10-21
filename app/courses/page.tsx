@@ -1,6 +1,6 @@
 "use client"
 
-import { CourseFilter } from "@/components/course-filter"
+// CourseFilter removed per request (sidebar removed)
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -291,14 +291,8 @@ export default function CoursesPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <aside className="lg:col-span-1">
-            <div className="sticky top-8">
-              <CourseFilter onFilterChange={setFilters} />
-            </div>
-          </aside>
-
-          <main className="lg:col-span-3">
+        <div className="grid grid-cols-1 gap-8">
+          <main>
             {catalogType === 'courses' && filteredCourses.length === 0 ? (
               <div className="text-center py-24 bg-gray-50 rounded-lg">
                 <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
