@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 import Image from "next/image"
-import { ShoppingCart, Menu, Home, BookOpen, GraduationCap, Info, Boxes, FolderOpen, ChevronDown } from "lucide-react"
+import { ShoppingCart, Menu, BookOpen, GraduationCap, Info, Boxes, FolderOpen, ChevronDown } from "lucide-react"
 import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 import { useEffect, useState } from "react"
 import { useCart } from "@/hooks/use-cart"
@@ -86,15 +86,7 @@ export function Header() {
         <nav className="hidden lg:flex items-center space-x-1">
           <NavigationMenu>
             <NavigationMenuList className="space-x-1">
-              {/* Home */}
-              <NavigationMenuItem>
-                <Link href="/" legacyBehavior passHref>
-                  <NavigationMenuLink className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900 focus:outline-none disabled:pointer-events-none disabled:opacity-50">
-                    <Home className="w-4 h-4 mr-2" />
-                    Home
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
+              {/* Home link removed by request */}
 
               {/* Products Mega Menu */}
               <NavigationMenuItem>
@@ -340,14 +332,7 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[400px]">
               <div className="flex flex-col space-y-4 mt-8">
-                <Link
-                  href="/"
-                  className="flex items-center space-x-2 text-lg font-medium hover:text-sky-600 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Home className="w-5 h-5" />
-                  <span>Home</span>
-                </Link>
+                {/* Home link removed from mobile menu by request */}
 
                 <div className="space-y-2">
                   <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
