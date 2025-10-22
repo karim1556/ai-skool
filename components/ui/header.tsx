@@ -57,6 +57,13 @@ export function Header() {
                         <p className="text-xs text-gray-600">End-to-end lab installation & support</p>
                       </Link>
                       <Link
+                        href="/teachers-training"
+                        className="block select-none space-y-1 rounded-md p-2 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        <div className="text-sm">Teacher Training</div>
+                        <p className="text-xs text-gray-600">Certification & master trainer programs</p>
+                      </Link>
+                      <Link
                         href="/franchise"
                         className="block select-none space-y-1 rounded-md p-2 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900"
                       >
@@ -197,8 +204,10 @@ export function Header() {
               {/* Services Dropdown (visible) */}
               <NavigationMenuItem>
                 <NavigationMenuTrigger className="bg-transparent hover:bg-gray-100">
-                  <Info className="w-4 h-4 mr-2" />
-                  Services
+                  <Link href="/services" className="flex items-center bg-transparent hover:bg-gray-100 px-0 py-0">
+                    <Info className="w-4 h-4 mr-2" />
+                    Services
+                  </Link>
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="grid gap-3 p-6 w-[420px] rounded-md border bg-white shadow-lg z-50">
@@ -210,6 +219,13 @@ export function Header() {
                       >
                         <div className="text-sm font-medium leading-none">Lab Setup</div>
                         <p className="line-clamp-2 text-sm leading-snug text-gray-600">End-to-end lab installation and support</p>
+                      </Link>
+                      <Link
+                        href="/teachers-training"
+                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        <div className="text-sm font-medium leading-none">Teacher Training</div>
+                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">Certification & master trainer programs</p>
                       </Link>
                       <Link
                         href="/franchise"
@@ -448,6 +464,13 @@ export function Header() {
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         Lab Setup
+                      </Link>
+                      <Link
+                        href="/teachers-training"
+                        className="block text-gray-600 hover:text-gray-900 transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Teacher Training
                       </Link>
                       <Link
                         href="/franchise"
