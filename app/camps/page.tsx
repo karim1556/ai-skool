@@ -540,13 +540,22 @@ export default function SummerCampsPage() {
                       {/* Price and Action */}
                       <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                         <div>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-gray-900">₹{camp.price}</span>
-                            <span className="text-lg text-gray-400 line-through">₹{camp.originalPrice}</span>
-                          </div>
-                          <div className="text-xs text-green-600 font-semibold">
-                            Save ₹{camp.originalPrice - camp.price}
-                          </div>
+                          {(() => {
+                            const price = Number((camp as any).price ?? 0)
+                            const orig = Number((camp as any).originalPrice ?? (camp as any).original_price ?? 0)
+                            const saving = (isFinite(orig) && isFinite(price)) ? Math.max(0, orig - price) : 0
+                            return (
+                              <>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-2xl font-bold text-gray-900">₹{price}</span>
+                                  {orig > 0 ? <span className="text-lg text-gray-400 line-through">₹{orig}</span> : null}
+                                </div>
+                                <div className="text-xs text-green-600 font-semibold">
+                                  Save ₹{saving}
+                                </div>
+                              </>
+                            )
+                          })()}
                         </div>
                         <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
                           Enroll Now
@@ -771,10 +780,16 @@ function CampCard({ camp }: CampCardProps) {
 
         <div className="flex items-center justify-between pt-4 border-t border-gray-200">
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-bold text-gray-900">₹{camp.price}</span>
-              <span className="text-md text-gray-400 line-through">₹{camp.originalPrice}</span>
-            </div>
+            {(() => {
+              const price = Number((camp as any).price ?? 0)
+              const orig = Number((camp as any).originalPrice ?? (camp as any).original_price ?? 0)
+              return (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-bold text-gray-900">₹{price}</span>
+                  {orig > 0 ? <span className="text-md text-gray-400 line-through">₹{orig}</span> : null}
+                </div>
+              )
+            })()}
           </div>
           <div className="flex items-center gap-2">
             <Link href={`/camps/${camp.id}`} className="text-sm inline-flex items-center px-3 py-2 rounded-md border border-gray-200 hover:bg-gray-50">

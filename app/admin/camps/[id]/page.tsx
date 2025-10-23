@@ -42,6 +42,8 @@ export default function EditCampPage() {
           longDescription: campData.longDescription || campData.long_description || '',
           tagline: campData.tagline || '',
           video: campData.video || campData.video_preview || '',
+          price: 'price' in campData ? campData.price : (campData.price ?? campData.price),
+          originalPrice: 'originalPrice' in campData ? campData.originalPrice : (campData.original_price ?? 0),
         }
         // highlights may be JSON string or array
         let highlightsArr: string[] = []
