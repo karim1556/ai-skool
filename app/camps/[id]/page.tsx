@@ -26,16 +26,56 @@ type Camp = {
   video?: string
 }
 
+import { hasSupabase, supabase } from '../../../lib/supabase'
+import { getDb } from '../../../lib/db'
+
 export default async function CampDetailPage(props: any) {
   const id = props?.params?.id
-  // Ensure we use an absolute URL on the server. When NEXT_PUBLIC_BASE_URL is
-  // not provided (local dev), fall back to localhost with PORT or 3000 so the
-  // Node URL parser doesn't fail for a relative path.
-  const base = process.env.NEXT_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`
-  const res = await fetch(`${base}/api/camps/${id}`, { cache: 'no-store' })
-  if (!res.ok) return <div className="p-8">Camp not found</div>
-  const js = await res.json()
-  const camp: Camp | null = js?.camp || null
+
+  // Try to load the camp directly from Supabase when available (server-side).
+  // This avoids calling our own /api route from the server which can fail on
+  // some deployment platforms. If Supabase isn't configured, try Postgres via
+  // `getDb()`. If those both aren't available, fall back to fetching the
+  // internal API using an absolute base URL.
+  let camp: Camp | null = null
+  try {
+    if (hasSupabase && supabase) {
+      const { data, error } = await supabase.from('camps').select('*').eq('id', id).limit(1).maybeSingle()
+      if (error) throw error
+      camp = data as any
+    }
+  } catch (err) {
+    // swallow and try next source
+    camp = null
+  }
+
+  if (!camp) {
+    try {
+      const db = getDb()
+      const row = await db.get<any>('SELECT * FROM public.camps WHERE id = $1 LIMIT 1', [id])
+      if (row) camp = row
+    } catch (err) {
+      // ignore and fallback
+      camp = null
+    }
+  }
+
+  if (!camp) {
+    // Last-resort: fetch our internal API route. Use an absolute base so `new
+    // URL()` doesn't fail in Node when a relative URL is used.
+    try {
+      const base = process.env.NEXT_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`
+      const res = await fetch(`${base}/api/camps/${id}`, { cache: 'no-store' })
+      if (res.ok) {
+        const js = await res.json()
+        camp = js?.camp || null
+      }
+    } catch (err) {
+      // final fallback: leave camp null
+      camp = null
+    }
+  }
+
   if (!camp) return <div className="p-8">Camp not found</div>
 
   function formatPrice(value?: number | null) {
