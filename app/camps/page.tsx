@@ -776,9 +776,14 @@ function CampCard({ camp }: CampCardProps) {
               <span className="text-md text-gray-400 line-through">₹{camp.originalPrice}</span>
             </div>
           </div>
-          <Button size="sm" className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
-            Enroll
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href={`/camps/${camp.id}`} className="text-sm inline-flex items-center px-3 py-2 rounded-md border border-gray-200 hover:bg-gray-50">
+              Learn More
+            </Link>
+            <Button size="sm" className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
+              Enroll
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
