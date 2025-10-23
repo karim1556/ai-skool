@@ -68,21 +68,34 @@ export default function SummerCampsPage() {
   const [startTimeFilter, setStartTimeFilter] = useState('08:00 AM')
   const [endTimeFilter, setEndTimeFilter] = useState('08:30 PM')
 
-  // Schedule weeks: label for display, value is ISO start date for deep-linking and filtering
-  const scheduleWeeks = [
-    { label: 'June 2-6', value: '2025-06-02' },
-    { label: 'June 9-13', value: '2025-06-09' },
-    { label: 'June 16-20', value: '2025-06-16' },
-    { label: 'June 23-27', value: '2025-06-23' },
-    { label: 'June 30-July 4', value: '2025-06-30' },
-    { label: 'July 7-11', value: '2025-07-07' },
-    { label: 'July 14-18', value: '2025-07-14' },
-    { label: 'July 21-25', value: '2025-07-21' },
-    { label: 'July 28-Aug 1', value: '2025-07-28' },
-    { label: 'Aug 4-8', value: '2025-08-04' },
-    { label: 'Aug 11-15', value: '2025-08-11' },
-    { label: 'Aug 18-22', value: '2025-08-18' }
-  ];
+  // Schedule weeks: generate from today for the next 12 weeks (label for display, value is ISO start date for deep-linking and filtering)
+  const generateScheduleWeeks = (count = 12) => {
+    const addDays = (d: Date, days: number) => {
+      const nd = new Date(d)
+      nd.setDate(nd.getDate() + days)
+      return nd
+    }
+
+    const formatLabel = (s: Date, e: Date) => {
+      const sMonth = s.toLocaleString('default', { month: 'long' })
+      const eMonth = e.toLocaleString('default', { month: 'long' })
+      if (sMonth === eMonth) return `${sMonth} ${s.getDate()}-${e.getDate()}`
+      const sShort = s.toLocaleString('default', { month: 'short' })
+      const eShort = e.toLocaleString('default', { month: 'short' })
+      return `${sShort} ${s.getDate()} - ${eShort} ${e.getDate()}`
+    }
+
+    const today = new Date()
+    const weeks: { label: string; value: string }[] = []
+    for (let i = 0; i < count; i++) {
+      const start = addDays(today, i * 7)
+      const end = addDays(start, 6)
+      weeks.push({ label: formatLabel(start, end), value: start.toISOString().slice(0, 10) })
+    }
+    return weeks
+  }
+
+  const scheduleWeeks = generateScheduleWeeks(12)
 
   // normalize incoming ?week= query param: accept label (e.g. "June 9-13") or ISO date (YYYY-MM-DD)
   const normalizeWeek = (q?: string | null) => {

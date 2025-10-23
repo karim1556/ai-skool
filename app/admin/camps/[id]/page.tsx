@@ -79,6 +79,16 @@ export default function EditCampPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!camp) return
+    // validate start date is not in the past
+    if (startDate) {
+      const sd = new Date(startDate)
+      const today = new Date()
+      today.setHours(0,0,0,0)
+      if (sd < today) {
+        alert('Start date cannot be in the past')
+        return
+      }
+    }
     setSaving(true)
     try {
       const imageUrl = imageFile ? await uploadFile(imageFile) : camp.image
@@ -389,6 +399,7 @@ export default function EditCampPage() {
                     type="date"
                     value={startDate || ''}
                     onChange={(e) => setStartDate(e.target.value || null)}
+                    min={new Date().toISOString().slice(0,10)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
