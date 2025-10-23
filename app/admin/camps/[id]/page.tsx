@@ -49,6 +49,8 @@ export default function EditCampPage() {
     if (!file) return null
     const fd = new FormData()
     fd.append('file', file)
+    // Prefer the 'course-thumbnails' bucket for camp images
+    fd.append('bucket', 'course-thumbnails')
     const res = await fetch('/api/projects/upload', { method: 'POST', body: fd })
     if (!res.ok) return null
     const js = await res.json()

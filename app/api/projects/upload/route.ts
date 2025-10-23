@@ -7,8 +7,10 @@ export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   try {
-    const form = await req.formData()
-    const file = form.get('file') as File | null
+  const form = await req.formData()
+  const file = form.get('file') as File | null
+  // allow client to suggest a bucket name (optional)
+  const clientBucket = String(form.get('bucket') || '') || null
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
     const arrayBuffer = await file.arrayBuffer()
@@ -20,7 +22,12 @@ export async function POST(req: Request) {
       // If an explicit bucket is configured, try it first. Otherwise try a list
       // of candidate buckets used elsewhere in this project.
       const configured = process.env.SUPABASE_STORAGE_BUCKET
-      const candidateBuckets = configured ? [configured] : ['projects', 'course-thumbnails', 'course-files']
+      // If client provided a bucket, prefer it.
+      const candidateBuckets = clientBucket ? [clientBucket] : (configured ? [configured] : [])
+      // add fallback candidates
+      for (const b of ['projects', 'course-thumbnails', 'course-files']) {
+        if (!candidateBuckets.includes(b)) candidateBuckets.push(b)
+      }
       let lastError: any = null
       for (const bucket of candidateBuckets) {
         try {
