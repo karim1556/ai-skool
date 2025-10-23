@@ -59,6 +59,14 @@ const navigationItems = [
     ],
   },
   {
+    title: "Camps",
+    icon: BookOpen,
+    items: [
+      { title: "Camps", href: "/admin/camps" },
+      { title: "Add new camp", href: "/admin/camps/new" },
+    ],
+  },
+  {
     title: "Courses",
     href: "/admin/courses",
     icon: BookOpen,

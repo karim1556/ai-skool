@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { AdminLayout } from '@/components/layout/admin-layout'
 
 export default function NewCampPage() {
   const router = useRouter()
@@ -134,10 +135,11 @@ export default function NewCampPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Create New Camp</h1>
-      
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white rounded-lg shadow-lg p-6">
+    <AdminLayout>
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Create New Camp</h1>
+        
+        <form onSubmit={handleSubmit} className="space-y-6 bg-white rounded-lg shadow-lg p-6">
         {/* Basic Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -420,7 +422,8 @@ export default function NewCampPage() {
             Cancel
           </button>
         </div>
-      </form>
-    </div>
+        </form>
+      </div>
+    </AdminLayout>
   )
 }

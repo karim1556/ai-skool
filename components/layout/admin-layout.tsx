@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react"
 import { AdminSidebar } from "./admin-sidebar"
 import { Button } from "@/components/ui/button"
 import { LogOut, ArrowLeft, Bell, Menu } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { signOutMock, getCurrentMockUser } from "@/lib/mock-auth"
 import { Badge } from "@/components/ui/badge"
 import { UserButton } from "@clerk/nextjs"
@@ -18,12 +18,20 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [user, setUser] = useState<ReturnType<typeof getCurrentMockUser> | null>(null)
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     const u = getCurrentMockUser()
     setUser(u)
     setLoading(false)
   }, [])
+
+  // Keep the mobile sidebar open when on the camps admin area
+  useEffect(() => {
+    if (pathname && pathname.startsWith('/admin/camps')) {
+      setSidebarOpen(true)
+    }
+  }, [pathname])
 
   const handleSignOut = () => {
     signOutMock()
