@@ -1,0 +1,83 @@
+[
+  {
+    "id": 1,
+    "title": "Python for AI & Machine Learning",
+    "description": "Learn real-world Python programming with focus on AI applications and machine learning",
+    "grade": "Grades 3-5",
+    "duration": "1 Week",
+    "schedule": "Mon-Fri, 2 hours daily",
+    "level": "Beginner to Advanced",
+    "format": "Live Online",
+    "image": "/images/python-ai-camp.jpg",
+    "subjects": [
+      "python",
+      "ai"
+    ],
+    "price": 2999,
+    "originalPrice": 3999,
+    "popular": true,
+    "featured": true,
+    "skills": []
+  },
+  {
+    "id": 2,
+    "title": "Unity Game Development",
+    "description": "Create amazing 2D and 3D games with Unity game engine",
+    "grade": "Grades 6-12",
+    "duration": "1 Week",
+    "schedule": "Mon-Fri, 2 hours daily",
+    "level": "Intermediate",
+    "format": "Live Online",
+    "image": "/images/unity-camp.jpg",
+    "subjects": [
+      "game-dev"
+    ],
+    "price": 3499,
+    "originalPrice": 4499,
+    "popular": true,
+    "featured": true
+  },
+  {
+    "id": 3,
+    "title": "Robotics & Smart Devices with Arduino",
+    "description": "Create with circuits and Arduino - foundation of robotics and smart devices",
+    "grade": "Grades 4-9",
+    "duration": "1 Week",
+    "schedule": "Mon-Fri, 2 hours daily",
+    "level": "Beginner",
+    "format": "Live Online",
+    "image": "/images/arduino-camp.jpg",
+    "subjects": [
+      "robotics"
+    ],
+    "price": 2799,
+    "originalPrice": 3599,
+    "popular": false,
+    "featured": true
+  },
+  {
+    "id": 4,
+    "title": "Aiskool Summer Camp",
+    "description": "AIIIII",
+    "grade": "Grades 4-6",
+    "duration": "3 Weeks",
+    "schedule": "Mon-Fri, 2 hours daily",
+    "level": "Intermediate",
+    "format": "Hybrid",
+    "subjects": [],
+    "price": 4500,
+    "originalPrice": 5000,
+    "popular": true,
+    "featured": true,
+    "seats": 20,
+    "rating": 4.5,
+    "projects": 3,
+    "emoji": "🚀",
+    "skills": [
+      "Robotics"
+    ],
+    "category": "ai",
+    "image": null,
+    "createdAt": "2025-10-23T08:46:57.806Z"
+  }
+]
