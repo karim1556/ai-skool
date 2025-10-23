@@ -33,6 +33,7 @@ export default function NewCampPage() {
   const [saving, setSaving] = useState(false)
   const [newSkill, setNewSkill] = useState('')
   const [highlightsText, setHighlightsText] = useState('')
+  const [highlights, setHighlights] = useState<string[]>([])
   const [videoUrl, setVideoUrl] = useState('')
 
   const campCategories = [
@@ -91,6 +92,17 @@ export default function NewCampPage() {
     }))
   }
 
+  const addHighlight = () => {
+    const v = highlightsText.trim()
+    if (!v) return
+    if (!highlights.includes(v)) setHighlights(prev => [...prev, v])
+    setHighlightsText('')
+  }
+
+  const removeHighlight = (h: string) => {
+    setHighlights(prev => prev.filter(x => x !== h))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     // validate start date is not in the past
@@ -113,9 +125,9 @@ export default function NewCampPage() {
         // We'll push the start ISO (yyyy-mm-dd) as the week identifier for now
         weeks.push(sd.toISOString().slice(0,10))
       }
-      const highlightsArr = highlightsText
+      const highlightsArr = highlights.length ? highlights : (highlightsText
         ? highlightsText.split(/\r?\n|,\s*/).map(h => h.trim()).filter(Boolean)
-        : []
+        : [])
       const payload = { 
         ...formData, 
         tagline: formData.tagline || null,
@@ -218,12 +230,24 @@ export default function NewCampPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Highlights</label>
-          <textarea
-            value={highlightsText}
-            onChange={(e) => setHighlightsText(e.target.value)}
-            rows={3}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          <div className="flex gap-2 mb-2">
+            <input
+              value={highlightsText}
+              onChange={(e) => setHighlightsText(e.target.value)}
+              placeholder="Add a highlight"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); addHighlight() } }}
+            />
+            <button type="button" onClick={() => addHighlight()} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Add</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {highlights.map(h => (
+              <span key={h} className="inline-flex items-center gap-2 bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+                {h}
+                <button type="button" onClick={() => removeHighlight(h)} className="text-gray-500 hover:text-gray-800">×</button>
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Grade & Level */}
