@@ -146,6 +146,15 @@ export function Header() {
                         </p>
                       </Link>
                       <Link
+                        href="/camps"
+                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
+                      >
+                        <div className="text-sm font-medium leading-none">Camps</div>
+                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">
+                          Browse our summer and holiday camp offerings
+                        </p>
+                      </Link>
+                      <Link
                         href="/schools"
                         className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
                       >
