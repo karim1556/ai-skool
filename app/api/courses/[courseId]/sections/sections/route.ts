@@ -13,6 +13,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const db = await getDb();
   const { title } = await req.json();
-  const result = await db.run("INSERT INTO sections (course_id, title) VALUES ($1, $2) RETURNING id", [params.id, title]);
-  return NextResponse.json({ id: result.lastInsertRowid, title });
+  const row = await db.get(`INSERT INTO sections (course_id, title) VALUES ($1, $2) RETURNING id`, [params.id, title]) as any
+  return NextResponse.json({ id: row?.id, title });
 }

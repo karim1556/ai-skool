@@ -12,6 +12,8 @@ export default function EditCampPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [startDate, setStartDate] = useState<string | null>(null)
   const [newSkill, setNewSkill] = useState('')
+  const [highlightsText, setHighlightsText] = useState('')
+  const [videoUrl, setVideoUrl] = useState('')
 
   const campCategories = [
     { id: 'coding', name: 'Coding Camps' },
@@ -33,11 +35,24 @@ export default function EditCampPage() {
       const campData = js.camp || null
       if (campData) {
         // Ensure arrays are properly initialized
-        setCamp({
+        const normalized: any = {
           ...campData,
           subjects: campData.subjects || [],
-          skills: campData.skills || []
-        })
+          skills: campData.skills || [],
+          longDescription: campData.longDescription || campData.long_description || '',
+          tagline: campData.tagline || '',
+          video: campData.video || campData.video_preview || '',
+        }
+        // highlights may be JSON string or array
+        let highlightsArr: string[] = []
+        if (campData.highlights) {
+          try {
+            highlightsArr = Array.isArray(campData.highlights) ? campData.highlights : JSON.parse(campData.highlights)
+          } catch { highlightsArr = Array.isArray(campData.highlights) ? campData.highlights : [] }
+        }
+        setCamp(normalized)
+        setHighlightsText(highlightsArr.join('\n'))
+        setVideoUrl(normalized.video || '')
         if (campData.weeks && Array.isArray(campData.weeks) && campData.weeks[0]) {
           setStartDate(String(campData.weeks[0]))
         }
@@ -98,8 +113,15 @@ export default function EditCampPage() {
       if (startDate) {
         weeks[0] = startDate
       }
+      const highlightsArr = highlightsText
+        ? highlightsText.split(/\r?\n|,\s*/).map(h => h.trim()).filter(Boolean)
+        : []
       const payload = { 
         ...camp,
+        tagline: camp.tagline || '',
+        longDescription: camp.longDescription || '',
+        video: videoUrl || null,
+        highlights: highlightsArr,
         image: imageUrl,
         weeks
       }

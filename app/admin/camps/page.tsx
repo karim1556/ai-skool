@@ -22,10 +22,39 @@ export default function AdminCampsList() {
       const res = await fetch('/api/camps', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to fetch camps')
       const js = await res.json()
-      setCamps(js.camps || [])
+      // API may return either { camps: [...] } or an array directly
+      if (Array.isArray(js)) {
+        setCamps(js)
+      } else if (Array.isArray(js?.camps)) {
+        setCamps(js.camps)
+      } else if (Array.isArray(js?.data)) {
+        // sometimes upstream helpers return { data: [...] }
+        setCamps(js.data)
+      } else {
+        setCamps([])
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred')
-      setCamps([])
+      // fallback to bundled data file if available (fetch from the public folder at runtime)
+      try {
+        const resFallback = await fetch('/data/camps.json', { cache: 'no-store' })
+        if (resFallback.ok) {
+          const data = await resFallback.json()
+          if (Array.isArray(data)) {
+            setCamps(data)
+          } else if (Array.isArray(data?.camps)) {
+            setCamps(data.camps)
+          } else if (Array.isArray(data?.data)) {
+            setCamps(data.data)
+          } else {
+            setCamps([])
+          }
+        } else {
+          setCamps([])
+        }
+      } catch (_) {
+        setCamps([])
+      }
     } finally {
       setLoading(false)
     }

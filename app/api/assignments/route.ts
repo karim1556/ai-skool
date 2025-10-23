@@ -18,7 +18,7 @@ async function ensureSchema(db:any) {
   `)
 }
 async function getSchoolId(db:any, orgId:string) {
-  const row = await db.get<{ id:string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
+  const row = await db.get(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId]) as any
   return row?.id || null
 }
 
@@ -55,23 +55,17 @@ export async function POST(req: NextRequest) {
   if (!schoolId) return NextResponse.json({ error: 'No school bound to this organization' }, { status: 403 })
   try {
     // Only coordinators can create assignments
-    const coord = await db.get<{ id: string }>(
-      `SELECT id FROM coordinators WHERE school_id = $1 AND clerk_user_id = $2`,
-      [schoolId, userId]
-    )
+    const coord = await db.get(`SELECT id FROM coordinators WHERE school_id = $1 AND clerk_user_id = $2`, [schoolId, userId]) as any
     if (!coord?.id) return NextResponse.json({ error: 'Only coordinators can create assignments' }, { status: 403 })
     const body = await req.json()
     const { batch_id, trainer_id, title, instructions, due_date } = body || {}
     if (!batch_id || !trainer_id) return NextResponse.json({ error: 'batch_id and trainer_id are required' }, { status: 400 })
-    const b = await db.get(`SELECT id FROM batches WHERE id = $1 AND school_id = $2`, [batch_id, schoolId])
+    const b = await db.get(`SELECT id FROM batches WHERE id = $1 AND school_id = $2`, [batch_id, schoolId]) as any
     if (!b?.id) return NextResponse.json({ error: 'Batch not in your school' }, { status: 403 })
-    const t = await db.get(`SELECT id FROM trainers WHERE id = $1 AND school_id = $2`, [trainer_id, schoolId])
+    const t = await db.get(`SELECT id FROM trainers WHERE id = $1 AND school_id = $2`, [trainer_id, schoolId]) as any
     if (!t?.id) return NextResponse.json({ error: 'Trainer not in your school' }, { status: 403 })
-    const row = await db.get<{ id:string }>(
-      `INSERT INTO trainer_assignments (batch_id, trainer_id, title, instructions, due_date)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [batch_id, trainer_id, title || null, instructions || null, due_date || null]
-    )
+    const row = await db.get(`INSERT INTO trainer_assignments (batch_id, trainer_id, title, instructions, due_date)
+       VALUES ($1,$2,$3,$4,$5) RETURNING id`, [batch_id, trainer_id, title || null, instructions || null, due_date || null]) as any
     return NextResponse.json({ id: row?.id, success: true })
   } catch (e:any) {
     return NextResponse.json({ error: e.message || 'Failed to create assignment' }, { status: 500 })
@@ -88,8 +82,8 @@ export async function PATCH(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
-    const owns = await db.get(`SELECT a.id FROM trainer_assignments a INNER JOIN batches b ON b.id = a.batch_id WHERE a.id = $1 AND b.school_id = $2`, [id, schoolId])
-    if (!owns?.id) return NextResponse.json({ error: 'Assignment not in your school' }, { status: 403 })
+  const owns = await db.get(`SELECT a.id FROM trainer_assignments a INNER JOIN batches b ON b.id = a.batch_id WHERE a.id = $1 AND b.school_id = $2`, [id, schoolId]) as any
+  if (!owns?.id) return NextResponse.json({ error: 'Assignment not in your school' }, { status: 403 })
     const body = await req.json()
     const allowed = ['title','instructions','due_date','batch_id','trainer_id']
     const fields:string[]=[]; const values:any[]=[]
@@ -112,8 +106,8 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
-    const owns = await db.get(`SELECT a.id FROM trainer_assignments a INNER JOIN batches b ON b.id = a.batch_id WHERE a.id = $1 AND b.school_id = $2`, [id, schoolId])
-    if (!owns?.id) return NextResponse.json({ error: 'Assignment not in your school' }, { status: 403 })
+  const owns = await db.get(`SELECT a.id FROM trainer_assignments a INNER JOIN batches b ON b.id = a.batch_id WHERE a.id = $1 AND b.school_id = $2`, [id, schoolId]) as any
+  if (!owns?.id) return NextResponse.json({ error: 'Assignment not in your school' }, { status: 403 })
     await db.run(`DELETE FROM trainer_assignments WHERE id = $1`, [id])
     return NextResponse.json({ success: true })
   } catch (e:any) {

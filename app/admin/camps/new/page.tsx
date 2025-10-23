@@ -9,6 +9,8 @@ export default function NewCampPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    tagline: '',
+    longDescription: '',
     grade: '',
     duration: '1 Week',
     schedule: 'Mon-Fri, 2 hours daily',
@@ -30,6 +32,8 @@ export default function NewCampPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [newSkill, setNewSkill] = useState('')
+  const [highlightsText, setHighlightsText] = useState('')
+  const [videoUrl, setVideoUrl] = useState('')
 
   const campCategories = [
     { id: 'coding', name: 'Coding Camps' },
@@ -109,8 +113,15 @@ export default function NewCampPage() {
         // We'll push the start ISO (yyyy-mm-dd) as the week identifier for now
         weeks.push(sd.toISOString().slice(0,10))
       }
+      const highlightsArr = highlightsText
+        ? highlightsText.split(/\r?\n|,\s*/).map(h => h.trim()).filter(Boolean)
+        : []
       const payload = { 
         ...formData, 
+        tagline: formData.tagline || null,
+        longDescription: formData.longDescription || null,
+        video: videoUrl || null,
+        highlights: highlightsArr,
         price: Number(formData.price),
         originalPrice: Number(formData.originalPrice),
         rating: Number(formData.rating),
@@ -174,6 +185,44 @@ export default function NewCampPage() {
             rows={4}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tagline</label>
+          <input
+            value={formData.tagline}
+            onChange={(e) => handleInputChange('tagline', e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Long Description (for detail page)</label>
+          <textarea
+            value={formData.longDescription}
+            onChange={(e) => handleInputChange('longDescription', e.target.value)}
+            rows={5}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Video URL</label>
+          <input
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Highlights</label>
+          <textarea
+            value={highlightsText}
+            onChange={(e) => setHighlightsText(e.target.value)}
+            rows={3}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 

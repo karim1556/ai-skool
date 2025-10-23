@@ -95,5 +95,39 @@
       "2025-10-31",
       "2025-07-14"
     ]
+  },
+  {
+    "id": 5,
+    "title": "AiSkool Summer Camp",
+    "description": "ITS GOOOD",
+    "tagline": "BREAK IT",
+    "longDescription": "KAHAHAHA",
+    "grade": "Grades 4-6",
+    "duration": "2 Weeks",
+    "schedule": "Mon-Fri, 2 hours daily",
+    "level": "Advanced",
+    "format": "Hybrid",
+    "subjects": [],
+    "price": 4500,
+    "originalPrice": 5000,
+    "popular": true,
+    "featured": true,
+    "seats": 20,
+    "rating": 4.5,
+    "projects": 3,
+    "emoji": "🚀",
+    "skills": [
+      "Robotics"
+    ],
+    "category": "robotics",
+    "video": null,
+    "highlights": [
+      "KAKAKA"
+    ],
+    "image": "https://siaaaaqxnvvgxzsakjfm.supabase.co/storage/v1/object/public/course-thumbnails/1761227191897-anBn.jpg",
+    "createdAt": "2025-10-23T13:46:34.801Z",
+    "weeks": [
+      "2025-10-30"
+    ]
   }
 ]

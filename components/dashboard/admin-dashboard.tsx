@@ -32,8 +32,8 @@ export function AdminDashboard() {
       ])
 
       const totalUsers = usersResult.data?.length || 0
-      const pendingApprovals = usersResult.data?.filter((u) => !u.is_approved).length || 0
-      const activeBatches = batchesResult.data?.filter((b) => b.status === "active").length || 0
+  const pendingApprovals = usersResult.data?.filter((u: any) => !u.is_approved).length || 0
+  const activeBatches = batchesResult.data?.filter((b: any) => b.status === "active").length || 0
       const totalCourses = coursesResult.data?.length || 0
 
       setStats({ totalUsers, pendingApprovals, activeBatches, totalCourses })

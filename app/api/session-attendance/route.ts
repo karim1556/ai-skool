@@ -18,15 +18,14 @@ async function ensureSchema(db: any) {
 }
 
 async function ownsSession(db:any, sessionId:string, schoolId:string) {
-  const row = await db.get(
-    `SELECT s.id FROM sessions s INNER JOIN batches b ON b.id = s.batch_id WHERE s.id = $1 AND b.school_id = $2`,
-    [sessionId, schoolId]
-  )
+  const row = await db.get(`
+    SELECT s.id FROM sessions s INNER JOIN batches b ON b.id = s.batch_id WHERE s.id = $1 AND b.school_id = $2
+  `, [sessionId, schoolId]) as any
   return !!row?.id
 }
 
 async function getSchoolId(db:any, orgId:string) {
-  const row = await db.get<{ id:string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
+  const row = await db.get(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId]) as any
   return row?.id || null
 }
 

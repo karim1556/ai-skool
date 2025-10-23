@@ -24,7 +24,7 @@ async function ensureSchema(db: any) {
 }
 
 async function getSchoolId(db: any, orgId: string) {
-  const row = await db.get<{ id: string }>(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId])
+  const row = await db.get(`SELECT id FROM schools WHERE clerk_org_id = $1`, [orgId]) as any
   return row?.id || null
 }
 
@@ -78,15 +78,12 @@ export async function POST(req: NextRequest) {
     const { batch_id, trainer_id, title, notes, session_date, session_time, meeting_url, starts_at, ends_at } = body || {}
     if (!batch_id || !trainer_id) return NextResponse.json({ error: 'batch_id and trainer_id are required' }, { status: 400 })
     // Verify batch and trainer belong to this school
-    const b = await db.get(`SELECT id FROM batches WHERE id = $1 AND school_id = $2`, [batch_id, schoolId])
+    const b = await db.get(`SELECT id FROM batches WHERE id = $1 AND school_id = $2`, [batch_id, schoolId]) as any
     if (!b?.id) return NextResponse.json({ error: 'Batch not in your school' }, { status: 403 })
-    const t = await db.get(`SELECT id FROM trainers WHERE id = $1 AND school_id = $2`, [trainer_id, schoolId])
+    const t = await db.get(`SELECT id FROM trainers WHERE id = $1 AND school_id = $2`, [trainer_id, schoolId]) as any
     if (!t?.id) return NextResponse.json({ error: 'Trainer not in your school' }, { status: 403 })
-    const row = await db.get<{ id: string }>(
-      `INSERT INTO sessions (batch_id, trainer_id, title, notes, session_date, session_time, meeting_url, starts_at, ends_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-      [batch_id, trainer_id, title || null, notes || null, session_date || null, session_time || null, meeting_url || null, starts_at || null, ends_at || null]
-    )
+    const row = await db.get(`INSERT INTO sessions (batch_id, trainer_id, title, notes, session_date, session_time, meeting_url, starts_at, ends_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`, [batch_id, trainer_id, title || null, notes || null, session_date || null, session_time || null, meeting_url || null, starts_at || null, ends_at || null]) as any
     return NextResponse.json({ id: row?.id, success: true })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to create session' }, { status: 500 })
@@ -116,7 +113,7 @@ export async function PATCH(req: NextRequest) {
     const owns = await db.get(
       `SELECT s.id FROM sessions s INNER JOIN batches b ON b.id = s.batch_id WHERE s.id = $1 AND b.school_id = $2`,
       [id, schoolId]
-    )
+    ) as any
     if (!owns?.id) return NextResponse.json({ error: 'Session not in your school' }, { status: 403 })
     await db.run(`UPDATE sessions SET ${fields.join(', ')}, created_at = created_at WHERE id = $${fields.length + 1}`, [...values, id])
     return NextResponse.json({ success: true })
@@ -140,7 +137,7 @@ export async function DELETE(req: NextRequest) {
     const owns = await db.get(
       `SELECT s.id FROM sessions s INNER JOIN batches b ON b.id = s.batch_id WHERE s.id = $1 AND b.school_id = $2`,
       [id, schoolId]
-    )
+    ) as any
     if (!owns?.id) return NextResponse.json({ error: 'Session not in your school' }, { status: 403 })
     await db.run(`DELETE FROM sessions WHERE id = $1`, [id])
     return NextResponse.json({ success: true })
