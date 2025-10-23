@@ -64,6 +64,36 @@ export default function SummerCampsPage() {
   // Dynamic camps state — will fetch from /api/camps, fallback to static file on error
   const [featuredCamps, setFeaturedCamps] = useState<any[] | null>(null)
   const [allCamps, setAllCamps] = useState<any[] | null>(null)
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
+  const [startTimeFilter, setStartTimeFilter] = useState('08:00 AM')
+  const [endTimeFilter, setEndTimeFilter] = useState('08:30 PM')
+
+  // Schedule weeks: label for display, value is ISO start date for deep-linking and filtering
+  const scheduleWeeks = [
+    { label: 'June 2-6', value: '2025-06-02' },
+    { label: 'June 9-13', value: '2025-06-09' },
+    { label: 'June 16-20', value: '2025-06-16' },
+    { label: 'June 23-27', value: '2025-06-23' },
+    { label: 'June 30-July 4', value: '2025-06-30' },
+    { label: 'July 7-11', value: '2025-07-07' },
+    { label: 'July 14-18', value: '2025-07-14' },
+    { label: 'July 21-25', value: '2025-07-21' },
+    { label: 'July 28-Aug 1', value: '2025-07-28' },
+    { label: 'Aug 4-8', value: '2025-08-04' },
+    { label: 'Aug 11-15', value: '2025-08-11' },
+    { label: 'Aug 18-22', value: '2025-08-18' }
+  ];
+
+  // normalize incoming ?week= query param: accept label (e.g. "June 9-13") or ISO date (YYYY-MM-DD)
+  const normalizeWeek = (q?: string | null) => {
+    if (!q) return null
+    // if already ISO-ish YYYY-MM-DD, return as-is when in scheduleWeeks
+    const isoMatch = /^\d{4}-\d{2}-\d{2}$/.test(q)
+    if (isoMatch && scheduleWeeks.some(w => w.value === q)) return q
+    // try matching by label (case-insensitive)
+    const found = scheduleWeeks.find(w => w.label.toLowerCase() === String(q).toLowerCase())
+    return found ? found.value : null
+  }
 
   // Fetch camps from API on mount
   useEffect(() => {
@@ -93,6 +123,12 @@ export default function SummerCampsPage() {
     }
 
     load()
+    // read ?week= from URL
+  const params = new URLSearchParams(window.location.search)
+  const qWeek = params.get('week')
+  const norm = normalizeWeek(qWeek)
+  if (norm) setSelectedWeek(norm)
+
     return () => { ignore = true }
   }, [])
 
@@ -251,21 +287,7 @@ export default function SummerCampsPage() {
     }
   ];
 
-  // Schedule weeks
-  const scheduleWeeks = [
-    "June 2-6",
-    "June 9-13", 
-    "June 16-20",
-    "June 23-27",
-    "June 30-July 4",
-    "July 7-11",
-    "July 14-18",
-    "July 21-25",
-    "July 28-Aug 1",
-    "Aug 4-8",
-    "Aug 11-15",
-    "Aug 18-22"
-  ];
+  
 
   // Helper to map a camp.grade string to a group id used below
   const classifyGrade = (gradeStr?: string) => {
@@ -286,6 +308,21 @@ export default function SummerCampsPage() {
     if (lower.includes('high') || lower.includes('9')) return 'high'
     return 'elementary'
   }
+
+  // Filtered lists based on selected week (if provided). If the filter yields no results, fall back to showing all camps so sections don't appear empty.
+  const filteredAllCampsByWeek = (() => {
+    const all = allCamps || []
+    if (!selectedWeek) return all
+    const filtered = all.filter(c => Array.isArray(c.weeks) ? c.weeks.includes(selectedWeek) : false)
+    return filtered.length ? filtered : all
+  })()
+
+  const filteredFeatured = (() => {
+    const allF = featuredCamps || []
+    if (!selectedWeek) return allF
+    const filtered = allF.filter(c => Array.isArray(c.weeks) ? c.weeks.includes(selectedWeek) : false)
+    return filtered.length ? filtered : allF
+  })()
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 ${bebas.variable} font-sans`}>
@@ -430,7 +467,7 @@ export default function SummerCampsPage() {
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {(featuredCamps || []).map((camp) => (
+              {(filteredFeatured || []).map((camp) => (
                 <Card key={camp.id} className="group border-0 bg-white/80 backdrop-blur-sm hover:bg-white transition-all duration-300 hover:scale-105 hover:shadow-2xl shadow-lg overflow-hidden">
                   <CardContent className="p-0">
                     {/* Camp Image */}
@@ -514,7 +551,7 @@ export default function SummerCampsPage() {
             <div className="mb-16">
               <h3 className="text-3xl font-bold text-gray-900 mb-8 tracking-tight">Elementary School Camps (Grades K-5)</h3>
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {(allCamps || []).filter(c => classifyGrade(c.grade) === 'elementary').map((camp) => (
+                {(filteredAllCampsByWeek || []).filter(c => classifyGrade(c.grade) === 'elementary').map((camp) => (
                   <CampCard key={camp.id} camp={camp} />
                 ))}
               </div>
@@ -525,7 +562,7 @@ export default function SummerCampsPage() {
             <div className="mb-16">
               <h3 className="text-3xl font-bold text-gray-900 mb-8 tracking-tight">Middle School Camps (Grades 6-8)</h3>
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {(allCamps || []).filter(c => classifyGrade(c.grade) === 'middle').map((camp) => (
+                {(filteredAllCampsByWeek || []).filter(c => classifyGrade(c.grade) === 'middle').map((camp) => (
                   <CampCard key={camp.id} camp={camp} />
                 ))}
               </div>
@@ -536,7 +573,7 @@ export default function SummerCampsPage() {
             <div>
               <h3 className="text-3xl font-bold text-gray-900 mb-8 tracking-tight">High School Camps (Grades 9-12)</h3>
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {(allCamps || []).filter(c => classifyGrade(c.grade) === 'high').map((camp) => (
+                {(filteredAllCampsByWeek || []).filter(c => classifyGrade(c.grade) === 'high').map((camp) => (
                   <CampCard key={camp.id} camp={camp} />
                 ))}
               </div>
@@ -566,26 +603,28 @@ export default function SummerCampsPage() {
             <div className="grid gap-6 md:grid-cols-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Grades</label>
-                <select className="w-full p-3 border border-gray-300 rounded-lg">
-                  <option>All Grades</option>
-                  <option>Elementary (K-5)</option>
-                  <option>Middle School (6-8)</option>
-                  <option>High School (9-12)</option>
+                <select className="w-full p-3 border border-gray-300 rounded-lg" value={activeGrade} onChange={(e) => setActiveGrade(e.target.value)}>
+                  <option value="all">All Grades</option>
+                  <option value="elementary">Elementary (K-5)</option>
+                  <option value="middle">Middle School (6-8)</option>
+                  <option value="high">High School (9-12)</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Subjects</label>
-                <select className="w-full p-3 border border-gray-300 rounded-lg">
-                  <option>All Subjects</option>
-                  <option>Coding</option>
-                  <option>AI & Machine Learning</option>
-                  <option>Robotics</option>
-                  <option>Game Development</option>
+                <select className="w-full p-3 border border-gray-300 rounded-lg" value={activeSubject} onChange={(e) => setActiveSubject(e.target.value)}>
+                  <option value="all">All Subjects</option>
+                  <option value="coding">Coding</option>
+                  <option value="ai">AI & Machine Learning</option>
+                  <option value="robotics">Robotics</option>
+                  <option value="game-dev">Game Development</option>
+                  <option value="web-dev">Web Development</option>
+                  <option value="python">Python Programming</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Start Time</label>
-                <select className="w-full p-3 border border-gray-300 rounded-lg">
+                <select className="w-full p-3 border border-gray-300 rounded-lg" value={startTimeFilter} onChange={(e) => setStartTimeFilter(e.target.value)}>
                   <option>08:00 AM</option>
                   <option>10:00 AM</option>
                   <option>02:00 PM</option>
@@ -595,7 +634,7 @@ export default function SummerCampsPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">End Time</label>
-                <select className="w-full p-3 border border-gray-300 rounded-lg">
+                <select className="w-full p-3 border border-gray-300 rounded-lg" value={endTimeFilter} onChange={(e) => setEndTimeFilter(e.target.value)}>
                   <option>08:30 PM</option>
                   <option>06:30 PM</option>
                   <option>04:30 PM</option>
@@ -611,10 +650,18 @@ export default function SummerCampsPage() {
             <h3 className="text-xl font-bold text-gray-900 mb-6">Available Weeks</h3>
             <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
               {scheduleWeeks.map((week, index) => (
-                <div key={index} className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 transition-colors">
-                  <div className="font-semibold text-gray-900">{week}</div>
+                <div key={index} className={`p-4 border border-gray-200 rounded-lg transition-colors ${selectedWeek===week.value? 'ring-2 ring-blue-300': ''}`}>
+                  <div className="font-semibold text-gray-900">{week.label}</div>
                   <div className="text-sm text-gray-600 mt-1">Multiple camps available</div>
-                  <Button size="sm" className="w-full mt-3">
+                  <Button size="sm" className="w-full mt-3" onClick={() => {
+                    // navigate to deep-link for this week (use machine-friendly ISO value)
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('week', week.value)
+                    window.history.pushState({}, '', url.toString())
+                    setSelectedWeek(week.value)
+                    const el = document.getElementById('camps')
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }}>
                     View Camps
                   </Button>
                 </div>

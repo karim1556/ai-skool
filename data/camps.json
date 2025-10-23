@@ -17,7 +17,11 @@
     "originalPrice": 3999,
     "popular": true,
     "featured": true,
-    "skills": []
+    "skills": [],
+    "weeks": [
+      "2025-06-02",
+      "2025-06-09"
+    ]
   },
   {
     "id": 2,
@@ -35,7 +39,11 @@
     "price": 3499,
     "originalPrice": 4499,
     "popular": true,
-    "featured": true
+    "featured": true,
+    "weeks": [
+      "2025-06-09",
+      "2025-06-16"
+    ]
   },
   {
     "id": 3,
@@ -53,7 +61,11 @@
     "price": 2799,
     "originalPrice": 3599,
     "popular": false,
-    "featured": true
+    "featured": true,
+    "weeks": [
+      "2025-06-16",
+      "2025-06-23"
+    ]
   },
   {
     "id": 4,
@@ -78,6 +90,10 @@
     ],
     "category": "ai",
     "image": null,
-    "createdAt": "2025-10-23T08:46:57.806Z"
+    "createdAt": "2025-10-23T08:46:57.806Z",
+    "weeks": [
+      "2025-07-15",
+      "2025-07-14"
+    ]
   }
 ]

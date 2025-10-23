@@ -10,6 +10,7 @@ export default function EditCampPage() {
   const [camp, setCamp] = useState<any | null>(null)
   const [saving, setSaving] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [startDate, setStartDate] = useState<string | null>(null)
   const [newSkill, setNewSkill] = useState('')
 
   const campCategories = [
@@ -37,6 +38,9 @@ export default function EditCampPage() {
           subjects: campData.subjects || [],
           skills: campData.skills || []
         })
+        if (campData.weeks && Array.isArray(campData.weeks) && campData.weeks[0]) {
+          setStartDate(String(campData.weeks[0]))
+        }
       }
     })
   }, [id])
@@ -78,9 +82,14 @@ export default function EditCampPage() {
     setSaving(true)
     try {
       const imageUrl = imageFile ? await uploadFile(imageFile) : camp.image
+      const weeks: string[] = camp.weeks || []
+      if (startDate) {
+        weeks[0] = startDate
+      }
       const payload = { 
         ...camp,
-        image: imageUrl
+        image: imageUrl,
+        weeks
       }
       const res = await fetch(`/api/camps/${id}`, { 
         method: 'PUT', 
@@ -373,6 +382,16 @@ export default function EditCampPage() {
           )}
           <p className="text-sm text-gray-500 mt-1">Recommended: 800x600px or similar aspect ratio</p>
         </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={startDate || ''}
+                    onChange={(e) => setStartDate(e.target.value || null)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
 
         {/* Submit Button */}
         <div className="flex gap-4 pt-6 border-t">

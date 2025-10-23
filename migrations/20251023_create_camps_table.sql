@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.camps (
   image text,
   subjects jsonb DEFAULT '[]'::jsonb,
   skills jsonb DEFAULT '[]'::jsonb,
+  weeks jsonb DEFAULT '[]'::jsonb,
   price numeric(10,2) DEFAULT 0,
   original_price numeric(10,2) DEFAULT 0,
   seats integer DEFAULT 20,

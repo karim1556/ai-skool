@@ -25,6 +25,7 @@ export default function NewCampPage() {
     skills: [] as string[],
     category: 'coding'
   })
+  const [startDate, setStartDate] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [newSkill, setNewSkill] = useState('')
@@ -88,6 +89,13 @@ export default function NewCampPage() {
     setSaving(true)
     try {
       const imageUrl = await uploadFile(imageFile)
+      // compute weeks array from startDate and duration (duration like '1 Week' or '4 Days')
+      const weeks: string[] = []
+      if (startDate) {
+        const sd = new Date(startDate)
+        // We'll push the start ISO (yyyy-mm-dd) as the week identifier for now
+        weeks.push(sd.toISOString().slice(0,10))
+      }
       const payload = { 
         ...formData, 
         price: Number(formData.price),
@@ -96,7 +104,8 @@ export default function NewCampPage() {
         projects: Number(formData.projects),
         seats: Number(formData.seats),
         image: imageUrl,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        weeks
       }
       const res = await fetch('/api/camps', { 
         method: 'POST', 
@@ -221,6 +230,15 @@ export default function NewCampPage() {
               placeholder="e.g., Mon-Fri, 2 hours daily"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+            <input
+              type="date"
+              value={startDate || ''}
+              onChange={(e) => setStartDate(e.target.value || null)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
