@@ -665,7 +665,7 @@ function InternshipCard({ internship, isExpanded, onToggle }: {
               </Button>
             </div>
             
-            <Link href={`/internships/apply/${internship.id}`}>
+            <Link href={`/internships/apply`}>
               <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
                 Apply Now
                 <ExternalLink className="ml-2 h-4 w-4" />
