@@ -143,7 +143,7 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto px-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Student Dashboard</h1>
@@ -153,9 +153,9 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
         {privileges.has("join_session") && (
           <Dialog open={joinSessionOpen} onOpenChange={setJoinSessionOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <LogIn className="h-4 w-4 mr-2" />
-                Join Session
+              <Button size="sm" variant="ghost" className="flex items-center gap-2">
+                <LogIn className="h-4 w-4" />
+                Join session
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -177,108 +177,93 @@ export function StudentDashboard({ userId }: StudentDashboardProps) {
             </DialogContent>
           </Dialog>
         )}
-
-      {/* Live Sessions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5" /> Live Sessions
-          </CardTitle>
-          <CardDescription>Join sessions that are currently active</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {liveSessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No live sessions</p>
-          ) : (
-            <div className="divide-y">
-              {liveSessions.map((s) => (
-                <div key={s.id} className="py-3 flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="font-medium">{s.title || 'Session'}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {s.starts_at && <span>Starts: {s.starts_at}</span>}
-                      {s.ends_at && <span> • Ends: {s.ends_at}</span>}
-                      {!s.starts_at && s.session_date && (
-                        <span>On: {s.session_date}{s.session_time ? ` at ${s.session_time}` : ''}</span>
-                      )}
+        </div>
+      {/* Top summary panels (compact grid) */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Live Sessions */}
+        <Card className="min-h-[140px]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Video className="h-5 w-5" /> Live
+            </CardTitle>
+            <CardDescription className="text-sm">Active sessions</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {liveSessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No live sessions</p>
+            ) : (
+              <div className="space-y-2">
+                {liveSessions.map((s) => (
+                  <div key={s.id} className="flex items-start justify-between">
+                    <div>
+                      <div className="font-medium text-sm">{s.title || 'Session'}</div>
+                      <div className="text-xs text-muted-foreground">{s.starts_at || s.session_date || ''}</div>
                     </div>
-                    {s.notes && <div className="text-sm text-muted-foreground line-clamp-2">{s.notes}</div>}
-                    {s.meeting_url && (
-                      <a className="text-xs text-primary" href={s.meeting_url} target="_blank" rel="noreferrer">Open meeting link</a>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {joinedSessionIds.has(s.id) ? (
+                        <Badge variant="secondary">Joined</Badge>
+                      ) : (
+                        <Badge variant="outline">Not joined</Badge>
+                      )}
+                      <Button size="sm" onClick={() => joinMeeting(s)}>Join</Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {joinedSessionIds.has(s.id) ? (
-                      <Badge variant="secondary">Joined</Badge>
-                    ) : (
-                      <Badge variant="outline">Not joined</Badge>
-                    )}
-                    <Button size="sm" onClick={() => joinMeeting(s)}>Join</Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Upcoming Sessions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" /> Upcoming Sessions
-          </CardTitle>
-          <CardDescription>Scheduled sessions you can plan for</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {upcomingSessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No upcoming sessions</p>
-          ) : (
-            <div className="space-y-2">
-              {upcomingSessions.map((s) => (
-                <div key={s.id} className="text-sm">
-                  <div className="font-medium">{s.title || 'Session'}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {s.starts_at ? (
-                      <>Starts: {s.starts_at}</>
-                    ) : (
-                      <>On: {s.session_date || ''}{s.session_time ? ` at ${s.session_time}` : ''}</>
-                    )}
+        {/* Upcoming Sessions */}
+        <Card className="min-h-[140px]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" /> Upcoming
+            </CardTitle>
+            <CardDescription className="text-sm">Planned sessions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {upcomingSessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming sessions</p>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {upcomingSessions.slice(0,3).map((s) => (
+                  <div key={s.id}>
+                    <div className="font-medium">{s.title || 'Session'}</div>
+                    <div className="text-xs text-muted-foreground">{s.starts_at || s.session_date || ''}</div>
                   </div>
-                  {s.notes && <div className="text-xs text-muted-foreground line-clamp-2">{s.notes}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Announcements */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5" /> Announcements
-          </CardTitle>
-          <CardDescription>Messages from your trainers</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {announcements.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No announcements</p>
-          ) : (
-            <div className="space-y-3">
-              {announcements
-                .sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .slice(0,10)
-                .map((a) => (
-                <div key={a.id}>
-                  <div className="font-medium">{a.title || 'Announcement'}</div>
-                  <div className="text-sm text-muted-foreground">{a.body}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Announcements */}
+        <Card className="min-h-[140px]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5" /> Announcements
+            </CardTitle>
+            <CardDescription className="text-sm">From your trainers</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {announcements.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No announcements</p>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {announcements
+                  .sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0,3)
+                  .map((a) => (
+                    <div key={a.id}>
+                      <div className="font-medium">{a.title || 'Announcement'}</div>
+                      <div className="text-xs text-muted-foreground">{a.body}</div>
+                    </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* My Assignments */}
