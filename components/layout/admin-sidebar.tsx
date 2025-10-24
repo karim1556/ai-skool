@@ -82,6 +82,14 @@ const navigationItems = [
     ],
   },
   {
+    title: "Internships",
+    icon: Calendar,
+    items: [
+      { title: "Internships", href: "/admin/internships" },
+      { title: "Applications", href: "/admin/internships/applications" },
+    ],
+  },
+  {
     title: "Schools",
     href: "/admin/schools",
     icon: School,
