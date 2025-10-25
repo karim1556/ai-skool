@@ -51,7 +51,8 @@ interface UpdateCoursePayload {
 }
 
 export async function GET(request: Request, { params }: { params: { courseId: string } }) {
-  const { courseId } = params;
+  const resolvedParams: any = (params && typeof (params as any).then === 'function') ? await (params as any) : params;
+  const { courseId } = resolvedParams;
   if (!courseId) {
     return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
   }
@@ -142,7 +143,8 @@ export async function GET(request: Request, { params }: { params: { courseId: st
 }
 
 export async function PUT(request: Request, { params }: { params: { courseId: string } }) {
-  const { courseId } = params;
+  const resolvedParams: any = (params && typeof (params as any).then === 'function') ? await (params as any) : params;
+  const { courseId } = resolvedParams;
   if (!courseId) {
     return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
   }

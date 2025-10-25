@@ -20,7 +20,8 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function GET(request: NextRequest, { params }: { params: { lessonId: string } }) {
-  const { lessonId } = params;
+  const resolvedParams: any = (params && typeof (params as any).then === 'function') ? await (params as any) : params;
+  const { lessonId } = resolvedParams;
   if (!lessonId) {
     return NextResponse.json({ error: 'Lesson ID is required' }, { status: 400 });
   }
@@ -42,7 +43,8 @@ export async function GET(request: NextRequest, { params }: { params: { lessonId
 }
 
 export async function DELETE(request: Request, { params }: { params: { lessonId: string } }) {
-  const { lessonId } = params;
+  const resolvedParams: any = (params && typeof (params as any).then === 'function') ? await (params as any) : params;
+  const { lessonId } = resolvedParams;
   if (!lessonId) {
     return NextResponse.json({ error: 'Lesson ID is required' }, { status: 400 });
   }
@@ -60,7 +62,8 @@ export async function DELETE(request: Request, { params }: { params: { lessonId:
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { lessonId: string } }) {
-  const { lessonId } = params;
+  const resolvedParams: any = (params && typeof (params as any).then === 'function') ? await (params as any) : params;
+  const { lessonId } = resolvedParams;
   if (!lessonId) {
     return NextResponse.json({ error: 'Lesson ID is required' }, { status: 400 });
   }
