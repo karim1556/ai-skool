@@ -167,7 +167,14 @@ export default function CoursePage({ params }: { params: { courseId: string } })
 
   useEffect(() => {
     const fetchCourse = async () => {
-      const courseData = await getCourse(params.courseId);
+      // params may be a Promise in newer Next.js versions; resolve safely
+      const resolvedParams: any = (params && typeof (params as any).then === 'function') ? await (params as any) : params;
+      const courseId = resolvedParams?.courseId;
+      if (!courseId) {
+        notFound();
+        return;
+      }
+      const courseData = await getCourse(courseId);
       if (courseData) {
         setCourse(courseData);
       } else {
@@ -175,19 +182,23 @@ export default function CoursePage({ params }: { params: { courseId: string } })
       }
     };
     fetchCourse();
-  }, [params.courseId]);
+  }, [params]);
 
   // Fetch levels for this course
   useEffect(() => {
     const fetchLevels = async () => {
       try {
-        const res = await fetch(`/api/courses/${params.courseId}/levels`, { cache: 'no-store' });
+        // resolve params (may be a Promise)
+        const resolvedParams: any = (params && typeof (params as any).then === 'function') ? await (params as any) : params;
+        const courseId = resolvedParams?.courseId;
+        if (!courseId) return;
+        const res = await fetch(`/api/courses/${courseId}/levels`, { cache: 'no-store' });
         const data = await res.json();
         setCourseLevels(Array.isArray(data) ? data : []);
       } catch {}
     };
     fetchLevels();
-  }, [params.courseId]);
+  }, [params]);
 
   // Determine if current user should have free access through assigned levels
   useEffect(() => {
@@ -374,33 +385,49 @@ export default function CoursePage({ params }: { params: { courseId: string } })
                   <ul className="space-y-3">
                     {attachmentsArray.map((att: any, idx: number) => {
                       const title = typeof att === 'string' ? att : (att.title || `Attachment ${idx + 1}`);
-                      // Resolve a usable URL string from various possible shapes
+                      // Resolve a usable URL string from various possible shapes and normalize it
                       const resolveUrl = (a: any): string | null => {
                         if (!a) return null;
                         if (typeof a === 'string') return a;
                         if (typeof a.url === 'string') return a.url;
-                        // Some upload helpers may store an object like { publicUrl: '...' }
-                        if (a.url && typeof a.url === 'object') {
-                          return a.url.publicUrl || a.url.public_url || a.url.href || null;
-                        }
+                        if (a.url && typeof a.url === 'object') return a.url.publicUrl || a.url.public_url || a.url.href || null;
                         if (typeof a.link === 'string') return a.link;
                         if (a.publicUrl) return a.publicUrl;
                         if (a.public_url) return a.public_url;
                         if (a.href) return a.href;
+                        if (a.path) return a.path; // some shapes use path
                         return null;
                       };
-                      const url = resolveUrl(att) || '#';
+
+                      const normalize = (raw: string | null): string | null => {
+                        if (!raw) return null;
+                        const trimmed = String(raw).trim();
+                        if (!trimmed) return null;
+                        // Already absolute
+                        if (/^https?:\/\//i.test(trimmed) || /^mailto:/i.test(trimmed) || /^data:/i.test(trimmed)) return trimmed;
+                        // Protocol-relative
+                        if (/^\/\//.test(trimmed)) return window.location.protocol + trimmed;
+                        // Root-relative
+                        if (trimmed.startsWith('/')) return window.location.origin + trimmed;
+                        // Otherwise assume relative path and prefix origin
+                        return window.location.origin + '/' + trimmed.replace(/^\/+/, '');
+                      };
+
+                      const rawUrl = resolveUrl(att);
+                      const url = normalize(rawUrl) || '#';
 
                       const handleOpen = (e: any) => {
+                        e.preventDefault();
                         if (!url || url === '#') {
-                          e.preventDefault();
+                          console.debug('Attachment has no valid URL:', att);
                           return;
                         }
-                        // If URL is same-origin and looks like a blob/path, use a window.open fallback
-                        try {
-                          window.open(url, '_blank', 'noopener');
-                        } catch (err) {
-                          // Let the anchor fallback handle it
+                        console.debug('Opening attachment URL:', url);
+                        // Try to open in a new tab; if blocked, fallback to same-tab navigation
+                        const newWin = window.open(url, '_blank', 'noopener');
+                        if (!newWin) {
+                          // Popup blocked — navigate in the same tab
+                          window.location.href = url;
                         }
                       };
 
@@ -410,7 +437,7 @@ export default function CoursePage({ params }: { params: { courseId: string } })
                             <FileText className="h-4 w-4 text-gray-500" />
                             <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">{title}</a>
                           </div>
-                          <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-gray-500">
+                          <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-gray-500" download>
                             <Download className="h-4 w-4" />
                           </a>
                         </li>
