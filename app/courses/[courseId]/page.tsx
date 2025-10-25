@@ -366,6 +366,104 @@ export default function CoursePage({ params }: { params: { courseId: string } })
             </CardContent>
           </Card>
 
+            {/* Attachments */}
+            {attachmentsArray.length > 0 && (
+              <Card className="border-2 border-gray-100 shadow-none">
+                <CardHeader><CardTitle>Attachments</CardTitle></CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {attachmentsArray.map((att: any, idx: number) => {
+                      const title = typeof att === 'string' ? att : (att.title || `Attachment ${idx + 1}`);
+                      // Resolve a usable URL string from various possible shapes
+                      const resolveUrl = (a: any): string | null => {
+                        if (!a) return null;
+                        if (typeof a === 'string') return a;
+                        if (typeof a.url === 'string') return a.url;
+                        // Some upload helpers may store an object like { publicUrl: '...' }
+                        if (a.url && typeof a.url === 'object') {
+                          return a.url.publicUrl || a.url.public_url || a.url.href || null;
+                        }
+                        if (typeof a.link === 'string') return a.link;
+                        if (a.publicUrl) return a.publicUrl;
+                        if (a.public_url) return a.public_url;
+                        if (a.href) return a.href;
+                        return null;
+                      };
+                      const url = resolveUrl(att) || '#';
+
+                      const handleOpen = (e: any) => {
+                        if (!url || url === '#') {
+                          e.preventDefault();
+                          return;
+                        }
+                        // If URL is same-origin and looks like a blob/path, use a window.open fallback
+                        try {
+                          window.open(url, '_blank', 'noopener');
+                        } catch (err) {
+                          // Let the anchor fallback handle it
+                        }
+                      };
+
+                      return (
+                        <li key={idx} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">{title}</a>
+                          </div>
+                          <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-gray-500">
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* External links */}
+            {externalLinksArray.length > 0 && (
+              <Card className="border-2 border-gray-100 shadow-none">
+                <CardHeader><CardTitle>External Links</CardTitle></CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {externalLinksArray.map((lnk: any, idx: number) => {
+                      const title = typeof lnk === 'string' ? lnk : (lnk.title || lnk.name || `Link ${idx + 1}`);
+                      const resolveUrl = (a: any): string | null => {
+                        if (!a) return null;
+                        if (typeof a === 'string') return a;
+                        if (typeof a.url === 'string') return a.url;
+                        if (a.url && typeof a.url === 'object') return a.url.publicUrl || a.url.href || a.url.public_url || null;
+                        if (typeof a.href === 'string') return a.href;
+                        if (a.href && typeof a.href === 'object') return a.href.publicUrl || a.href.href || null;
+                        if (a.link) return a.link;
+                        return null;
+                      };
+                      const url = resolveUrl(lnk) || '#';
+
+                      const handleOpen = (e: any) => {
+                        if (!url || url === '#') {
+                          e.preventDefault();
+                          return;
+                        }
+                        try { window.open(url, '_blank', 'noopener'); } catch (err) {}
+                      };
+
+                      return (
+                        <li key={idx} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <LinkIcon className="h-4 w-4 text-gray-500" />
+                            <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">{title}</a>
+                          </div>
+                          <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-gray-500">Open</a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
           <Card className="border-2 border-gray-100 shadow-none">
             <CardHeader><CardTitle>Course content</CardTitle></CardHeader>
             <CardContent>
