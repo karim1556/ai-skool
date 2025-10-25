@@ -395,6 +395,15 @@ export default function CoursePage({ params }: { params: { courseId: string } })
                         if (a.publicUrl) return a.publicUrl;
                         if (a.public_url) return a.public_url;
                         if (a.href) return a.href;
+                        // Supabase storage shape: { bucket: 'name', path: 'path/to/file' } or { bucket, key }
+                        try {
+                          const SUPABASE_URL = (process && (process as any).env && (process as any).env.NEXT_PUBLIC_SUPABASE_URL) || (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_SUPABASE_URL) || '';
+                          if (a.bucket && (a.path || a.key)) {
+                            const bucket = a.bucket;
+                            const path = (a.path || a.key).replace(/^\/+/, '');
+                            if (SUPABASE_URL) return `${SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}/${path}`;
+                          }
+                        } catch (e) {}
                         if (a.path) return a.path; // some shapes use path
                         return null;
                       };
@@ -416,28 +425,13 @@ export default function CoursePage({ params }: { params: { courseId: string } })
                       const rawUrl = resolveUrl(att);
                       const url = normalize(rawUrl) || '#';
 
-                      const handleOpen = (e: any) => {
-                        e.preventDefault();
-                        if (!url || url === '#') {
-                          console.debug('Attachment has no valid URL:', att);
-                          return;
-                        }
-                        console.debug('Opening attachment URL:', url);
-                        // Try to open in a new tab; if blocked, fallback to same-tab navigation
-                        const newWin = window.open(url, '_blank', 'noopener');
-                        if (!newWin) {
-                          // Popup blocked — navigate in the same tab
-                          window.location.href = url;
-                        }
-                      };
-
                       return (
                         <li key={idx} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <FileText className="h-4 w-4 text-gray-500" />
-                            <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">{title}</a>
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline">{title}</a>
                           </div>
-                          <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-gray-500" download>
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-gray-500" download>
                             <Download className="h-4 w-4" />
                           </a>
                         </li>
@@ -468,21 +462,13 @@ export default function CoursePage({ params }: { params: { courseId: string } })
                       };
                       const url = resolveUrl(lnk) || '#';
 
-                      const handleOpen = (e: any) => {
-                        if (!url || url === '#') {
-                          e.preventDefault();
-                          return;
-                        }
-                        try { window.open(url, '_blank', 'noopener'); } catch (err) {}
-                      };
-
                       return (
                         <li key={idx} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <LinkIcon className="h-4 w-4 text-gray-500" />
-                            <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">{title}</a>
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline">{title}</a>
                           </div>
-                          <a href={url} onClick={handleOpen} target="_blank" rel="noreferrer" className="text-gray-500">Open</a>
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-gray-500">Open</a>
                         </li>
                       );
                     })}
