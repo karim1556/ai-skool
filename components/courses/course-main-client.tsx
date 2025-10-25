@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Play, BookOpen, FileText, Award } from 'lucide-react';
 
 type LessonType = 'lesson' | 'quiz' | 'assignment' | 'video' | 'document' | 'video_file';
-interface Lesson { id: string; title: string; description?: string; type?: LessonType; duration?: number; completed?: boolean; video_url?: string }
+interface Lesson { id: string; title: string; description?: string; type?: LessonType; duration?: number; completed?: boolean; video_url?: string; file_url?: string; attachment_url?: string }
 interface Section { id: string; title: string; lessons: Lesson[] }
 
 export default function CourseMainClient({ initialCurriculum, courseId }: { initialCurriculum: Section[]; courseId: string }) {
@@ -50,6 +50,11 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
   const previousLesson = allLessons[currentIndex - 1];
   const nextLesson = allLessons[currentIndex + 1];
 
+  // Debug: log selected lesson for troubleshooting preview issues
+  useEffect(() => {
+    console.log('course-main: selectedLesson', selectedLesson);
+  }, [selectedLesson]);
+
   const getLessonTypeLabel = (type?: LessonType) => {
     switch (type) {
       case 'video': case 'video_file': return 'Video Lesson';
@@ -58,6 +63,29 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
       case 'document': return 'Document';
       default: return 'Lesson';
     }
+  };
+
+  // Infer a display label for lessons where `type` may be missing or inconsistent
+  const inferDisplayLabel = (lesson?: Lesson) => {
+    if (!lesson) return 'Lesson';
+    const t = lesson.type;
+    if (t) return getLessonTypeLabel(t);
+
+    // If there's no explicit type, infer from available fields
+    const desc = String(lesson.description || '');
+    const title = String(lesson.title || '');
+    const video = String(lesson.video_url || '');
+
+    // Assignment-like: has description/instructions and no embeddable video URL, or title contains 'assign'
+    if ((!video || video.trim() === '') && (desc.trim() !== '' || /assign/i.test(title))) return 'Assignment';
+
+    // Document-like: PDF url or file hint
+    try {
+      if (video.toLowerCase().endsWith('.pdf')) return 'Document';
+      if (/\.pdf(\?|$)/i.test(video)) return 'Document';
+    } catch (e) {}
+
+    return 'Lesson';
   };
 
   const onNavigate = (lesson?: Lesson) => {
@@ -69,7 +97,18 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
   // Build the main preview content once to avoid complex nested ternaries and TypeScript narrowing
   const mainContent = (() => {
     // Document or Assignment preview should take precedence over raw video file rendering
-    if (selectedLesson.type === 'document' || selectedLesson.type === 'assignment') {
+    // Also treat lessons whose `video_url` points to a PDF as documents so they render in an iframe.
+    const isPdfUrl = (() => {
+      try {
+        const u = String(selectedLesson.video_url || '');
+        return /\.pdf(\?|$)/i.test(u);
+      } catch (e) {
+        return false;
+      }
+    })();
+
+    const isAssignmentOrDocument = (selectedLesson.type === 'document' || selectedLesson.type === 'assignment') || (!selectedLesson.video_url && (selectedLesson.description || /assignment/i.test(String(selectedLesson.title || '')))) || isPdfUrl;
+    if (isAssignmentOrDocument) {
       return (
         <div className="bg-white rounded-2xl overflow-hidden border mb-6">
           {selectedLesson.video_url ? (
@@ -120,7 +159,23 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
             <div className="p-8 text-left text-gray-700">
               <p className="mb-4">{selectedLesson.description || 'No preview available for this item.'}</p>
               <div>
-                <button className="px-4 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-white rounded-xl">Open Assignment</button>
+                {(() => {
+                  const resource = selectedLesson.video_url || (selectedLesson as any).file_url || (selectedLesson as any).attachment_url;
+                  if (resource) {
+                    return (
+                      <a className="inline-block px-4 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-white rounded-xl" href={String(resource)} target="_blank" rel="noreferrer">Open Assignment</a>
+                    );
+                  }
+                  if (String(selectedLesson.id).startsWith('assignment-')) {
+                    const aid = String(selectedLesson.id).replace(/^assignment-/, '');
+                    return (
+                      <button onClick={() => router.push(`/assignments/${aid}`)} className="px-4 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-white rounded-xl">Open Assignment</button>
+                    );
+                  }
+                  return (
+                    <button className="px-4 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-white rounded-xl">Open Assignment</button>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -128,8 +183,8 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
       );
     }
 
-    // If not a document/assignment, but there's a video_url, show the player
-    if (selectedLesson.video_url) {
+  // If not a document/assignment, but there's a video_url, show the player
+  if (selectedLesson.video_url) {
       return (
         <div className="aspect-video bg-black rounded-2xl mb-6 overflow-hidden">
           {(() => {
@@ -208,7 +263,7 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
         <div className="flex items-center justify-between mb-6">
           <div>
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 mb-2">
-              {getLessonTypeLabel(selectedLesson.type)}
+              {inferDisplayLabel(selectedLesson)}
             </span>
             <h2 className="text-2xl font-bold text-gray-900">{selectedLesson.title}</h2>
             {selectedLesson.description && (
