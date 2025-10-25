@@ -22,7 +22,7 @@ interface SortSectionsModalProps {
 }
 
 export function SortSectionsModal({ isOpen, onClose, sections, onSort }: SortSectionsModalProps) {
-  const [sortedSections, setSortedSections] = useState([...sections])
+  const [sortedSections, setSortedSections] = useState(() => sections.map(s => ({ ...s, order: (s as any).order ?? 0 })) )
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -54,7 +54,16 @@ export function SortSectionsModal({ isOpen, onClose, sections, onSort }: SortSec
   }
 
   const handleSaveSorting = () => {
-    onSort(sortedSections.map((section, index) => ({ ...section, order: index })));
+    // Use numeric positions provided by the user (order property). If identical, fallback to current index.
+    const byPosition = [...sortedSections].sort((a, b) => {
+      const pa = Number((a as any).order ?? 0)
+      const pb = Number((b as any).order ?? 0)
+      if (pa === pb) return 0
+      return pa - pb
+    })
+
+    // Normalize into 0-based ordered list and pass to parent
+    onSort(byPosition.map((section, index) => ({ ...section, order: index })));
     onClose();
   };
 
@@ -80,19 +89,25 @@ export function SortSectionsModal({ isOpen, onClose, sections, onSort }: SortSec
 
           <div className="bg-gray-50 p-4 rounded-lg space-y-2 max-h-96 overflow-y-auto">
             {sortedSections.map((section, index) => (
-              <div
-                key={section.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, index)}
-                className={`
-                  flex items-center gap-3 p-3 bg-white rounded border cursor-move hover:bg-gray-50 transition-colors
-                  ${draggedIndex === index ? "opacity-50" : ""}
-                `}
-              >
+              <div key={section.id} className="flex items-center gap-3 p-3 bg-white rounded border hover:bg-gray-50 transition-colors">
                 <GripVertical className="h-4 w-4 text-gray-400" />
-                <span className="font-medium">{section.title}</span>
+                <div className="flex-1">
+                  <div className="font-medium">{section.title}</div>
+                  <div className="text-xs text-gray-500">Current position: {(section as any).order ?? index}</div>
+                </div>
+                <div className="w-28">
+                  <label className="text-xs text-gray-600">Position</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="mt-1 w-full border rounded px-2 py-1 text-sm"
+                    value={(section as any).order ?? index}
+                    onChange={(e) => {
+                      const v = Number(e.target.value)
+                      setSortedSections(prev => prev.map((s) => s.id === section.id ? { ...s, order: v } : s))
+                    }}
+                  />
+                </div>
               </div>
             ))}
           </div>

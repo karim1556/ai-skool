@@ -37,15 +37,22 @@ export async function PATCH(request: Request, { params }: { params: { sectionId:
     return NextResponse.json({ error: 'Section ID is required' }, { status: 400 });
   }
 
-  const { title } = await request.json();
-  if (!title) {
-    return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+  const body = await request.json().catch(() => ({}));
+  const { title, sort_order } = body as { title?: string; sort_order?: number };
+
+  if (title === undefined && sort_order === undefined) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
   }
 
   const db = await getDb();
 
   try {
-    await db.run('UPDATE sections SET title = $1 WHERE id = $2', [title, sectionId]);
+    if (title !== undefined) {
+      await db.run('UPDATE sections SET title = $1 WHERE id = $2', [title, sectionId]);
+    }
+    if (sort_order !== undefined) {
+      await db.run('UPDATE sections SET sort_order = $1 WHERE id = $2', [sort_order, sectionId]);
+    }
 
     const updatedSection = await db.get('SELECT * FROM sections WHERE id = $1', [sectionId]);
     return NextResponse.json(updatedSection);
