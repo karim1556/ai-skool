@@ -5,7 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import CoursePlaybackClientV2 from "@/components/courses/course-playback-client-v2";
+import CourseHeaderClient from '@/components/courses/course-header-client';
+import CourseSidebarClient from '@/components/courses/course-sidebar-client';
+import CourseMainClient from '@/components/courses/course-main-client';
 
 interface ApiLesson {
   id: string | number;
@@ -215,15 +217,24 @@ export default function StudentCoursePlaybackPage() {
 
   if (!playbackCourse) return <div className="p-6">Course not found.</div>;
 
+  if (!playbackCourse) return <div className="p-6">Course not found.</div>;
+
   return (
-    <div className="min-h-screen">
-      <CoursePlaybackClientV2
-        course={playbackCourse as any}
-        role="student"
-        courseId={id}
-        studentId={activeStudentId || undefined}
-        batchId={activeBatchId || undefined}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-6 py-8">
+        {/* Client-updating Course Header */}
+        <CourseHeaderClient title={playbackCourse.title} initialCurriculum={playbackCourse.curriculum} />
+
+        <div className="grid lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-1">
+            <CourseSidebarClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} />
+          </div>
+
+          <div className="lg:col-span-3">
+            <CourseMainClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
