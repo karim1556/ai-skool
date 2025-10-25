@@ -5,7 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth, useOrganization, useUser } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import CoursePlaybackClientV2 from "@/components/courses/course-playback-client-v2";
+import CourseHeaderClient from '@/components/courses/course-header-client';
+import CourseSidebarClient from '@/components/courses/course-sidebar-client';
+import CourseMainClient from '@/components/courses/course-main-client';
 
 interface ApiLesson {
   id: string | number;
@@ -116,6 +118,99 @@ export default function TrainerCoursePlaybackPage() {
     return () => { active = false };
   }, [authLoaded, userLoaded, orgLoaded, isSignedIn, organization?.id, user?.primaryEmailAddress?.emailAddress, JSON.stringify(courseLevels)]);
 
+  // Enrich assignment lessons and sign resource URLs (same behavior as student playback)
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!course) return;
+
+      try {
+        const updatedCourse = JSON.parse(JSON.stringify(course));
+        let changed = false;
+
+        // Enrich assignment metadata by fetching assignment details when missing
+        for (const section of updatedCourse.curriculum || []) {
+          for (const lesson of section.lessons || []) {
+            try {
+              const isAssignment = String((lesson as any).type || '').toLowerCase().includes('assign');
+              const lacksDetails = !(lesson as any).description && !(lesson as any).video_url && !(lesson as any).file_url && !(lesson as any).attachment_url;
+              if (isAssignment && lacksDetails) {
+                const aid = String(lesson.id);
+                try {
+                  console.log('trainer-page: fetching assignment details for', aid);
+                  const aRes = await fetch(`/api/assignments/${encodeURIComponent(aid)}`, { cache: 'no-store' });
+                  console.log('trainer-page: assignment details response', aRes.status);
+                  if (!aRes.ok) continue;
+                  const a = await aRes.json();
+                  console.log('trainer-page: assignment details body', a);
+                  if (!a) continue;
+                  if (a.description) lesson.description = a.description;
+                  if (a.instructions) lesson.description = lesson.description || a.instructions;
+                  if (a.attachment_url) lesson.attachment_url = a.attachment_url;
+                  if (a.file_url) lesson.file_url = a.file_url;
+                  if (a.url) lesson.video_url = lesson.video_url || a.url;
+                  changed = true;
+                } catch (e) {
+                  console.warn('trainer-page: failed to fetch assignment', aid, e);
+                }
+              }
+            } catch (e) {}
+          }
+        }
+
+        // Request signed URLs for resources stored in course-files
+        for (const section of updatedCourse.curriculum || []) {
+          for (const lesson of section.lessons || []) {
+            const urlCandidate = String(lesson.video_url || (lesson as any).file_url || (lesson as any).attachment_url || lesson.url || '').trim();
+            if (!urlCandidate) continue;
+
+            let path = '';
+            if (/course-files\//.test(urlCandidate)) {
+              try {
+                if (urlCandidate.startsWith('http')) {
+                  const u = new URL(urlCandidate);
+                  const parts = u.pathname.split('/course-files/');
+                  if (parts.length > 1) path = parts[1];
+                } else {
+                  path = urlCandidate.replace(/^\/+/, '');
+                }
+              } catch (e) {
+                // ignore
+              }
+            }
+
+            if (!path) continue;
+
+            try {
+              console.log('trainer-page: requesting signed url for', path);
+              const res = await fetch('/api/course-files/signed-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path })
+              });
+              if (!active) return;
+              const body = await res.json();
+              console.log('trainer-page: signed-url response', res.status, body);
+              if (res.ok && body?.signedUrl) {
+                lesson.video_url = body.signedUrl;
+                changed = true;
+              } else {
+                console.warn('trainer-page: signed-url failed for', path, body);
+              }
+            } catch (e) {
+              console.warn('trainer-page: exception requesting signed url for', path, e);
+            }
+          }
+        }
+
+        if (active && changed) setCourse(updatedCourse);
+      } catch (e) {
+        // noop
+      }
+    })();
+    return () => { active = false };
+  }, [course]);
+
   // Normalize to playback component
   const playbackCourse = useMemo(() => {
     if (!course) return null;
@@ -176,13 +271,20 @@ export default function TrainerCoursePlaybackPage() {
   if (!playbackCourse) return <div className="p-6">Course not found.</div>;
 
   return (
-    <div className="min-h-screen">
-      <CoursePlaybackClientV2
-        course={playbackCourse as any}
-        role="trainer"
-        courseId={id}
-        trainerId={trainerIdDb || undefined}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-6 py-8">
+        <CourseHeaderClient title={playbackCourse.title} initialCurriculum={playbackCourse.curriculum} />
+
+        <div className="grid lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-1">
+            <CourseSidebarClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} />
+          </div>
+
+          <div className="lg:col-span-3">
+            <CourseMainClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
