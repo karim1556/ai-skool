@@ -128,8 +128,15 @@ export async function POST(req: NextRequest) {
         const { data: urlData } = supabase.storage
           .from('course-thumbnails')
           .getPublicUrl(fileName);
-        
-        attachmentsData.push({ title, url: urlData.publicUrl });
+
+        // Store both the public URL (if available) and bucket/path so the
+        // client can use the server redirect endpoint for private buckets.
+        attachmentsData.push({
+          title,
+          url: urlData?.publicUrl || null,
+          bucket: 'course-thumbnails',
+          path: fileName
+        });
       }
     }
 

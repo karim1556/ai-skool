@@ -397,11 +397,11 @@ export default function CoursePage({ params }: { params: { courseId: string } })
                         if (a.href) return a.href;
                         // Supabase storage shape: { bucket: 'name', path: 'path/to/file' } or { bucket, key }
                         try {
-                          const SUPABASE_URL = (process && (process as any).env && (process as any).env.NEXT_PUBLIC_SUPABASE_URL) || (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_SUPABASE_URL) || '';
                           if (a.bucket && (a.path || a.key)) {
-                            const bucket = a.bucket;
-                            const path = (a.path || a.key).replace(/^\/+/, '');
-                            if (SUPABASE_URL) return `${SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}/${path}`;
+                            const bucket = encodeURIComponent(a.bucket);
+                            const path = encodeURIComponent((a.path || a.key).replace(/^\/+/, ''));
+                            // Use server redirect endpoint which will return a public or signed URL
+                            return `/api/storage/redirect?bucket=${bucket}&path=${path}`;
                           }
                         } catch (e) {}
                         if (a.path) return a.path; // some shapes use path
