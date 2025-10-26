@@ -47,6 +47,25 @@ export default function CourseSidebarClient({ initialCurriculum, courseId, role 
     };
   }, []);
 
+  // Broadcast owner identifiers if provided via props so other components can use them
+  useEffect(() => {
+    try {
+      if (role === 'student') {
+        if (studentId && batchId) {
+          setTimeout(() => {
+            try { window.dispatchEvent(new CustomEvent('owner:resolved', { detail: { role: 'student', studentId, batchId } })); } catch (e) {}
+          }, 10);
+        }
+      } else {
+        if (trainerId) {
+          setTimeout(() => {
+            try { window.dispatchEvent(new CustomEvent('owner:resolved', { detail: { role: 'trainer', trainerId } })); } catch (e) {}
+          }, 10);
+        }
+      }
+    } catch (e) {}
+  }, [role, studentId, trainerId, batchId]);
+
   // Fetch persisted completions for this course/role and apply to curriculum
   useEffect(() => {
     let active = true;
@@ -68,7 +87,20 @@ export default function CourseSidebarClient({ initialCurriculum, courseId, role 
         const data = await res.json();
         const completedIds: Set<string> = new Set((data?.completedLessonIds || []).map((x: any) => String(x)));
         if (!active) return;
-        setCurriculum((prev) => prev.map(s => ({ ...s, lessons: s.lessons.map(l => ({ ...l, completed: completedIds.has(String(l.id)) })) })));
+        setCurriculum((prev) => {
+          const updated = prev.map(s => ({ ...s, lessons: s.lessons.map(l => ({ ...l, completed: completedIds.has(String(l.id)) })) }));
+          // Dispatch completion-confirmed events so other clients (main content) can sync on load
+          try {
+            setTimeout(() => {
+              for (const id of Array.from(completedIds)) {
+                try {
+                  window.dispatchEvent(new CustomEvent('lesson:completion-confirmed', { detail: { lessonId: id, completed: true } }));
+                } catch (e) {}
+              }
+            }, 10);
+          } catch (e) {}
+          return updated;
+        });
       } catch (e) {
         // ignore
       }
@@ -121,7 +153,16 @@ export default function CourseSidebarClient({ initialCurriculum, courseId, role 
                         </div>
                         {(Number(lesson.duration) || 0) > 0 && <p className="text-xs text-gray-500 mt-1">{Math.floor((Number(lesson.duration)||0)/60)}m {(Number(lesson.duration)||0)%60}s</p>}
                       </div>
-                      <CompletionToggle lessonId={lesson.id} sectionId={section.id} courseId={courseId} completed={Boolean(lesson.completed)} />
+                      <CompletionToggle
+                        lessonId={lesson.id}
+                        sectionId={section.id}
+                        courseId={courseId}
+                        completed={Boolean(lesson.completed)}
+                        role={role}
+                        studentId={studentId}
+                        trainerId={trainerId}
+                        batchId={batchId}
+                      />
                     </li>
                   ))}
                 </ul>

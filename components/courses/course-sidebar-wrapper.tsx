@@ -98,6 +98,19 @@ export default function CourseSidebarWrapper({ initialCurriculum, courseId }: { 
     return () => { active = false };
   }, [authLoaded, userLoaded, isSignedIn, user?.id, courseId]);
 
+  // Broadcast resolved owner identifiers so other client components (toggles, main) can pick them up
+  useEffect(() => {
+    try {
+      if (resolved) {
+        setTimeout(() => {
+          try {
+            window.dispatchEvent(new CustomEvent('owner:resolved', { detail: { ...resolved } }));
+          } catch (e) {}
+        }, 10);
+      }
+    } catch (e) {}
+  }, [resolved]);
+
   // While resolving show the sidebar without persisted completions (it will hydrate once resolved)
   return (
     <CourseSidebarClient initialCurriculum={initialCurriculum} courseId={courseId} role={resolved?.role as any} studentId={resolved?.studentId} batchId={resolved?.batchId} trainerId={resolved?.trainerId} />

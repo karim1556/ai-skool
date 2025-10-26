@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle } from "lucide-react";
 
 interface Props {
@@ -16,7 +16,24 @@ interface Props {
 
 export default function CompletionToggle({ completed = false, lessonId, sectionId, courseId, role = 'student', studentId, trainerId, batchId }: Props) {
   const [isCompleted, setIsCompleted] = useState<boolean>(Boolean(completed));
+  const [ownerRole, setOwnerRole] = useState<typeof role | undefined>(role);
+  const [ownerStudentId, setOwnerStudentId] = useState<string | undefined>(studentId);
+  const [ownerTrainerId, setOwnerTrainerId] = useState<string | undefined>(trainerId);
+  const [ownerBatchId, setOwnerBatchId] = useState<string | undefined>(batchId);
   const toggled = !isCompleted;
+
+  // Listen for resolved owner identifiers broadcast by sidebar wrapper
+  useEffect(() => {
+    const onResolved = (ev: any) => {
+      const d = ev.detail || {};
+      if (d.role) setOwnerRole(d.role);
+      if (d.studentId) setOwnerStudentId(String(d.studentId));
+      if (d.trainerId) setOwnerTrainerId(String(d.trainerId));
+      if (d.batchId) setOwnerBatchId(String(d.batchId));
+    };
+    window.addEventListener('owner:resolved', onResolved as EventListener);
+    return () => window.removeEventListener('owner:resolved', onResolved as EventListener);
+  }, []);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -34,13 +51,17 @@ export default function CompletionToggle({ completed = false, lessonId, sectionI
       section_id: sectionId,
       lesson_id: lessonId,
       completed: toggled,
-      role,
+      role: ownerRole || role,
     };
-    if (role === 'student') {
-      if (studentId) payload.student_id = studentId;
-      if (batchId) payload.batch_id = batchId;
+    const useRole = ownerRole || role;
+    if (useRole === 'student') {
+      const sid = ownerStudentId || studentId;
+      const bid = ownerBatchId || batchId;
+      if (sid) payload.student_id = sid;
+      if (bid) payload.batch_id = bid;
     } else {
-      if (trainerId) payload.trainer_id = trainerId;
+      const trid = ownerTrainerId || trainerId;
+      if (trid) payload.trainer_id = trid;
     }
 
     try {
