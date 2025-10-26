@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { BookOpen, Play, FileText, Clock, Award, Users, BarChart3 } from 'lucide-react';
 import CompletionToggle from '@/components/courses/completion-toggle';
 import CourseSidebarClient from '@/components/courses/course-sidebar-client';
+import CourseSidebarWrapper from '@/components/courses/course-sidebar-wrapper';
 import CourseHeaderClient from '@/components/courses/course-header-client';
 import CourseMainClient from '@/components/courses/course-main-client';
 
@@ -380,7 +381,7 @@ function EnhancedCoursePlayback({ course }: { course: Course }) {
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar - Curriculum (client interactive) */}
           <div className="lg:col-span-1">
-            <CourseSidebarClient initialCurriculum={course.curriculum} courseId={course.id} />
+            <CourseSidebarWrapper initialCurriculum={course.curriculum} courseId={course.id} />
           </div>
 
           {/* Main Content */}
