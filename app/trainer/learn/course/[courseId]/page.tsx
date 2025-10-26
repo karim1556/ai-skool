@@ -211,13 +211,36 @@ export default function TrainerCoursePlaybackPage() {
     return () => { active = false };
   }, [course]);
 
-  // Normalize to playback component
+  // Normalize to playback component (match student mapping)
   const playbackCourse = useMemo(() => {
     if (!course) return null;
     const sections = (course.curriculum || []).map((s) => ({
       id: String(s.id),
       title: s.title,
       lessons: (s.lessons || []).map((l) => {
+        // Try multiple URL fields commonly used by our APIs
+        // Try nested collections too
+        const nested = (() => {
+          const a: any = l as any;
+          const arrays = [a.attachments, a.resources, a.materials, a.files, a.assets, a.media];
+          for (const arr of arrays) {
+            if (Array.isArray(arr) && arr.length > 0) {
+              const first = arr[0] || {};
+              const u = first.signed_url || first.url || first.file_url || first.video_url || first.path;
+              if (u) return u;
+            }
+          }
+          // Objects commonly used
+          const objs = [a.video, a.asset, a.document];
+          for (const obj of objs) {
+            if (obj) {
+              const u = obj.signed_url || obj.url || obj.file_url || obj.video_url || obj.path;
+              if (u) return u;
+            }
+          }
+          return '';
+        })();
+
         const rawUrl =
           (l as any).file_url ||
           (l as any).signed_url ||
@@ -225,23 +248,64 @@ export default function TrainerCoursePlaybackPage() {
           (l as any).videoUrl ||
           l.video_url ||
           (l as any).content_url ||
-          (l as any).url ||
+          l.url ||
+          nested ||
           '';
 
+        // Infer type when missing using explicit fields and URL/content hints
         const lower = typeof rawUrl === 'string' ? rawUrl.toLowerCase() : '';
-        let inferred: any = (l as any).type || 'lesson';
-        if (!l.type && lower) {
-          if (lower.endsWith('.mp4') || lower.includes('video')) inferred = 'video_file';
-          else if (lower.endsWith('.pdf')) inferred = 'document';
+        const rawType = (l as any).type ? String((l as any).type).toLowerCase() : '';
+        let inferred: any = 'lesson';
+
+        // If API provided a type string, normalize it to our expected types
+        if (rawType) {
+          if (rawType.includes('assign')) inferred = 'assignment';
+          else if (rawType.includes('doc') || rawType.includes('pdf')) inferred = 'document';
+          else if (rawType === 'video' || rawType === 'video_file') inferred = 'video_file';
+          else if (rawType === 'quiz') inferred = 'quiz';
+          else inferred = rawType;
+        } else {
+          // Heuristics when type is not provided
+          const hasInstructions = Boolean((l as any).instructions || (l as any).instructions_html || (l as any).task || (l as any).assignment);
+          const hasAttachment = Boolean((l as any).attachment_url || (l as any).file_url || (l as any).signed_url || nested);
+          if (hasInstructions && /assign/i.test(String((l as any).title || ''))) {
+            inferred = 'assignment';
+          } else if (hasInstructions && hasAttachment) {
+            inferred = 'assignment';
+          } else if (lower.endsWith('.mp4') || lower.includes('video') || lower.match(/\.(mp4|webm|ogg)$/i)) {
+            inferred = 'video_file';
+          } else if (lower.endsWith('.pdf')) {
+            inferred = 'document';
+          }
         }
+
+        // Prefer explicit content, fall back to common fields
+        const contentHtml =
+          (l as any).content ||
+          (l as any).instructions ||
+          (l as any).description ||
+          (l as any).html ||
+          (l as any).body ||
+          '';
+
+        // If the lesson content includes a URL (common when editors paste a YouTube link
+        // into the content field), prefer that as the video_url so the client can embed it.
+        let contentUrl = '';
+        try {
+          const urlMatch = String(contentHtml).match(/https?:\/\/[^\s)"']+/i);
+          if (urlMatch) contentUrl = urlMatch[0];
+        } catch (e) { contentUrl = ''; }
 
         return {
           id: String(l.id),
           title: l.title,
           type: inferred as any,
           duration: typeof l.duration === 'number' ? l.duration : undefined,
-          content: l.content,
-          video_url: rawUrl,
+          // map content -> description so client components (which read `description`) show previews
+          content: contentHtml,
+          description: contentHtml,
+          // prefer explicit file/url fields, but fall back to any URL detected in content
+          video_url: rawUrl || contentUrl || undefined,
         };
       })
     }));
