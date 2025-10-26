@@ -656,9 +656,9 @@ export default function HomePage() {
                         <span className="text-lg font-bold text-green-600">Free</span>
                       ) : (
                         <>
-                          <span className="text-xl font-bold text-gray-900">${Number(course.price || 0)}</span>
+                          <span className="text-xl font-bold text-gray-900">₹{Number(course.price || 0).toLocaleString('en-IN')}</span>
                           {Number(course.original_price || 0) > Number(course.price || 0) && (
-                            <span className="text-sm text-gray-500 line-through ml-2">${Number(course.original_price)}</span>
+                            <span className="text-sm text-gray-500 line-through ml-2">₹{Number(course.original_price).toLocaleString('en-IN')}</span>
                           )}
                         </>
                       )}
@@ -809,9 +809,9 @@ export default function HomePage() {
                     <p className="text-gray-600 mb-4 line-clamp-2">{product.description}</p>
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-xl font-bold text-gray-900">${product.price}</span>
+                        <span className="text-xl font-bold text-gray-900">₹{Number(product.price || 0).toLocaleString('en-IN')}</span>
                         {product.originalPrice > product.price && (
-                          <span className="text-sm text-gray-500 line-through ml-2">${product.originalPrice}</span>
+                          <span className="text-sm text-gray-500 line-through ml-2">₹{Number(product.originalPrice || 0).toLocaleString('en-IN')}</span>
                         )}
                       </div>
                       <Button 
