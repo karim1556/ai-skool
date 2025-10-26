@@ -621,56 +621,60 @@ export default function HomePage() {
                 className={`group overflow-hidden rounded-3xl border-0 p-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105`}
               >
                 <CardContent className="p-0">
-                  {/* Thumbnail */}
-                  <div className="relative aspect-[4/3] w-full overflow-hidden">
-                    <Image
-                      src={course.image || "/placeholder.svg?height=240&width=360"}
-                      alt={course.title || "Course thumbnail"}
-                      fill
-                      sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
+                  <Link href={`/courses/${course.id}`} className="block group-hover:opacity-95">
+                    {/* Thumbnail */}
+                    <div className="relative aspect-[4/3] w-full overflow-hidden">
+                      <Image
+                        src={course.image || "/placeholder.svg?height=240&width=360"}
+                        alt={course.title || "Course thumbnail"}
+                        fill
+                        sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
 
-                  {/* Content */}
-                  <div className="p-6">
-                    <div className="mb-3 flex items-center justify-between">
-                      <Badge className="bg-sky-100 text-sky-700">{`Level ${selectedLevelId}`}{course.category ? ` • ${course.category}` : ''}</Badge>
-                      <div className="flex items-center gap-1 text-yellow-500">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-4 h-4 ${i < Math.floor(Number(course.rating) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                          />
-                        ))}
-                        <span className="text-xs text-gray-500 ml-1">({Number(course.reviews) || 0})</span>
+                    {/* Content (clickable) */}
+                    <div className="p-6">
+                      <div className="mb-3 flex items-center justify-between">
+                        <Badge className="bg-sky-100 text-sky-700">{`Level ${selectedLevelId}`}{course.category ? ` • ${course.category}` : ''}</Badge>
+                        <div className="flex items-center gap-1 text-yellow-500">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-4 h-4 ${i < Math.floor(Number(course.rating) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                            />
+                          ))}
+                          <span className="text-xs text-gray-500 ml-1">({Number(course.reviews) || 0})</span>
+                        </div>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-gray-900 tracking-tight line-clamp-2">{course.title || 'Course'}</h3>
+                      <p className="mt-1 text-sm text-gray-600 tracking-tight">{course.provider || course.instructor || 'Instructor'}</p>
+
+                      {/* Pricing */}
+                      <div className="mt-4 flex items-center gap-2">
+                        {course.is_free ? (
+                          <span className="text-lg font-bold text-green-600">Free</span>
+                        ) : (
+                          <>
+                            <span className="text-xl font-bold text-gray-900">₹{Number(course.price || 0).toLocaleString('en-IN')}</span>
+                            {Number(course.original_price || 0) > Number(course.price || 0) && (
+                              <span className="text-sm text-gray-500 line-through ml-2">₹{Number(course.original_price).toLocaleString('en-IN')}</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Meta */}
+                      <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+                        <span>{course.duration || '—'}</span>
+                        <span>{Number(course.students || 0)} students</span>
                       </div>
                     </div>
+                  </Link>
 
-                    <h3 className="text-lg font-bold text-gray-900 tracking-tight line-clamp-2">{course.title || 'Course'}</h3>
-                    <p className="mt-1 text-sm text-gray-600 tracking-tight">{course.provider || course.instructor || 'Instructor'}</p>
-
-                    {/* Pricing */}
-                    <div className="mt-4 flex items-center gap-2">
-                      {course.is_free ? (
-                        <span className="text-lg font-bold text-green-600">Free</span>
-                      ) : (
-                        <>
-                          <span className="text-xl font-bold text-gray-900">₹{Number(course.price || 0).toLocaleString('en-IN')}</span>
-                          {Number(course.original_price || 0) > Number(course.price || 0) && (
-                            <span className="text-sm text-gray-500 line-through ml-2">₹{Number(course.original_price).toLocaleString('en-IN')}</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Meta */}
-                    <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
-                      <span>{course.duration || '—'}</span>
-                      <span>{Number(course.students || 0)} students</span>
-                    </div>
-
-                    <Button className="mt-5 w-full bg-sky-600 text-white hover:bg-sky-700 font-bold tracking-tight">
+                  <div className="p-6 pt-0">
+                    <Button className="mt-3 w-full bg-sky-600 text-white hover:bg-sky-700 font-bold tracking-tight">
                       Enroll Now
                     </Button>
                   </div>
