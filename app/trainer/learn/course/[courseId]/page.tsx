@@ -345,7 +345,7 @@ export default function TrainerCoursePlaybackPage() {
           </div>
 
           <div className="lg:col-span-3">
-            <CourseMainClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} />
+            <CourseMainClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} role="trainer" />
           </div>
         </div>
       </div>

@@ -175,14 +175,37 @@ export default function QuizPlaybackPage() {
             </div>
           </CardContent>
           <CardFooter className="p-6 flex flex-col sm:flex-row gap-4 bg-gray-100 rounded-b-2xl">
-            <Button onClick={() => router.back()} variant="outline" size="lg" className="w-full text-lg">
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Course
-            </Button>
-            <Button onClick={handleRetake} size="lg" className="w-full text-lg">
-              <Repeat className="w-5 h-5 mr-2" />
-              Retake Quiz
-            </Button>
+            {(() => {
+              const cid = searchParams.get('courseId') || '';
+              const nextLessonId = searchParams.get('nextLessonId');
+              const roundedPct = Math.round(percentage);
+
+              return (
+                <>
+                  <div className="w-full sm:w-auto">
+                    <Button onClick={() => router.push(`/courses/${cid}/playback`)} variant="outline" size="lg" className="w-full text-lg">
+                      <ArrowLeft className="w-5 h-5 mr-2" />
+                      Back to Course
+                    </Button>
+                  </div>
+
+                  <div className="flex-1 flex items-center justify-end gap-4 w-full">
+                    {nextLessonId && (
+                      <Button onClick={() => router.push(`/courses/${cid}/playback?lessonId=${encodeURIComponent(nextLessonId)}`)} size="lg" className="w-full sm:w-auto text-lg">
+                        Next
+                      </Button>
+                    )}
+
+                    {roundedPct < 100 && (
+                      <Button onClick={handleRetake} size="lg" className="w-full sm:w-auto text-lg">
+                        <Repeat className="w-5 h-5 mr-2" />
+                        Retake Quiz
+                      </Button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </CardFooter>
         </Card>
       </div>

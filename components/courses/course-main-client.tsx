@@ -8,7 +8,7 @@ type LessonType = 'lesson' | 'quiz' | 'assignment' | 'video' | 'document' | 'vid
 interface Lesson { id: string; title: string; description?: string; type?: LessonType; duration?: number; completed?: boolean; video_url?: string; file_url?: string; attachment_url?: string }
 interface Section { id: string; title: string; lessons: Lesson[] }
 
-export default function CourseMainClient({ initialCurriculum, courseId }: { initialCurriculum: Section[]; courseId: string }) {
+export default function CourseMainClient({ initialCurriculum, courseId, role = 'student' }: { initialCurriculum: Section[]; courseId: string; role?: 'student'|'trainer' }) {
   const router = useRouter();
   const [curriculum, setCurriculum] = useState<Section[]>(initialCurriculum || []);
   const allLessons = curriculum.flatMap(s => s.lessons || []);
@@ -18,6 +18,22 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
     const current = allLessons.find(l => !l.completed) || allLessons[0];
     if (current && !selectedLessonId) setSelectedLessonId(current.id);
   }, [curriculum]);
+
+  // If a lessonId is present in the URL (for example after completing a quiz
+  // we navigate back to playback with ?lessonId=...), honor that by selecting
+  // the lesson and broadcasting the selection so the sidebar updates.
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const lessonIdFromUrl = sp.get('lessonId');
+      if (lessonIdFromUrl) {
+        setSelectedLessonId(lessonIdFromUrl);
+        window.dispatchEvent(new CustomEvent('lesson:selected', { detail: { lessonId: lessonIdFromUrl } }));
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     const onSelect = (ev: any) => {
@@ -238,9 +254,14 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
           <button onClick={() => {
             const params = new URLSearchParams();
             params.set('courseId', courseId || '');
-            params.set('role', 'student');
+            params.set('role', role || 'student');
             const section = curriculum.find(s => s.lessons.some(l => l.id === selectedLesson.id));
             if (section) params.set('sectionId', section.id);
+            // include the originating lesson id so the quiz can navigate back
+            params.set('lessonId', selectedLesson.id);
+            // include the next lesson id (if any) so the quiz result can navigate forward
+            const next = allLessons[allLessons.findIndex(l => l.id === selectedLesson.id) + 1];
+            if (next && next.id) params.set('nextLessonId', String(next.id));
             router.push(`/quizzes/${selectedLesson.id}?${params.toString()}`);
           }} className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl">Start Quiz</button>
         </div>
