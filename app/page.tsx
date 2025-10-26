@@ -72,8 +72,13 @@ export default function HomePage() {
         if (!res.ok) throw new Error('Failed to load levels');
         let data = await res.json();
         if (!Array.isArray(data)) data = [];
-        // Sort strictly by id ascending so Level {id} matches API id
-        data.sort((a: any, b: any) => a.id - b.id);
+        // Sort by configured order field if present, fallback to id
+        data.sort((a: any, b: any) => {
+          const ka = Number(a.order ?? a.level_order ?? a.levelOrder ?? a.position ?? a.id ?? 0)
+          const kb = Number(b.order ?? b.level_order ?? b.levelOrder ?? b.position ?? b.id ?? 0)
+          if (!Number.isNaN(ka) && !Number.isNaN(kb) && (ka !== kb)) return ka - kb
+          return a.id - b.id
+        })
         if (!ignore) {
           setLevels(data);
           if (data.length > 0 && selectedLevelId === null) setSelectedLevelId(data[0].id);

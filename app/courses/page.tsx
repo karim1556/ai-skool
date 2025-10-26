@@ -376,7 +376,16 @@ export default function CoursesPage() {
     const fetchLevels = async () => {
       const res = await fetch('/api/levels', { cache: 'no-store' })
       const data = await res.json()
-      setLevels(Array.isArray(data) ? data : [])
+      if (Array.isArray(data)) {
+        const sorted = data.slice().sort((a: any, b: any) => {
+          const aOrder = Number(a.order ?? a.level_order ?? a.levelOrder ?? a.position ?? a.id ?? 0)
+          const bOrder = Number(b.order ?? b.level_order ?? b.levelOrder ?? b.position ?? b.id ?? 0)
+          return aOrder - bOrder
+        })
+        setLevels(sorted)
+      } else {
+        setLevels([])
+      }
     }
     if (catalogType === 'levels') fetchLevels()
   }, [catalogType])

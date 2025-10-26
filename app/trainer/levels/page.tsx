@@ -62,7 +62,14 @@ export default function TrainerAssignedLevelsPage() {
         const js = await res.json()
         if (!res.ok) throw new Error(js?.error || 'Failed to load levels')
         if (!active) return
-        setLevels(Array.isArray(js) ? js : [])
+        const list = Array.isArray(js) ? js : []
+        list.sort((a:any,b:any)=>{
+          const ka = Number(a.order ?? a.level_order ?? a.levelOrder ?? a.position ?? 0)
+          const kb = Number(b.order ?? b.level_order ?? b.levelOrder ?? b.position ?? 0)
+          if (!Number.isNaN(ka) && !Number.isNaN(kb) && (ka !== kb)) return ka - kb
+          return String(a.name || '').localeCompare(String(b.name || ''))
+        })
+        setLevels(list)
       } catch (e:any) {
         if (active) setError(e?.message || 'Failed to load levels')
       } finally { if (active) setLoading(false) }

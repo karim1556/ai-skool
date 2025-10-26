@@ -44,7 +44,14 @@ export default function CoordinatorLevelsPage() {
         if (!trRes.ok) throw new Error(tr?.error || 'Failed to load trainers');
         if (!btRes.ok) throw new Error(bt?.error || 'Failed to load batches');
         if (!active) return;
-        setLevels(Array.isArray(lvl) ? lvl : []);
+        const list = Array.isArray(lvl) ? lvl : [];
+        list.sort((a:any,b:any)=>{
+          const ka = Number(a.order ?? a.level_order ?? a.levelOrder ?? a.position ?? 0)
+          const kb = Number(b.order ?? b.level_order ?? b.levelOrder ?? b.position ?? 0)
+          if (!Number.isNaN(ka) && !Number.isNaN(kb) && (ka !== kb)) return ka - kb
+          return String(a.name || '').localeCompare(String(b.name || ''))
+        })
+        setLevels(list);
         setTrainers(Array.isArray(tr) ? tr : []);
         setBatches(Array.isArray(bt) ? bt : []);
       } catch (e:any) {

@@ -24,7 +24,14 @@ export function CourseFilters({ filters, onFilterChange, onApplyFilters }: Cours
       try {
         const res = await fetch('/api/levels')
         const data = await res.json()
-        setLevels(Array.isArray(data) ? data : [])
+        const list = Array.isArray(data) ? data : []
+        list.sort((a:any,b:any)=>{
+          const ka = Number(a.order ?? a.level_order ?? a.levelOrder ?? a.position ?? 0)
+          const kb = Number(b.order ?? b.level_order ?? b.levelOrder ?? b.position ?? 0)
+          if (!Number.isNaN(ka) && !Number.isNaN(kb) && (ka !== kb)) return ka - kb
+          return String(a.name || '').localeCompare(String(b.name || ''))
+        })
+        setLevels(list)
       } catch (e) {
         setLevels([])
       }
