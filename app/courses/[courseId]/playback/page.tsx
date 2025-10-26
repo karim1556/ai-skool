@@ -267,18 +267,13 @@ function CourseContent({ course }: { course: Course }) {
               <p className="text-gray-600 mt-2">{currentLesson.description}</p>
             )}
           </div>
-          <button className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg">
-            <Play className="h-5 w-5" />
-            <span>{currentLesson.completed ? 'Review' : 'Start'}</span>
-          </button>
+          {/* Start/Review button removed per request */}
         </div>
         
         {/* Video Player Placeholder */}
-        <div className="aspect-video bg-gradient-to-br from-gray-900 to-gray-700 rounded-2xl mb-6 flex items-center justify-center relative overflow-hidden">
+        <div className="aspect-video bg-gradient-to-br from-gray-900 to-gray-700 rounded-2xl mb-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/40"></div>
-          <button className="relative z-10 w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-all duration-300 transform hover:scale-110">
-            <Play className="h-8 w-8 text-white" />
-          </button>
+          {/* Video player area (controls removed) - Start/Review controls removed per request */}
           <div className="absolute bottom-4 left-4 right-4">
             <div className="w-full bg-white/20 rounded-full h-2">
               <div className="bg-gradient-to-r from-green-400 to-cyan-400 h-2 rounded-full w-1/3"></div>
@@ -330,41 +325,7 @@ function CourseContent({ course }: { course: Course }) {
         </div>
       </div>
       
-      {/* Course Resources */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center space-x-3 mb-4">
-            <FileText className="h-6 w-6" />
-            <h3 className="font-semibold">Resources</h3>
-          </div>
-          <p className="text-blue-100 text-sm mb-4">Download course materials and supplementary content</p>
-          <button className="w-full bg-white/20 backdrop-blur-sm rounded-xl py-2 text-sm font-medium hover:bg-white/30 transition-colors">
-            View Resources
-          </button>
-        </div>
-        
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center space-x-3 mb-4">
-            <Users className="h-6 w-6" />
-            <h3 className="font-semibold">Community</h3>
-          </div>
-          <p className="text-purple-100 text-sm mb-4">Join discussions with fellow learners</p>
-          <button className="w-full bg-white/20 backdrop-blur-sm rounded-xl py-2 text-sm font-medium hover:bg-white/30 transition-colors">
-            Enter Forum
-          </button>
-        </div>
-        
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center space-x-3 mb-4">
-            <BarChart3 className="h-6 w-6" />
-            <h3 className="font-semibold">Progress</h3>
-          </div>
-          <p className="text-green-100 text-sm mb-4">Track your learning journey and achievements</p>
-          <button className="w-full bg-white/20 backdrop-blur-sm rounded-xl py-2 text-sm font-medium hover:bg-white/30 transition-colors">
-            View Analytics
-          </button>
-        </div>
-      </div>
+      {/* Resources / Community / Progress panels removed per request */}
     </div>
   );
 }

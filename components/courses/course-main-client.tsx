@@ -270,10 +270,6 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
               <p className="text-gray-600 mt-2">{selectedLesson.description}</p>
             )}
           </div>
-          <button onClick={() => { /* placeholder for play action */ }} className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg">
-            <Play className="h-5 w-5" />
-            <span>{selectedLesson.completed ? 'Review' : 'Start'}</span>
-          </button>
         </div>
 
         <div className="mb-6">{mainContent}</div>
@@ -315,40 +311,7 @@ export default function CourseMainClient({ initialCurriculum, courseId }: { init
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center space-x-3 mb-4">
-            <FileText className="h-6 w-6" />
-            <h3 className="font-semibold">Resources</h3>
-          </div>
-          <p className="text-blue-100 text-sm mb-4">Download course materials and supplementary content</p>
-          <button className="w-full bg-white/20 backdrop-blur-sm rounded-xl py-2 text-sm font-medium hover:bg-white/30 transition-colors">
-            View Resources
-          </button>
-        </div>
-        
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center space-x-3 mb-4">
-            <BookOpen className="h-6 w-6" />
-            <h3 className="font-semibold">Community</h3>
-          </div>
-          <p className="text-purple-100 text-sm mb-4">Join discussions with fellow learners</p>
-          <button className="w-full bg-white/20 backdrop-blur-sm rounded-xl py-2 text-sm font-medium hover:bg-white/30 transition-colors">
-            Enter Forum
-          </button>
-        </div>
-        
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center space-x-3 mb-4">
-            <BookOpen className="h-6 w-6" />
-            <h3 className="font-semibold">Progress</h3>
-          </div>
-          <p className="text-green-100 text-sm mb-4">Track your learning journey and achievements</p>
-          <button className="w-full bg-white/20 backdrop-blur-sm rounded-xl py-2 text-sm font-medium hover:bg-white/30 transition-colors">
-            View Analytics
-          </button>
-        </div>
-      </div>
+      {/* Resources / Community / Progress panels removed per request */}
     </div>
   );
 }
