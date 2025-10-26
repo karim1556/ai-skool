@@ -157,6 +157,10 @@ export default function HomePage() {
     ? courses
     : levelCourses;
 
+  // Convenience for displaying selected level name in UI
+  const selectedLevel = levels.find((lv) => lv.id === selectedLevelId)
+  const selectedLevelName = selectedLevel?.name ?? selectedLevelId
+
   // Mock data for testimonials
   const testimonials = [
     {
@@ -532,7 +536,7 @@ export default function HomePage() {
           </div>
           {displayedCourses.length === 0 && (
             <div className="mt-8 text-center text-gray-600">
-              No courses found for Level {selectedLevelId}. Please check back later.
+              No courses found for {selectedLevelName}. Please check back later.
             </div>
           )}
         </div>
@@ -567,21 +571,23 @@ export default function HomePage() {
                     .slice(page * pageSize, (page + 1) * pageSize)
                     .map((lvl: any) => {
                       const levelId = lvl.id; // actual DB id
-                      const label = `Level ${levelId}`;
+                      const displayNumber = lvl.order ?? lvl.level_order ?? lvl.levelOrder ?? levelId
+                      const label = lvl.name ?? `Level ${levelId}`
+                      const subtitle = lvl.category ?? `Order ${displayNumber}`
                       const isSelected = selectedLevelId === levelId;
                       return (
                         <button
                           key={levelId}
                           onClick={() => setSelectedLevelId(levelId)}
                           data-level-id={levelId}
-                          className={`flex items-center gap-3 min-w-[120px] px-4 py-2 rounded-xl transition-all shadow-sm border ${isSelected ? 'bg-sky-50 border-sky-300 text-sky-700' : 'bg-white border-transparent text-gray-600 hover:shadow-md'}`}
+                          className={`flex items-center gap-3 min-w-[140px] px-4 py-2 rounded-xl transition-all shadow-sm border ${isSelected ? 'bg-sky-50 border-sky-300 text-sky-700' : 'bg-white border-transparent text-gray-600 hover:shadow-md'}`}
                         >
                           <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold ${isSelected ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                            {levelId}
+                            {displayNumber}
                           </div>
                           <div className="text-left">
                             <div className="text-sm font-semibold">{label}</div>
-                            <div className="text-xs text-gray-500">{lvl.category || ''}</div>
+                            <div className="text-xs text-gray-500">{subtitle}</div>
                           </div>
                         </button>
                       );
@@ -606,7 +612,7 @@ export default function HomePage() {
           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
             {displayedCourses.length === 0 && (
               <div className="col-span-full text-center text-gray-600">
-                {`No courses found for Level ${selectedLevelId}. Please check back later.`}
+                {`No courses found for ${selectedLevelName}. Please check back later.`}
               </div>
             )}
             {displayedCourses.map((course: any) => (
