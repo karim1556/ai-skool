@@ -19,7 +19,7 @@ function getIcon(lesson: Lesson) {
   }
 }
 
-export default function CourseSidebarClient({ initialCurriculum, courseId }: { initialCurriculum: Section[]; courseId: string }) {
+export default function CourseSidebarClient({ initialCurriculum, courseId, role = 'student', studentId, trainerId, batchId }: { initialCurriculum: Section[]; courseId: string; role?: 'student'|'trainer'; studentId?: string; trainerId?: string; batchId?: string }) {
   const [curriculum, setCurriculum] = useState<Section[]>(initialCurriculum || []);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
 
@@ -46,6 +46,35 @@ export default function CourseSidebarClient({ initialCurriculum, courseId }: { i
       window.removeEventListener('lesson:selected', onSelect as EventListener);
     };
   }, []);
+
+  // Fetch persisted completions for this course/role and apply to curriculum
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set('courseId', String(courseId));
+        params.set('role', role);
+        if (role === 'student') {
+          if (!studentId || !batchId) return;
+          params.set('studentId', String(studentId));
+          params.set('batchId', String(batchId));
+        } else {
+          if (!trainerId) return;
+          params.set('trainerId', String(trainerId));
+        }
+        const res = await fetch(`/api/progress/lessons?${params.toString()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const completedIds: Set<string> = new Set((data?.completedLessonIds || []).map((x: any) => String(x)));
+        if (!active) return;
+        setCurriculum((prev) => prev.map(s => ({ ...s, lessons: s.lessons.map(l => ({ ...l, completed: completedIds.has(String(l.id)) })) })));
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { active = false };
+  }, [courseId, role, studentId, trainerId, batchId]);
 
   useEffect(() => {
     // Initialize selected lesson to first not-completed or first lesson

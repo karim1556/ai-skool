@@ -341,7 +341,7 @@ export default function TrainerCoursePlaybackPage() {
 
         <div className="grid lg:grid-cols-4 gap-8">
           <div className="lg:col-span-1">
-            <CourseSidebarClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} />
+            <CourseSidebarClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} role="trainer" trainerId={trainerIdDb ?? undefined} />
           </div>
 
           <div className="lg:col-span-3">
