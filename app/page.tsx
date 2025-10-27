@@ -762,62 +762,69 @@ export default function HomePage() {
             {ecommerceProducts.map((product) => (
               <Card key={product.id} className="group overflow-hidden rounded-2xl border border-gray-200 hover:border-gray-300 transition-all duration-300 hover:shadow-xl">
                 <CardContent className="p-0">
-                  <div className="relative aspect-square">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      width={500}
-                      height={500}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-4 left-4 flex gap-2">
-                      {product.isBestSeller && (
-                        <Badge className="bg-green-600 hover:bg-green-700 text-white">
-                          Best Seller
-                        </Badge>
-                      )}
-                      {product.isNew && (
-                        <Badge className="bg-blue-600 hover:bg-blue-700 text-white">
-                          New
-                        </Badge>
-                      )}
-                      {!product.inStock && (
-                        <Badge className="bg-red-600 hover:bg-red-700 text-white">
-                          Out of Stock
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="absolute top-4 right-4 flex flex-col gap-2">
-                      <Button variant="ghost" size="icon" className="rounded-full bg-white/90 backdrop-blur-sm hover:bg-gray-100">
-                        <Heart className="h-4 w-4 text-gray-600" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="rounded-full bg-white/90 backdrop-blur-sm hover:bg-gray-100">
-                        <Share2 className="h-4 w-4 text-gray-600" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-center gap-1 mb-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-4 w-4 ${
-                            i < Math.floor(product.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                          }`}
-                        />
-                      ))}
-                      <span className="text-sm text-gray-500 ml-1">({product.reviews})</span>
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">{product.name}</h3>
-                    <p className="text-sm text-gray-500 mb-3">{product.category}</p>
-                    <p className="text-gray-600 mb-4 line-clamp-2">{product.description}</p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-xl font-bold text-gray-900">₹{Number(product.price || 0).toLocaleString('en-IN')}</span>
-                        {product.originalPrice > product.price && (
-                          <span className="text-sm text-gray-500 line-through ml-2">₹{Number(product.originalPrice || 0).toLocaleString('en-IN')}</span>
+                  <Link href={`/product`} className="block">
+                    <div className="relative aspect-square">
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        width={500}
+                        height={500}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-4 left-4 flex gap-2">
+                        {product.isBestSeller && (
+                          <Badge className="bg-green-600 hover:bg-green-700 text-white">
+                            Best Seller
+                          </Badge>
+                        )}
+                        {product.isNew && (
+                          <Badge className="bg-blue-600 hover:bg-blue-700 text-white">
+                            New
+                          </Badge>
+                        )}
+                        {!product.inStock && (
+                          <Badge className="bg-red-600 hover:bg-red-700 text-white">
+                            Out of Stock
+                          </Badge>
                         )}
                       </div>
+                      <div className="absolute top-4 right-4 flex flex-col gap-2">
+                        <Button variant="ghost" size="icon" className="rounded-full bg-white/90 backdrop-blur-sm hover:bg-gray-100">
+                          <Heart className="h-4 w-4 text-gray-600" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="rounded-full bg-white/90 backdrop-blur-sm hover:bg-gray-100">
+                          <Share2 className="h-4 w-4 text-gray-600" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="flex items-center gap-1 mb-2">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < Math.floor(product.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                        <span className="text-sm text-gray-500 ml-1">({product.reviews})</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-1">{product.name}</h3>
+                      <p className="text-sm text-gray-500 mb-3">{product.category}</p>
+                      <p className="text-gray-600 mb-4 line-clamp-2">{product.description}</p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xl font-bold text-gray-900">₹{Number(product.price || 0).toLocaleString('en-IN')}</span>
+                          {product.originalPrice > product.price && (
+                            <span className="text-sm text-gray-500 line-through ml-2">₹{Number(product.originalPrice || 0).toLocaleString('en-IN')}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                  <div className="p-6 pt-0">
+                    <div className="flex items-center justify-between">
+                      <div />
                       <Button 
                         disabled={!product.inStock}
                         className="rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
