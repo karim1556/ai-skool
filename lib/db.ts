@@ -82,6 +82,17 @@ export function getDb(): Database {
   return db;
 }
 
+/**
+ * Returns the current DB initialization status so API routes can give clearer
+ * error messages instead of generic 500s when the DB client isn't configured.
+ */
+export function dbStatus() {
+  return {
+    ready: !_sqlInternal ? false : true,
+    error: dbInitError ? String(dbInitError.message || dbInitError) : null,
+  };
+}
+
 // Export the raw sql client for transactions or advanced features.
 // Provide a concrete typed export based on the `postgres` factory return type so
 // call sites (sql.begin, tagged templates, trx callbacks) receive proper types

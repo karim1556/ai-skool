@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, dbStatus } from '@/lib/db';
 
 export async function DELETE(request: Request, { params }: { params: { sectionId: string } }) {
   const { sectionId } = params;
@@ -8,6 +8,17 @@ export async function DELETE(request: Request, { params }: { params: { sectionId
   }
 
   const db = await getDb();
+
+  // If DB isn't initialized, return a helpful error instead of a raw 500
+  try {
+    const status = dbStatus();
+    if (!status.ready) {
+      console.error('Database not initialized:', status.error);
+      return NextResponse.json({ error: `Database not initialized: ${status.error || 'missing POSTGRES_URL'}` }, { status: 500 });
+    }
+  } catch (e) {
+    // ignore - we'll rely on the try/catch below
+  }
 
   try {
     // Use a transaction to ensure all or nothing is deleted
