@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb, dbStatus } from '@/lib/db';
+import { getDb, dbStatus, sql } from '@/lib/db';
 
 export async function DELETE(request: Request, { params }: { params: { sectionId: string } }) {
   const { sectionId } = params;
@@ -21,22 +21,30 @@ export async function DELETE(request: Request, { params }: { params: { sectionId
   }
 
   try {
-    // Use a transaction to ensure all or nothing is deleted
-    await db.run('BEGIN');
-
-    // Delete all content associated with the section first
-    await db.run('DELETE FROM lessons WHERE section_id = $1', [sectionId]);
-    await db.run('DELETE FROM quizzes WHERE section_id = $1', [sectionId]);
-    await db.run('DELETE FROM assignments WHERE section_id = $1', [sectionId]);
-
-    // Finally, delete the section itself
-    await db.run('DELETE FROM sections WHERE id = $1', [sectionId]);
-
-    await db.run('COMMIT');
+    // Prefer using the postgres client's transaction API when available
+    if (sql && typeof (sql as any).begin === 'function') {
+      const trx = await (sql as any).begin();
+      try {
+        // Use tagged templates to safely interpolate params
+        await trx`DELETE FROM lessons WHERE section_id = ${sectionId}`;
+        await trx`DELETE FROM quizzes WHERE section_id = ${sectionId}`;
+        await trx`DELETE FROM assignments WHERE section_id = ${sectionId}`;
+        await trx`DELETE FROM sections WHERE id = ${sectionId}`;
+        await trx.commit();
+      } catch (err) {
+        try { await trx.rollback(); } catch (e) {}
+        throw err;
+      }
+    } else {
+      // Fallback: run statements without an explicit transaction
+      await db.run('DELETE FROM lessons WHERE section_id = $1', [sectionId]);
+      await db.run('DELETE FROM quizzes WHERE section_id = $1', [sectionId]);
+      await db.run('DELETE FROM assignments WHERE section_id = $1', [sectionId]);
+      await db.run('DELETE FROM sections WHERE id = $1', [sectionId]);
+    }
 
     return NextResponse.json({ message: 'Section and all its content deleted successfully' }, { status: 200 });
   } catch (error) {
-    await db.run('ROLLBACK');
     console.error(`Failed to delete section ${sectionId}:`, error);
     return NextResponse.json({ error: 'Failed to delete section' }, { status: 500 });
   }
