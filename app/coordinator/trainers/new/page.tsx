@@ -39,6 +39,7 @@ export default function CoordinatorAddTrainerPage() {
   const [specialization, setSpecialization] = useState("")
   const [certifications, setCertifications] = useState("")
   const [phone, setPhone] = useState("")
+  const [inviteMode, setInviteMode] = useState<boolean>(true)
   // removed linkedin, twitter, bio fields
   // removed single-verified gate; allow multiple trainers
 
@@ -92,7 +93,7 @@ export default function CoordinatorAddTrainerPage() {
       }
       let success = 0
       let lastError: string | null = null
-      for (const em of emails) {
+        for (const em of emails) {
         const res = await fetch("/api/trainers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -113,6 +114,8 @@ export default function CoordinatorAddTrainerPage() {
             specialization: specialization || null,
             certifications: certifications || null,
             phone: phone || null,
+            // send invite instead of creating verified trainer directly when inviteMode is true
+            invite: inviteMode,
           }),
         })
         let data: any = null
@@ -205,6 +208,13 @@ export default function CoordinatorAddTrainerPage() {
       <div className="space-y-2">
         <Label htmlFor="email">Email(s)<span className="text-red-500">*</span></Label>
         <Input id="email" type="text" placeholder="Enter one or more emails, separated by commas" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div className="flex items-center space-x-3">
+        <input id="inviteMode" type="checkbox" checked={inviteMode} onChange={(e) => setInviteMode(e.target.checked)} className="h-4 w-4 rounded" />
+        <div className="text-sm">
+          <Label htmlFor="inviteMode" className="!mb-0">Send invitation (recommended)</Label>
+          <p className="text-xs text-gray-500">When checked, an invitation will be sent and the trainer will be stored as "invited". When unchecked, an account will be created directly.</p>
+        </div>
       </div>
     </div>,
 

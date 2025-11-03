@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, sql } from '@/lib/db';
+import { inviteUserToOrganization } from '@/lib/clerk'
 import { auth } from '@clerk/nextjs/server'
 
 export const dynamic = 'force-dynamic';
@@ -165,6 +166,7 @@ export async function POST(req: NextRequest) {
       linkedin,
       twitter,
       bio,
+      invite,
     } = body || {};
 
     const { orgId } = await auth()
@@ -182,8 +184,66 @@ export async function POST(req: NextRequest) {
       schoolId = schoolRow.id;
     }
 
-    // Allow multiple verified trainers per school: removed single-verified constraint
+    // If invite mode requested, create Clerk invitation and upsert trainer as 'invited'
+    if (invite === true || String(invite).toLowerCase() === 'true') {
+      const emailLower = email ? String(email).toLowerCase() : ''
+      if (!emailLower) return NextResponse.json({ error: 'email is required for invite' }, { status: 400 })
+      const roleId = process.env.CLERK_TRAINER_ROLE_ID || ''
+      const roleKey = process.env.CLERK_TRAINER_ROLE || 'trainer'
+      const prefixed = roleKey.includes(':') ? roleKey : `org:${roleKey}`
+      try {
+        if (roleId) {
+          await inviteUserToOrganization(orgId, emailLower, { roleId })
+        } else {
+          await inviteUserToOrganization(orgId, emailLower, { role: prefixed })
+        }
+      } catch (e:any) {
+        // If Clerk returns an error (already invited, rate limit), continue and persist invited state
+      }
 
+      // Upsert trainer record by lower(email) within this school
+      try {
+        const existing = await db.get<{ id: string }>(`SELECT id FROM trainers WHERE lower(email) = lower($1) AND school_id = $2`, [emailLower, schoolId])
+        if (existing?.id) {
+          await db.run(
+            `UPDATE trainers SET first_name = COALESCE($1, first_name), last_name = COALESCE($2, last_name), phone = COALESCE($3, phone), status = 'invited', updated_at = NOW() WHERE id = $4`,
+            [first_name || null, last_name || null, phone || null, existing.id]
+          )
+          return NextResponse.json({ id: existing.id, success: true, mode: 'invited' })
+        } else {
+          const newRow = await db.get<{ id: string }>(
+            `INSERT INTO trainers (school_id, coordinator_id, first_name, last_name, gender, dob, pincode, address, image_url, status, email, highest_school, experience_years, specialization, certifications, phone, linkedin, twitter, bio)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'invited',$10,$11,$12,$13,$14,$15,$16,$17,$18)
+             RETURNING id`,
+            [
+              schoolId,
+              coordinator_id || null,
+              first_name || null,
+              last_name || null,
+              gender || null,
+              dob || null,
+              pincode || null,
+              address || null,
+              image_url || null,
+              emailLower,
+              highest_school || null,
+              Number.isFinite(+experience_years) ? +experience_years : null,
+              specialization || null,
+              certifications || null,
+              phone || null,
+              linkedin || null,
+              twitter || null,
+              bio || null,
+            ]
+          )
+          return NextResponse.json({ id: newRow?.id, success: true, mode: 'invited' })
+        }
+      } catch (e:any) {
+        return NextResponse.json({ error: e?.message || 'Failed to upsert invited trainer' }, { status: 500 })
+      }
+    }
+
+    // Non-invite flow: insert trainer directly (existing behavior)
     const row = await db.get<{ id: string }>(
       `INSERT INTO trainers (
         school_id, coordinator_id, first_name, last_name, gender, dob, pincode, address, image_url, status,
