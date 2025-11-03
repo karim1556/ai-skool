@@ -1,5 +1,6 @@
-import { RoleSelector } from "@/components/auth/role-selector"
+import { redirect } from "next/navigation"
 
 export default function LoginPage() {
-  return <RoleSelector />
+  // Redirect /login to the consolidated sign-in page which now contains the role dropdown
+  redirect('/sign-in')
 }

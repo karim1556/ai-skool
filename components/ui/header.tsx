@@ -13,9 +13,10 @@ import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 import Image from "next/image"
-import { ShoppingCart, Menu, BookOpen, GraduationCap, Info, Boxes, FolderOpen, ChevronDown } from "lucide-react"
+import { ShoppingCart, Menu, BookOpen, Info, Boxes, FolderOpen, ChevronDown, LayoutDashboard } from "lucide-react"
 import { OrganizationSwitcher, UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 import { useEffect, useState } from "react"
+import { getCurrentMockUser } from "@/lib/mock-auth"
 import { useCart } from "@/hooks/use-cart"
 
 export function Header() {
@@ -38,8 +39,29 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const [products, setProducts] = useState<Array<{ name: string; slug: string; hero_image?: string }>>([])
+  const [dashboardHref, setDashboardHref] = useState<string>('/dashboard')
 
   useEffect(() => {
+    // compute dashboard href based on demo/mock user when available
+    try {
+      const u = getCurrentMockUser()
+      if (u && u.role) {
+        const role = (u.role || '').toLowerCase()
+        switch (role) {
+          case 'admin': setDashboardHref('/admin'); break
+          case 'trainer': setDashboardHref('/trainer/dashboard'); break
+          case 'instructor': setDashboardHref('/instructor/dashboard'); break
+          case 'student': setDashboardHref('/student/dashboard'); break
+          case 'coordinator':
+          case 'school_coordinator': setDashboardHref('/coordinator/dashboard'); break
+          case 'camp_coordinator': setDashboardHref('/camp-coordinator/dashboard'); break
+          case 'online_student': setDashboardHref('/online/dashboard'); break
+          default: setDashboardHref('/dashboard');
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
     let ignore = false
     ;(async () => {
       const attempt = async () => {
@@ -186,47 +208,7 @@ export function Header() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              {/* Programs Dropdown */}
-              <NavigationMenuItem>
-                <NavigationMenuTrigger className="bg-transparent hover:bg-gray-100">
-                  <GraduationCap className="w-4 h-4 mr-2" />
-                  Programs
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <div className="grid gap-3 p-6 w-[500px] rounded-md border bg-white shadow-lg z-50">
-                    <div className="grid gap-1">
-                      <h3 className="font-medium leading-none mb-2 text-gray-900">Our Programs</h3>
-                      <Link
-                        href="/why-Ai"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
-                      >
-                        <div className="text-sm font-medium leading-none">Why Ai</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">
-                          Discover the benefits of our Skoolal approach
-                        </p>
-                      </Link>
-                      <Link
-                        href="/for-parents"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
-                      >
-                        <div className="text-sm font-medium leading-none">For Parents</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">
-                          Resources and tools for parents to support learning at home
-                        </p>
-                      </Link>
-                      <Link
-                        href="/for-educators"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
-                      >
-                        <div className="text-sm font-medium leading-none">For Educators</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-gray-600">
-                          Classroom management tools and curriculum resources
-                        </p>
-                      </Link>
-                    </div>
-                  </div>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
+              {/* Programs removed */}
 
               {/* Services Dropdown (visible) */}
               <NavigationMenuItem>
@@ -347,6 +329,14 @@ export function Header() {
             </Button>
           </Link>
 
+          {/* Dashboard quick-link */}
+          <Link href={dashboardHref}>
+            <Button variant="ghost" size="sm" className="hidden sm:inline-flex items-center border-0 px-2 py-1">
+              <LayoutDashboard className="h-4 w-4 mr-2 text-gray-700" />
+              <span className="text-sm text-gray-700">Dashboard</span>
+            </Button>
+          </Link>
+
           {/* Login/Register - Desktop (only when signed out) */}
           <SignedOut>
             <div className="hidden md:flex items-center space-x-3">
@@ -426,35 +416,7 @@ export function Header() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
-                    <GraduationCap className="w-5 h-5" />
-                    <span>Programs</span>
-                  </h3>
-                  <div className="pl-7 space-y-2">
-                    <Link
-                      href="/why-Ai"
-                      className="block text-gray-600 hover:text-gray-900 transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Why Ai
-                    </Link>
-                    <Link
-                      href="/for-parents"
-                      className="block text-gray-600 hover:text-gray-900 transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      For Parents
-                    </Link>
-                    <Link
-                      href="/for-educators"
-                      className="block text-gray-600 hover:text-gray-900 transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      For Educators
-                    </Link>
-                  </div>
-                </div>
+                {/* Programs removed from mobile menu */}
 
                 <div className="space-y-2">
                     <h3 className="font-semibold text-gray-900 flex items-center space-x-2">

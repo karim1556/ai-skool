@@ -380,7 +380,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/login">
+                <Link href="/courses">
                   <Button className="rounded-full bg-gradient-to-r from-sky-500 to-sky-600 px-10 py-4 text-lg font-bold text-white hover:from-sky-600 hover:to-sky-700 transition-all duration-300 hover:scale-105 shadow-xl hover:shadow-2xl">
                     GET STARTED
                   </Button>
@@ -411,138 +411,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-gradient-to-b from-gray-50 to-white px-4 py-20 md:px-6 md:py-32">
-        <div className="mx-auto max-w-6xl text-center">
-          <div className="space-y-8 mb-16">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
-              Trusted by{" "}
-              <span className="bg-gradient-to-r from-green-500 to-blue-600 bg-clip-text text-transparent">
-                thousands
-              </span>{" "}
-              of{" "}
-              <span className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-                educators
-              </span>{" "}
-              worldwide
-            </h2>
-            <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
-              Join educators and students who are already using EduFlow LMS to achieve their learning goals.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8 max-w-4xl mx-auto">
-            <div className="text-center bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-[#1e3a8a]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-6 h-6 lg:w-8 lg:h-8 text-[#1e3a8a]" />
-              </div>
-              <div className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">10K+</div>
-              <div className="text-sm lg:text-base text-gray-600 tracking-tight">Active Students</div>
-            </div>
-            <div className="text-center bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-[#ec4899]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-6 h-6 lg:w-8 lg:h-8 text-[#ec4899]" />
-              </div>
-              <div className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">500+</div>
-              <div className="text-sm lg:text-base text-gray-600 tracking-tight">Courses Available</div>
-            </div>
-            <div className="text-center bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Award className="w-6 h-6 lg:w-8 lg:h-8 text-green-600" />
-              </div>
-              <div className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">95%</div>
-              <div className="text-sm lg:text-base text-gray-600 tracking-tight">Success Rate</div>
-            </div>
-            <div className="text-center bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-orange-600" />
-              </div>
-              <div className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">4.9</div>
-              <div className="text-sm lg:text-base text-gray-600 tracking-tight">Average Rating</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="bg-gradient-to-b from-white to-gray-50 px-4 py-20 md:px-6 md:py-32">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-20 text-center space-y-8">
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-              Become a {" "}
-              <span className="bg-gradient-to-r from-sky-500 to-purple-600 bg-clip-text text-transparent">
-                change maker
-              </span>
-            </h2>
-            <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
-              Innovate today for a better tomorrow by inculcating the indispensable skills of the 21st century.
-            </p>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                icon: Sparkles,
-                title: "Innovativeness",
-                description: "Foster curiosity and groundbreaking ideas through hands-on exploration.",
-                gradient: "from-blue-500 to-cyan-500",
-              },
-              {
-                icon: Brain,
-                title: "Logical Reasoning",
-                description: "Build strong analytical thinking with structured challenges and activities.",
-                gradient: "from-purple-500 to-indigo-500",
-              },
-              {
-                icon: Zap,
-                title: "Creativity",
-                description: "Encourage original thinking, design, and expression across disciplines.",
-                gradient: "from-green-500 to-emerald-500",
-              },
-              {
-                icon: Atom,
-                title: "Critical Thinking",
-                description: "Evaluate information, question assumptions, and make informed decisions.",
-                gradient: "from-orange-500 to-amber-500",
-              },
-              {
-                icon: Calculator,
-                title: "Problem Solving",
-                description: "Tackle real-world problems using STEM, coding, and design thinking.",
-                gradient: "from-pink-500 to-rose-500",
-              },
-              {
-                icon: Users,
-                title: "Team Work",
-                description: "Collaborate effectively, communicate clearly, and lead with empathy.",
-                gradient: "from-red-500 to-pink-500",
-              },
-            ].map((feature, index) => (
-              <Card
-                key={index}
-                className="group border-0 bg-white/80 backdrop-blur-sm p-8 text-center hover:bg-white transition-all duration-300 hover:scale-105 hover:shadow-2xl shadow-lg"
-              >
-                <CardContent className="space-y-6 p-0">
-                  <div
-                    className={`mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} shadow-lg group-hover:scale-110 transition-transform duration-300`}
-                  >
-                    <feature.icon className="h-10 w-10 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{feature.title}</h3>
-                  <p className="text-gray-600 leading-relaxed font-medium tracking-tight">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          {displayedCourses.length === 0 && (
-            <div className="mt-8 text-center text-gray-600">
-              No courses found for {selectedLevelName}. Please check back later.
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Popular Courses (moved above products) */}
+      {/* Popular Courses (moved above stats) */}
       <section className="bg-gradient-to-b from-gray-50 to-white px-4 py-20 md:px-6 md:py-32">
         <div className="mx-auto max-w-7xl">
           <div className="mb-20 text-center space-y-8">
@@ -684,6 +553,139 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Stats Section */}
+      <section className="bg-gradient-to-b from-gray-50 to-white px-4 py-20 md:px-6 md:py-32">
+        <div className="mx-auto max-w-6xl text-center">
+          <div className="space-y-8 mb-16">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
+              Trusted by{" "}
+              <span className="bg-gradient-to-r from-green-500 to-blue-600 bg-clip-text text-transparent">
+                thousands
+              </span>{" "}
+              of{" "}
+              <span className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+                educators
+              </span>{" "}
+              worldwide
+            </h2>
+            <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
+              Join educators and students who are already using EduFlow LMS to achieve their learning goals.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8 max-w-4xl mx-auto">
+            <div className="text-center bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-[#1e3a8a]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-6 h-6 lg:w-8 lg:h-8 text-[#1e3a8a]" />
+              </div>
+              <div className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">10K+</div>
+              <div className="text-sm lg:text-base text-gray-600 tracking-tight">Active Students</div>
+            </div>
+            <div className="text-center bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-[#ec4899]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-6 h-6 lg:w-8 lg:h-8 text-[#ec4899]" />
+              </div>
+              <div className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">500+</div>
+              <div className="text-sm lg:text-base text-gray-600 tracking-tight">Courses Available</div>
+            </div>
+            <div className="text-center bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Award className="w-6 h-6 lg:w-8 lg:h-8 text-green-600" />
+              </div>
+              <div className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">95%</div>
+              <div className="text-sm lg:text-base text-gray-600 tracking-tight">Success Rate</div>
+            </div>
+            <div className="text-center bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-orange-600" />
+              </div>
+              <div className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">4.9</div>
+              <div className="text-sm lg:text-base text-gray-600 tracking-tight">Average Rating</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="bg-gradient-to-b from-white to-gray-50 px-4 py-20 md:px-6 md:py-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-20 text-center space-y-8">
+            <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
+              Become a {" "}
+              <span className="bg-gradient-to-r from-sky-500 to-purple-600 bg-clip-text text-transparent">
+                change maker
+              </span>
+            </h2>
+            <p className="mx-auto max-w-4xl text-lg md:text-xl font-medium text-gray-600 leading-relaxed tracking-tight">
+              Innovate today for a better tomorrow by inculcating the indispensable skills of the 21st century.
+            </p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                icon: Sparkles,
+                title: "Innovativeness",
+                description: "Foster curiosity and groundbreaking ideas through hands-on exploration.",
+                gradient: "from-blue-500 to-cyan-500",
+              },
+              {
+                icon: Brain,
+                title: "Logical Reasoning",
+                description: "Build strong analytical thinking with structured challenges and activities.",
+                gradient: "from-purple-500 to-indigo-500",
+              },
+              {
+                icon: Zap,
+                title: "Creativity",
+                description: "Encourage original thinking, design, and expression across disciplines.",
+                gradient: "from-green-500 to-emerald-500",
+              },
+              {
+                icon: Atom,
+                title: "Critical Thinking",
+                description: "Evaluate information, question assumptions, and make informed decisions.",
+                gradient: "from-orange-500 to-amber-500",
+              },
+              {
+                icon: Calculator,
+                title: "Problem Solving",
+                description: "Tackle real-world problems using STEM, coding, and design thinking.",
+                gradient: "from-pink-500 to-rose-500",
+              },
+              {
+                icon: Users,
+                title: "Team Work",
+                description: "Collaborate effectively, communicate clearly, and lead with empathy.",
+                gradient: "from-red-500 to-pink-500",
+              },
+            ].map((feature, index) => (
+              <Card
+                key={index}
+                className="group border-0 bg-white/80 backdrop-blur-sm p-8 text-center hover:bg-white transition-all duration-300 hover:scale-105 hover:shadow-2xl shadow-lg"
+              >
+                <CardContent className="space-y-6 p-0">
+                  <div
+                    className={`mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                  >
+                    <feature.icon className="h-10 w-10 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{feature.title}</h3>
+                  <p className="text-gray-600 leading-relaxed font-medium tracking-tight">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {displayedCourses.length === 0 && (
+            <div className="mt-8 text-center text-gray-600">
+              No courses found for {selectedLevelName}. Please check back later.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Popular Courses moved above stats (duplicate removed) */}
 
       {/* NEW: Our Products Section */}
       <section className="bg-gradient-to-b from-gray-50 to-white px-4 py-20 md:px-6 md:py-32">

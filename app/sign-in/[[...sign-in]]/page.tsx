@@ -142,6 +142,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Lock, Mail, Sparkles, BookOpen, Brain, Zap } from "lucide-react";
+const demoRoles = [
+  { id: "admin", name: "Admin" },
+  { id: "trainer", name: "Trainer" },
+  { id: "instructor", name: "Instructor" },
+  { id: "student", name: "Student" },
+  { id: "school_coordinator", name: "School Coordinator" },
+  { id: "camp_coordinator", name: "Camp Coordinator" },
+];
 
 export default function SignIn() {
   const { isLoaded, signIn, setActive } = useSignIn();
@@ -150,6 +158,7 @@ export default function SignIn() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>("student");
   const router = useRouter();
 
   if (!isLoaded) {
@@ -173,7 +182,25 @@ export default function SignIn() {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.push("/dashboard");
+          // For demo mode: store a demo-user object so role-aware UI can use it
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.setItem(
+                "demo-user",
+                JSON.stringify({
+                  id: emailAddress,
+                  name: emailAddress.split("@")[0] || emailAddress,
+                  email: emailAddress,
+                  role: selectedRole,
+                  is_approved: true,
+                })
+              );
+            }
+          } catch (e) {
+            // ignore storage errors
+          }
+
+          router.push("/dashboard");
       } else {
         console.error(JSON.stringify(result, null, 2));
       }
@@ -285,6 +312,19 @@ export default function SignIn() {
                 <CardContent>
                   <form onSubmit={submit} className="space-y-6">
                     <div className="space-y-4">
+                      <div className="space-y-3">
+                        <Label htmlFor="role" className="text-sm font-semibold text-gray-700">Role (demo)</Label>
+                        <select
+                          id="role"
+                          value={selectedRole}
+                          onChange={(e) => setSelectedRole(e.target.value)}
+                          className="w-full py-3 px-4 rounded-xl border-2 border-gray-200 bg-white"
+                        >
+                          {demoRoles.map((r) => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                          ))}
+                        </select>
+                      </div>
                       <div className="space-y-3">
                         <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
                           Email Address
