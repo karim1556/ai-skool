@@ -557,9 +557,11 @@ export default function SummerCampsPage() {
                             )
                           })()}
                         </div>
-                        <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
-                          Enroll Now
-                        </Button>
+                        <Link href="/courses">
+                          <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
+                            Enroll Now
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </CardContent>
@@ -795,9 +797,11 @@ function CampCard({ camp }: CampCardProps) {
             <Link href={`/camps/${camp.id}`} className="text-sm inline-flex items-center px-3 py-2 rounded-md border border-gray-200 hover:bg-gray-50">
               Learn More
             </Link>
-            <Button size="sm" className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
-              Enroll
-            </Button>
+            <Link href="/courses">
+              <Button size="sm" className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
+                Enroll
+              </Button>
+            </Link>
           </div>
         </div>
       </CardContent>
