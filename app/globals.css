@@ -92,3 +92,9 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide global header/footer when playback requests distraction-free mode */
+.playback-hide-shell header,
+.playback-hide-shell footer {
+  display: none !important;
+}

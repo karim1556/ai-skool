@@ -19,6 +19,21 @@ import { useEffect, useState } from "react"
 import { useCart } from "@/hooks/use-cart"
 
 export function Header() {
+  const [hidden, setHidden] = useState(false);
+
+  // Observe body class changes so we can hide header when playback page requests it
+  useEffect(() => {
+    try {
+      const update = () => setHidden(document.body.classList.contains('playback-hide-shell'));
+      update();
+      const mo = new MutationObserver(() => update());
+      mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      return () => mo.disconnect();
+    } catch (e) {
+      return () => {};
+    }
+  }, []);
+
   const { count: cartCount } = useCart()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
@@ -73,6 +88,9 @@ export function Header() {
                     </div>
     return () => { ignore = true }
   }, [])
+
+  // If playback page requested hiding the shell, don't render markup but keep hooks stable
+  if (hidden) return null;
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100 px-4 py-4 md:px-6">

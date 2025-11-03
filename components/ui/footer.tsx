@@ -7,10 +7,25 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export function Footer() {
   const [email, setEmail] = useState("")
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    try {
+      const update = () => setHidden(document.body.classList.contains('playback-hide-shell'));
+      update();
+      const mo = new MutationObserver(() => update());
+      mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      return () => mo.disconnect();
+    } catch (e) {
+      return () => {};
+    }
+  }, []);
+
+  if (hidden) return null;
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault()

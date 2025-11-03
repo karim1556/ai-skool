@@ -59,6 +59,16 @@ export default function StudentCoursePlaybackPage() {
     return () => window.removeEventListener('contextmenu', onContext as any);
   }, []);
 
+  // Hide global header/footer while on the student playback page to reduce distractions
+  useEffect(() => {
+    try {
+      document.body.classList.add('playback-hide-shell');
+    } catch (e) {}
+    return () => {
+      try { document.body.classList.remove('playback-hide-shell'); } catch (e) {}
+    };
+  }, []);
+
   // Load course meta and its levels
   useEffect(() => {
     let active = true;
