@@ -183,7 +183,7 @@ export default function QuizPlaybackPage() {
               return (
                 <>
                   <div className="w-full sm:w-auto">
-                    <Button onClick={() => router.push(`/courses/${cid}/playback`)} variant="outline" size="lg" className="w-full text-lg">
+                    <Button onClick={() => router.push(`/student/learn/course/${cid}`)} variant="outline" size="lg" className="w-full text-lg">
                       <ArrowLeft className="w-5 h-5 mr-2" />
                       Back to Course
                     </Button>
@@ -191,7 +191,7 @@ export default function QuizPlaybackPage() {
 
                   <div className="flex-1 flex items-center justify-end gap-4 w-full">
                     {nextLessonId && (
-                      <Button onClick={() => router.push(`/courses/${cid}/playback?lessonId=${encodeURIComponent(nextLessonId)}`)} size="lg" className="w-full sm:w-auto text-lg">
+                      <Button onClick={() => router.push(`/student/learn/course/${cid}?lessonId=${encodeURIComponent(nextLessonId)}`)} size="lg" className="w-full sm:w-auto text-lg">
                         Next
                       </Button>
                     )}

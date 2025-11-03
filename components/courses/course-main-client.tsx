@@ -560,38 +560,56 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                 </span>
               )}
 
-              <button 
-                onClick={async () => {
-                  // Mark current lesson as completed before navigating
-                  if (selectedLesson && !selectedLesson.completed) {
-                    setCurriculum(prev => prev.map(s => ({
-                      ...s,
-                      lessons: s.lessons.map(l => l.id === selectedLesson.id ? { ...l, completed: true } : l)
-                    })));
-                    // Broadcast completion so sidebar updates immediately
-                    try {
-                      const ev = new CustomEvent('lesson:completion-changed', { detail: { lessonId: selectedLesson.id, completed: true } });
-                      window.dispatchEvent(ev);
-                    } catch (e) {}
-                    // Persist completion (will enqueue if owner ids not yet available)
-                    try {
-                      await persistLessonCompletion(selectedLesson.id);
-                    } catch (e) {}
-                    // Also request the sidebar's CompletionToggle to update its UI (simulate pressing the button)
-                    try {
-                      window.dispatchEvent(new CustomEvent('lesson:request-toggle', { detail: { lessonId: selectedLesson.id, completed: true, source: 'main' } }));
-                    } catch (e) {}
-                  }
-                  onNavigate(nextLesson);
-                }}
-                className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-1 md:py-2 transition-colors text-sm ${nextLesson ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 cursor-not-allowed'}`}
-                disabled={!nextLesson}
-              >
-                <span className="hidden xs:inline">Next</span>
-                <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+                {nextLesson ? (
+                  <button
+                    onClick={async () => {
+                      // Mark current lesson as completed before navigating (same as Next behavior)
+                      if (selectedLesson && !selectedLesson.completed) {
+                        setCurriculum(prev => prev.map(s => ({
+                          ...s,
+                          lessons: s.lessons.map(l => l.id === selectedLesson.id ? { ...l, completed: true } : l)
+                        })));
+                        try {
+                          const ev = new CustomEvent('lesson:completion-changed', { detail: { lessonId: selectedLesson.id, completed: true } });
+                          window.dispatchEvent(ev);
+                        } catch (e) {}
+                        try { await persistLessonCompletion(selectedLesson.id); } catch (e) {}
+                        try { window.dispatchEvent(new CustomEvent('lesson:request-toggle', { detail: { lessonId: selectedLesson.id, completed: true, source: 'main' } })); } catch (e) {}
+                      }
+                      onNavigate(nextLesson);
+                    }}
+                    className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-1 md:py-2 transition-colors text-sm text-gray-600 hover:text-gray-900`}
+                  >
+                    <span className="hidden xs:inline">Next</span>
+                    <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ) : (
+                  // End Course button shown on the last lesson when there is no "next"
+                  <button
+                    onClick={async () => {
+                      // Mark current lesson completed and persist, then navigate to student's levels (end of course flow)
+                      if (selectedLesson && !selectedLesson.completed) {
+                        setCurriculum(prev => prev.map(s => ({
+                          ...s,
+                          lessons: s.lessons.map(l => l.id === selectedLesson.id ? { ...l, completed: true } : l)
+                        })));
+                        try {
+                          const ev = new CustomEvent('lesson:completion-changed', { detail: { lessonId: selectedLesson.id, completed: true } });
+                          window.dispatchEvent(ev);
+                        } catch (e) {}
+                        try { await persistLessonCompletion(selectedLesson.id); } catch (e) {}
+                        try { window.dispatchEvent(new CustomEvent('lesson:request-toggle', { detail: { lessonId: selectedLesson.id, completed: true, source: 'main' } })); } catch (e) {}
+                      }
+                      // Redirect student to their levels/dashboard - adjust if you prefer a different destination
+                      try { router.push('/student/levels'); } catch (e) { console.warn('navigate failed', e); }
+                    }}
+                    className="flex items-center space-x-2 px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm"
+                  >
+                    <span>End Course</span>
+                  </button>
+                )}
             </div>
           </div>
         </div>
