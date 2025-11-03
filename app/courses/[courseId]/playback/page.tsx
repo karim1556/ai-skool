@@ -334,19 +334,19 @@ function CourseContent({ course }: { course: Course }) {
 function EnhancedCoursePlayback({ course }: { course: Course }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-6 py-8">
+    <div className="mx-auto px-6 py-8 max-w-[1400px] w-full">
         {/* Client-updating Course Header */}
         <CourseHeaderClient title={course.title} initialCurriculum={course.curriculum} />
 
-        {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-4 gap-8">
+        {/* Main Content Grid - increase main content width for larger player */}
+        <div className="grid lg:grid-cols-5 gap-8">
           {/* Sidebar - Curriculum (client interactive) */}
           <div className="lg:col-span-1">
             <CourseSidebarWrapper initialCurriculum={course.curriculum} courseId={course.id} />
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-4">
             <CourseMainClient initialCurriculum={course.curriculum} courseId={course.id} />
           </div>
         </div>

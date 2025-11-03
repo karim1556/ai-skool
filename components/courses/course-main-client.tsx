@@ -2,17 +2,198 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Play, BookOpen, FileText, Award } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 type LessonType = 'lesson' | 'quiz' | 'assignment' | 'video' | 'document' | 'video_file';
 interface Lesson { id: string; title: string; description?: string; type?: LessonType; duration?: number; completed?: boolean; video_url?: string; file_url?: string; attachment_url?: string }
 interface Section { id: string; title: string; lessons: Lesson[] }
 
-export default function CourseMainClient({ initialCurriculum, courseId, role = 'student' }: { initialCurriculum: Section[]; courseId: string; role?: 'student'|'trainer' }) {
+export default function CourseMainClient({ initialCurriculum, courseId, role = 'student', studentId, trainerId, batchId }: { initialCurriculum: Section[]; courseId: string; role?: 'student'|'trainer'; studentId?: string; trainerId?: string; batchId?: string }) {
+  // Fetch persisted completions for this course/role and apply to curriculum
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set('courseId', String(courseId));
+        params.set('role', role);
+        if (role === 'student') {
+          if (!studentId || !batchId) return;
+          params.set('studentId', String(studentId));
+          params.set('batchId', String(batchId));
+        } else {
+          if (!trainerId) return;
+          params.set('trainerId', String(trainerId));
+        }
+        const res = await fetch(`/api/progress/lessons?${params.toString()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const completedIds = new Set((data?.completedLessonIds || []).map((x: any) => String(x)));
+        if (!active) return;
+        setCurriculum((prev) => prev.map(s => ({ ...s, lessons: s.lessons.map(l => ({ ...l, completed: completedIds.has(String(l.id)) })) })));
+      } catch (e) {}
+    })();
+    return () => { active = false };
+  }, [courseId, role, studentId, trainerId, batchId]);
   const router = useRouter();
   const [curriculum, setCurriculum] = useState<Section[]>(initialCurriculum || []);
   const allLessons = curriculum.flatMap(s => s.lessons || []);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+
+  // Helper: queue key for pending completions when owner identifiers are not yet available
+  const pendingQueueKey = `ai-skool:pendingCompletions:${String(courseId)}`;
+
+  // Owner identifiers may be broadcast by a wrapper (sidebar) via `owner:resolved` event
+  // to support multiple sources of truth (props or wrapper). Listen and cache them.
+  const [ownerRole, setOwnerRole] = useState<typeof role | undefined>(role);
+  const [ownerStudentId, setOwnerStudentId] = useState<string | undefined>(studentId);
+  const [ownerTrainerId, setOwnerTrainerId] = useState<string | undefined>(trainerId);
+  const [ownerBatchId, setOwnerBatchId] = useState<string | undefined>(batchId);
+
+  useEffect(() => {
+    const onResolved = (ev: any) => {
+      const d = ev.detail || {};
+      if (d.role) setOwnerRole(d.role);
+      if (d.studentId) setOwnerStudentId(String(d.studentId));
+      if (d.trainerId) setOwnerTrainerId(String(d.trainerId));
+      if (d.batchId) setOwnerBatchId(String(d.batchId));
+    };
+    window.addEventListener('owner:resolved', onResolved as EventListener);
+    return () => window.removeEventListener('owner:resolved', onResolved as EventListener);
+  }, []);
+
+  // Also sync owner state from props when they arrive after mount
+  useEffect(() => {
+    if (!ownerRole && role) setOwnerRole(role);
+    if (!ownerStudentId && studentId) setOwnerStudentId(studentId);
+    if (!ownerBatchId && batchId) setOwnerBatchId(batchId);
+    if (!ownerTrainerId && trainerId) setOwnerTrainerId(trainerId);
+  }, [studentId, trainerId, batchId, role]);
+
+  // Persist a completion safely: if owner identifiers are present, POST to API,
+  // otherwise enqueue to localStorage for later flushing.
+  const persistLessonCompletion = async (lessonId: string) => {
+    if (!lessonId) return;
+    // prefer owner- resolved identifiers when available (they may arrive via event)
+    const effectiveRole = ownerRole || role;
+    const effectiveStudentId = ownerStudentId || studentId;
+    const effectiveBatchId = ownerBatchId || batchId;
+    const effectiveTrainerId = ownerTrainerId || trainerId;
+
+    const shouldQueueForStudent = effectiveRole === 'student' && (!effectiveStudentId || !effectiveBatchId);
+    const shouldQueueForTrainer = effectiveRole === 'trainer' && !effectiveTrainerId;
+
+    if (shouldQueueForStudent || shouldQueueForTrainer) {
+      // enqueue if not already present
+      try {
+        const raw = localStorage.getItem(pendingQueueKey) || '[]';
+        const arr: string[] = JSON.parse(raw);
+        if (!arr.includes(lessonId)) {
+          arr.push(lessonId);
+          localStorage.setItem(pendingQueueKey, JSON.stringify(arr));
+        }
+      } catch (e) {}
+      return;
+    }
+    // Build payload with available owner identifiers
+    const payload: any = {
+      course_id: courseId,
+      lesson_id: lessonId,
+      completed: true,
+      role: effectiveRole,
+    };
+    if (effectiveRole === 'student') {
+      if (effectiveStudentId) payload.student_id = effectiveStudentId;
+      if (effectiveBatchId) payload.batch_id = effectiveBatchId;
+    } else if (effectiveRole === 'trainer') {
+      if (effectiveTrainerId) payload.trainer_id = effectiveTrainerId;
+    }
+
+    try {
+      const res = await fetch('/api/progress/lessons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        // ensure any queued entry for this lesson is removed
+        try {
+          const cur = JSON.parse(localStorage.getItem(pendingQueueKey) || '[]') as string[];
+          const updated = cur.filter(x => x !== lessonId);
+          localStorage.setItem(pendingQueueKey, JSON.stringify(updated));
+        } catch (e) {}
+        // Broadcast confirmed completion so other components can sync
+        try { window.dispatchEvent(new CustomEvent('lesson:completion-confirmed', { detail: { lessonId, completed: true } })); } catch (e) {}
+      }
+    } catch (e) {
+      // On network error, enqueue for retry later
+      try {
+        const raw = localStorage.getItem(pendingQueueKey) || '[]';
+        const arr: string[] = JSON.parse(raw);
+        if (!arr.includes(lessonId)) {
+          arr.push(lessonId);
+          localStorage.setItem(pendingQueueKey, JSON.stringify(arr));
+        }
+      } catch (e) {}
+    }
+  };
+
+  // Flush any pending completions when owner identifiers become available
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let active = true;
+    (async () => {
+      try {
+        const raw = localStorage.getItem(pendingQueueKey) || '[]';
+        const arr: string[] = JSON.parse(raw || '[]');
+        if (!arr.length) return;
+
+        // Use owner-resolved identifiers when available
+        const effectiveRole = ownerRole || role;
+        const effectiveStudentId = ownerStudentId || studentId;
+        const effectiveBatchId = ownerBatchId || batchId;
+        const effectiveTrainerId = ownerTrainerId || trainerId;
+
+        // Only attempt flush if relevant owner info exists
+        if (effectiveRole === 'student' && (!effectiveStudentId || !effectiveBatchId)) return;
+        if (effectiveRole === 'trainer' && !effectiveTrainerId) return;
+
+        for (const lessonId of arr) {
+          if (!active) return;
+          try {
+            const payload: any = {
+              course_id: courseId,
+              lesson_id: lessonId,
+              completed: true,
+              role: effectiveRole,
+            };
+            if (effectiveRole === 'student') {
+              if (effectiveStudentId) payload.student_id = effectiveStudentId;
+              if (effectiveBatchId) payload.batch_id = effectiveBatchId;
+            } else if (effectiveRole === 'trainer') {
+              if (effectiveTrainerId) payload.trainer_id = effectiveTrainerId;
+            }
+            const res = await fetch('/api/progress/lessons', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+              // remove from queue
+              const cur = JSON.parse(localStorage.getItem(pendingQueueKey) || '[]') as string[];
+              const updated = cur.filter(x => x !== lessonId);
+              localStorage.setItem(pendingQueueKey, JSON.stringify(updated));
+              // broadcast confirmed completion
+              try { window.dispatchEvent(new CustomEvent('lesson:completion-confirmed', { detail: { lessonId, completed: true } })); } catch (e) {}
+            }
+          } catch (e) {
+            // if one fails, continue to next
+          }
+        }
+      } catch (e) {}
+    })();
+    return () => { active = false };
+  }, [studentId, batchId, trainerId, courseId, role, ownerRole, ownerStudentId, ownerTrainerId, ownerBatchId]);
 
   useEffect(() => {
     const current = allLessons.find(l => !l.completed) || allLessons[0];
@@ -71,6 +252,16 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
     console.log('course-main: selectedLesson', selectedLesson);
   }, [selectedLesson]);
 
+  // Fullscreen mode for the lesson player
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) setIsFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFullscreen]);
+
   const getLessonTypeLabel = (type?: LessonType) => {
     switch (type) {
       case 'video': case 'video_file': return 'Video Lesson';
@@ -126,7 +317,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
     const isAssignmentOrDocument = (selectedLesson.type === 'document' || selectedLesson.type === 'assignment') || (!selectedLesson.video_url && (selectedLesson.description || /assignment/i.test(String(selectedLesson.title || '')))) || isPdfUrl;
     if (isAssignmentOrDocument) {
       return (
-        <div className="bg-white rounded-2xl overflow-hidden border mb-6">
+        <div className="bg-white rounded-2xl overflow-hidden border w-full">
           {selectedLesson.video_url ? (
             (() => {
               const urlStr = selectedLesson.video_url as string;
@@ -138,25 +329,57 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                 const isYouTube = host.includes('youtube.com') || host.includes('youtu.be');
 
                 if (isPdf) {
-                  return <iframe src={urlStr} className="w-full h-[600px]" />;
+                  // Render PDF in iframe, overlay toolbar area to hide download/print, keep large display
+                  return (
+                    <div className="relative w-full flex justify-center items-center" style={{ minHeight: '60vh' }}>
+                      {/* Overlay to hide PDF toolbar (download/print) */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: 48,
+                          background: 'white',
+                          zIndex: 2,
+                          borderTopLeftRadius: '0.75rem',
+                          borderTopRightRadius: '0.75rem',
+                        }}
+                        className="pointer-events-none select-none"
+                      />
+                      <iframe
+                        src={urlStr}
+                        className="w-full rounded-xl shadow-lg"
+                        style={{
+                          minHeight: '60vh',
+                          height: '75vh',
+                          maxHeight: '85vh',
+                          zIndex: 1,
+                        }}
+                        allowFullScreen
+                      />
+                    </div>
+                  );
                 }
 
                 if (isYouTube) {
                   const vid = host === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v');
                   const embedUrl = vid ? `https://www.youtube.com/embed/${vid}` : urlStr;
                   return (
-                    <div className="aspect-video bg-black rounded-2xl mb-6 overflow-hidden">
-                      <iframe className="w-full h-full" src={embedUrl} title={selectedLesson.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+                    <div className="mb-6 rounded-2xl overflow-hidden bg-black w-full">
+                      <div className="w-full h-[420px] sm:h-[520px] md:h-[620px] lg:h-[760px] xl:h-[820px]">
+                        <iframe className="w-full h-full" src={embedUrl} title={selectedLesson.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+                      </div>
                     </div>
                   );
                 }
 
                 if (isVideoFile) {
-                  return <video className="w-full h-[600px] object-cover" controls src={urlStr} />;
+                  return <video className="w-full h-full min-h-[400px] md:min-h-[500px] object-cover" controls src={urlStr} />;
                 }
 
                 return (
-                  <div className="p-8 text-center text-gray-700">
+                  <div className="p-4 md:p-8 text-center text-gray-700">
                     <p className="mb-4">Preview not available. Open the resource to view it.</p>
                     <a className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg" href={urlStr} target="_blank" rel="noreferrer">Open Resource</a>
                   </div>
@@ -164,7 +387,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
               } catch (e) {
                 console.warn('Invalid resource URL for lesson', selectedLesson.id, selectedLesson.video_url, e);
                 return (
-                  <div className="p-8 text-center text-gray-700">
+                  <div className="p-4 md:p-8 text-center text-gray-700">
                     <p className="mb-4">Preview not available.</p>
                     <a className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg" href={String(selectedLesson.video_url || '#')} target="_blank" rel="noreferrer">Open Resource</a>
                   </div>
@@ -172,7 +395,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
               }
             })()
           ) : (
-            <div className="p-8 text-left text-gray-700">
+            <div className="p-4 md:p-8 text-left text-gray-700">
               <p className="mb-4">{selectedLesson.description || 'No preview available for this item.'}</p>
               <div>
                 {(() => {
@@ -202,7 +425,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
   // If not a document/assignment, but there's a video_url, show the player
   if (selectedLesson.video_url) {
       return (
-        <div className="aspect-video bg-black rounded-2xl mb-6 overflow-hidden">
+        <div className="aspect-video bg-black rounded-2xl overflow-hidden w-full max-w-full">
           {(() => {
             const urlStr = selectedLesson.video_url as string;
             try {
@@ -225,13 +448,17 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
               const embedUrl = getYouTubeEmbed(url);
               if (embedUrl) {
                 return (
-                  <iframe
-                    className="w-full h-full"
-                    src={embedUrl}
-                    title={selectedLesson.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
+                  <div className="mb-6 rounded-2xl overflow-hidden bg-black w-full">
+                    <div className="w-full h-[420px] sm:h-[520px] md:h-[620px] lg:h-[760px] xl:h-[820px]">
+                      <iframe
+                        className="w-full h-full"
+                        src={embedUrl}
+                        title={selectedLesson.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
                 );
               }
               // Not a YouTube link — treat as a normal video file or signed URL
@@ -248,7 +475,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
     // Quiz preview
     if (selectedLesson.type === 'quiz') {
       return (
-        <div className="bg-white rounded-2xl p-8 border mb-6">
+        <div className="bg-white rounded-2xl p-4 md:p-8 border w-full">
           <h3 className="text-lg font-semibold mb-4">Quiz Preview</h3>
           <p className="text-gray-600 mb-4">This is a quiz item. When you press Start, you will be taken to the quiz interface.</p>
           <button onClick={() => {
@@ -270,7 +497,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
 
     // Default fallback
     return (
-      <div className="bg-white rounded-2xl p-8 border mb-6">
+      <div className="bg-white rounded-2xl p-4 md:p-8 border w-full">
         <p className="text-gray-700">{selectedLesson.description || 'No preview available for this lesson type.'}</p>
       </div>
     );
@@ -279,60 +506,174 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
   if (!selectedLesson) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 mb-2">
-              {inferDisplayLabel(selectedLesson)}
-            </span>
-            <h2 className="text-2xl font-bold text-gray-900">{selectedLesson.title}</h2>
-            {selectedLesson.description && (
-              <p className="text-gray-600 mt-2">{selectedLesson.description}</p>
-            )}
+    <>
+      <div className="space-y-3 md:space-y-4 h-full flex flex-col">
+        {/* Header - Responsive padding and text */}
+        <div className="bg-white rounded-xl md:rounded-2xl shadow-lg md:shadow-xl border border-gray-100 p-3 md:p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-1">
+                {inferDisplayLabel(selectedLesson)}
+              </span>
+              <h2 className="text-lg md:text-xl font-bold text-gray-900 truncate">{selectedLesson.title}</h2>
+              {selectedLesson.description && (
+                <p className="text-gray-600 text-xs md:text-sm mt-1 line-clamp-2">{selectedLesson.description}</p>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="mb-6">{mainContent}</div>
+        {/* Main Player Area - Responsive height */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="bg-white rounded-xl md:rounded-2xl border border-gray-200 shadow-sm p-3 md:p-4 flex-1 flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col min-h-0">
+              {/* fullscreen button removed as requested */}
 
-        <div className="flex items-center justify-between">
-          <button 
-            onClick={() => onNavigate(previousLesson)}
-            className={`flex items-center space-x-2 px-4 py-2 transition-colors ${previousLesson ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 cursor-not-allowed'}`}
-            disabled={!previousLesson}
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span>Previous</span>
-          </button>
-          
-          <div className="flex items-center space-x-4">
-            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-              <BookOpen className="h-5 w-5" />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-              <FileText className="h-5 w-5" />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-              <Award className="h-5 w-5" />
-            </button>
+              {/* Main Content - Responsive sizing */}
+              <div className="flex-1 min-h-0 flex items-center justify-center">
+                <div className="w-full h-full max-w-full">
+                  {mainContent}
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation - Responsive layout */}
+            <div className="flex items-center justify-between mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-200">
+              <button 
+                onClick={() => onNavigate(previousLesson)}
+                className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-1 md:py-2 transition-colors text-sm ${previousLesson ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 cursor-not-allowed'}`}
+                disabled={!previousLesson}
+              >
+                <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="hidden xs:inline">Previous</span>
+              </button>
+
+              {/* Show check/tick if lesson is completed */}
+              {selectedLesson?.completed && (
+                <span className="ml-2 text-green-500 flex items-center">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="ml-1 text-xs">Done</span>
+                </span>
+              )}
+
+              <button 
+                onClick={async () => {
+                  // Mark current lesson as completed before navigating
+                  if (selectedLesson && !selectedLesson.completed) {
+                    setCurriculum(prev => prev.map(s => ({
+                      ...s,
+                      lessons: s.lessons.map(l => l.id === selectedLesson.id ? { ...l, completed: true } : l)
+                    })));
+                    // Broadcast completion so sidebar updates immediately
+                    try {
+                      const ev = new CustomEvent('lesson:completion-changed', { detail: { lessonId: selectedLesson.id, completed: true } });
+                      window.dispatchEvent(ev);
+                    } catch (e) {}
+                    // Persist completion (will enqueue if owner ids not yet available)
+                    try {
+                      await persistLessonCompletion(selectedLesson.id);
+                    } catch (e) {}
+                    // Also request the sidebar's CompletionToggle to update its UI (simulate pressing the button)
+                    try {
+                      window.dispatchEvent(new CustomEvent('lesson:request-toggle', { detail: { lessonId: selectedLesson.id, completed: true, source: 'main' } }));
+                    } catch (e) {}
+                  }
+                  onNavigate(nextLesson);
+                }}
+                className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-1 md:py-2 transition-colors text-sm ${nextLesson ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 cursor-not-allowed'}`}
+                disabled={!nextLesson}
+              >
+                <span className="hidden xs:inline">Next</span>
+                <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
-          
-          <button 
-            onClick={() => onNavigate(nextLesson)}
-            className={`flex items-center space-x-2 px-4 py-2 transition-colors ${nextLesson ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 cursor-not-allowed'}`}
-            disabled={!nextLesson}
-          >
-            <span>Next</span>
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
       </div>
 
-      {/* Resources / Community / Progress panels removed per request */}
-    </div>
+      {/* Fullscreen overlay */}
+      {isFullscreen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setIsFullscreen(false); }}
+        >
+          <div className="relative w-full h-full max-w-full max-h-full md:max-w-[1400px] md:max-h-[90vh] bg-black rounded-lg overflow-hidden">
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="absolute right-2 top-2 md:right-3 md:top-3 z-20 bg-white/90 rounded-full p-1 md:p-2 shadow"
+              title="Close fullscreen"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+
+            {/* Fullscreen player content */}
+            <div className="w-full h-full">
+              {(() => {
+                const urlStr = String(selectedLesson?.video_url || '');
+                try {
+                  if (!urlStr) {
+                    return (
+                      <div className="w-full h-full overflow-auto p-4 md:p-8 text-white">
+                        <h3 className="text-xl md:text-2xl font-semibold mb-4">{selectedLesson?.title}</h3>
+                        <div className="prose prose-invert max-w-none text-sm md:text-base">{selectedLesson?.description}</div>
+                      </div>
+                    );
+                  }
+
+                  const url = new URL(urlStr);
+                  const host = url.hostname.replace('www.', '');
+                  const isPdf = url.pathname.toLowerCase().endsWith('.pdf');
+                  const isVideoFile = /\.(mp4|webm|ogg)$/i.test(url.pathname);
+                  const isYouTube = host.includes('youtube.com') || host.includes('youtu.be');
+
+                  if (isPdf) {
+                    const thumbWidth = 240;
+                    return (
+                      <div className="relative w-full h-full overflow-hidden">
+                        <iframe
+                          src={urlStr}
+                          className="block h-full"
+                          style={{ width: `calc(100% + ${thumbWidth}px)`, transform: `translateX(-${thumbWidth}px)` }}
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (isYouTube) {
+                    const vid = host === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v');
+                    const embedUrl = vid ? `https://www.youtube.com/embed/${vid}${url.search || ''}` : urlStr;
+                    return <iframe className="w-full h-full" src={embedUrl} title={selectedLesson?.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />;
+                  }
+
+                  if (isVideoFile) {
+                    return <video className="w-full h-full object-contain bg-black" controls src={urlStr} />;
+                  }
+
+                  // Fallback: render in iframe or link out
+                  return (
+                    <iframe className="w-full h-full" src={urlStr} title={selectedLesson?.title} />
+                  );
+                } catch (e) {
+                  return (
+                    <div className="w-full h-full overflow-auto p-4 md:p-8 text-white">
+                      <h3 className="text-xl md:text-2xl font-semibold mb-4">{selectedLesson?.title}</h3>
+                      <div className="prose prose-invert max-w-none text-sm md:text-base">{selectedLesson?.description || 'Preview not available.'}</div>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

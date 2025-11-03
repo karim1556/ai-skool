@@ -35,6 +35,76 @@ export default function CompletionToggle({ completed = false, lessonId, sectionI
     return () => window.removeEventListener('owner:resolved', onResolved as EventListener);
   }, []);
 
+  // Listen for programmatic toggle requests (e.g., Main "Next" button)
+  useEffect(() => {
+    const onRequest = (ev: any) => {
+      const d = ev.detail || {};
+      if (!d || !d.lessonId) return;
+      if (String(d.lessonId) !== String(lessonId)) return;
+      const toggledRemote = Boolean(d.completed);
+      // Apply optimistic state and broadcast change so other components (sidebar/main) update.
+      setIsCompleted(toggledRemote);
+      try {
+        const ev2 = new CustomEvent('lesson:completion-changed', { detail: { lessonId, sectionId, completed: toggledRemote } });
+        window.dispatchEvent(ev2);
+      } catch (e) {}
+      // Attempt to persist here if owner identifiers are available (helps when main enqueued the change
+      // or owner info is already present on this component). This ensures the programmatic Next flow
+      // behaves like a manual click.
+      (async () => {
+        try {
+          const useRole = ownerRole || role;
+          const payload: any = {
+            course_id: courseId,
+            section_id: sectionId,
+            lesson_id: lessonId,
+            completed: toggledRemote,
+            role: useRole,
+          };
+          if (useRole === 'student') {
+            const sid = ownerStudentId || studentId;
+            const bid = ownerBatchId || batchId;
+            if (!sid || !bid) {
+              // nothing to do; owner info not yet available
+              return;
+            }
+            payload.student_id = sid;
+            payload.batch_id = bid;
+          } else {
+            const trid = ownerTrainerId || trainerId;
+            if (!trid) return;
+            payload.trainer_id = trid;
+          }
+
+          // Try POSTing to the same endpoint as manual toggle
+          const res = await fetch('/api/progress/lessons', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            try {
+              const ev2 = new CustomEvent('lesson:completion-confirmed', { detail: { lessonId, sectionId, completed: toggledRemote } });
+              window.dispatchEvent(ev2);
+            } catch (e) {}
+            // Remove any queued entry for this lesson (if main enqueued it)
+            try {
+              const key = `ai-skool:pendingCompletions:${String(courseId)}`;
+              const raw = localStorage.getItem(key) || '[]';
+              const arr: string[] = JSON.parse(raw || '[]');
+              const updated = arr.filter(x => x !== String(lessonId));
+              localStorage.setItem(key, JSON.stringify(updated));
+            } catch (e) {}
+          }
+        } catch (e) {
+          // ignore; main client will have queued/persist logic
+        }
+      })();
+    };
+    window.addEventListener('lesson:request-toggle', onRequest as EventListener);
+    return () => window.removeEventListener('lesson:request-toggle', onRequest as EventListener);
+  }, [lessonId, sectionId]);
+
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     // Optimistic UI

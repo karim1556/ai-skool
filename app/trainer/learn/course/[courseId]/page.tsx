@@ -336,7 +336,7 @@ export default function TrainerCoursePlaybackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-6 py-8">
+  <div className="mx-auto px-6 py-8 max-w-[1400px] w-full">
         <CourseHeaderClient title={playbackCourse.title} initialCurriculum={playbackCourse.curriculum} />
 
         <div className="grid lg:grid-cols-4 gap-8">

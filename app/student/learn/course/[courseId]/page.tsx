@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useParams, useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,6 +50,14 @@ export default function StudentCoursePlaybackPage() {
   const [courseLevels, setCourseLevels] = useState<any[]>([]);
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
   const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Disable right-click/context menu on playback page for students
+  useEffect(() => {
+    const onContext = (e: MouseEvent) => e.preventDefault();
+    window.addEventListener('contextmenu', onContext as any);
+    return () => window.removeEventListener('contextmenu', onContext as any);
+  }, []);
 
   // Load course meta and its levels
   useEffect(() => {
@@ -349,23 +358,62 @@ export default function StudentCoursePlaybackPage() {
 
   if (!playbackCourse) return <div className="p-6">Course not found.</div>;
 
-  if (!playbackCourse) return <div className="p-6">Course not found.</div>;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-6 py-8">
+  <div className="mx-auto px-6 py-8 max-w-[1400px] w-full">
         {/* Client-updating Course Header */}
         <CourseHeaderClient title={playbackCourse.title} initialCurriculum={playbackCourse.curriculum} />
 
-        <div className="grid lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-1">
-            <CourseSidebarClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} role="student" studentId={activeStudentId ?? undefined} batchId={activeBatchId ?? undefined} />
-          </div>
+        <div className="flex flex-col lg:flex-row gap-6 mt-6">
+          {/* Sidebar - Fixed width and proper styling */}
+          {!sidebarCollapsed && (
+            <div className="w-full lg:w-80 flex-shrink-0">
+              <div className="relative">
+                <div className="sticky top-6 h-[calc(100vh-120px)] overflow-hidden">
+                  <CourseSidebarClient 
+                    initialCurriculum={playbackCourse.curriculum} 
+                    courseId={playbackCourse.id} 
+                    role="student" 
+                    studentId={activeStudentId ?? undefined} 
+                    batchId={activeBatchId ?? undefined} 
+                  />
+                </div>
 
-          <div className="lg:col-span-3">
-            <CourseMainClient initialCurriculum={playbackCourse.curriculum} courseId={playbackCourse.id} role="student" />
+                {/* Collapse button placed near the sidebar (right edge) */}
+                <button
+                  onClick={() => setSidebarCollapsed(true)}
+                  aria-label="Collapse sidebar"
+                  className="hidden lg:inline-flex absolute -right-3 top-10 z-40 items-center justify-center p-1.5 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content - Increased player size */}
+          <div className="flex-1 min-w-0">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <CourseMainClient 
+                initialCurriculum={playbackCourse.curriculum} 
+                courseId={playbackCourse.id} 
+                role="student" 
+                studentId={activeStudentId ?? undefined}
+                batchId={activeBatchId ?? undefined}
+              />
+            </div>
           </div>
         </div>
+        {/* Floating reopen button when sidebar collapsed */}
+        {sidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            aria-label="Open sidebar"
+            className="fixed left-4 top-28 z-50 inline-flex items-center justify-center p-2 bg-white border border-gray-200 rounded-full shadow-md hover:shadow-lg"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </div>
   );
