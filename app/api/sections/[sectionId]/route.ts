@@ -23,18 +23,16 @@ export async function DELETE(request: Request, { params }: { params: { sectionId
   try {
     // Prefer using the postgres client's transaction API when available
     if (sql && typeof (sql as any).begin === 'function') {
-      const trx = await (sql as any).begin();
-      try {
+      // The `postgres` client exposes a `.begin` helper that accepts a callback
+      // to run inside the transaction. Use the callback form to be compatible
+      // with different client versions.
+      await (sql as any).begin(async (trx: any) => {
         // Use tagged templates to safely interpolate params
         await trx`DELETE FROM lessons WHERE section_id = ${sectionId}`;
         await trx`DELETE FROM quizzes WHERE section_id = ${sectionId}`;
         await trx`DELETE FROM assignments WHERE section_id = ${sectionId}`;
         await trx`DELETE FROM sections WHERE id = ${sectionId}`;
-        await trx.commit();
-      } catch (err) {
-        try { await trx.rollback(); } catch (e) {}
-        throw err;
-      }
+      });
     } else {
       // Fallback: run statements without an explicit transaction
       await db.run('DELETE FROM lessons WHERE section_id = $1', [sectionId]);
