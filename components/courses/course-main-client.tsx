@@ -329,37 +329,36 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                 const isYouTube = host.includes('youtube.com') || host.includes('youtu.be');
 
                 if (isPdf) {
-                  // Render PDF in iframe, overlay toolbar area to hide download/print, keep large display
-                  return (
-                    <div className="relative w-full flex justify-center items-center" style={{ minHeight: '60vh' }}>
-                      {/* Overlay to hide PDF toolbar (download/print) */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: 48,
-                          background: 'white',
-                          zIndex: 2,
-                          borderTopLeftRadius: '0.75rem',
-                          borderTopRightRadius: '0.75rem',
-                        }}
-                        className="pointer-events-none select-none"
-                      />
-                      <iframe
-                        src={urlStr}
-                        className="w-full rounded-xl shadow-lg"
-                        style={{
-                          minHeight: '60vh',
-                          height: '75vh',
-                          maxHeight: '85vh',
-                          zIndex: 1,
-                        }}
-                        allowFullScreen
-                      />
-                    </div>
-                  );
+                  // Render PDF using in-app PDF.js viewer to prevent browser Save/Print UI
+                  try {
+                    // dynamically require the client viewer to avoid SSR issues
+                    // eslint-disable-next-line @typescript-eslint/no-var-requires
+                    const PDFJSViewer = require('@/components/ui/pdfjs-viewer').default;
+                    // @ts-ignore - dynamic require
+                    return (
+                      <div className="w-full">
+                        {/* @ts-ignore */}
+                        <PDFJSViewer url={urlStr} />
+                      </div>
+                    );
+                  } catch (e) {
+                    // fallback to iframe if viewer isn't available
+                    return (
+                      <div className="relative w-full flex justify-center items-center" style={{ minHeight: '60vh' }}>
+                        <iframe
+                          src={urlStr}
+                          className="w-full rounded-xl shadow-lg"
+                          style={{
+                            minHeight: '60vh',
+                            height: '75vh',
+                            maxHeight: '85vh',
+                            zIndex: 1,
+                          }}
+                          allowFullScreen
+                        />
+                      </div>
+                    );
+                  }
                 }
 
                 if (isYouTube) {
@@ -669,22 +668,31 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                   const isYouTube = host.includes('youtube.com') || host.includes('youtu.be');
 
                   if (isPdf) {
-                    const thumbWidth = 240;
-                    return (
-                      <div className="relative w-full h-full overflow-hidden">
-                        {/* mask the PDF viewer toolbar icons (download/print) in fullscreen */}
-                        <div
-                          className="absolute top-0 right-12 z-30 h-12 w-40 bg-black"
-                          aria-hidden
-                          onContextMenu={(e) => { e.preventDefault(); }}
-                        />
-                        <iframe
-                          src={urlStr}
-                          className="block h-full"
-                          style={{ width: `calc(100% + ${thumbWidth}px)`, transform: `translateX(-${thumbWidth}px)` }}
-                        />
-                      </div>
-                    );
+                    // Fullscreen: prefer the in-app PDF viewer to avoid native Save/Print UI
+                    try {
+                      // eslint-disable-next-line @typescript-eslint/no-var-requires
+                      const PDFJSViewer = require('@/components/ui/pdfjs-viewer').default;
+                      // @ts-ignore
+                      return (
+                        <div className="relative w-full h-full overflow-hidden">
+                          {/* @ts-ignore */}
+                          <PDFJSViewer url={urlStr} className="h-full" />
+                        </div>
+                      );
+                    } catch (e) {
+                      const thumbWidth = 240;
+                      return (
+                        <div className="relative w-full h-full overflow-hidden">
+                          {/* mask the PDF viewer toolbar icons (download/print) in fullscreen */}
+                          <div className="absolute top-0 right-12 z-30 h-12 w-40 bg-black" aria-hidden onContextMenu={(e) => { e.preventDefault(); }} />
+                          <iframe
+                            src={urlStr}
+                            className="block h-full"
+                            style={{ width: `calc(100% + ${thumbWidth}px)`, transform: `translateX(-${thumbWidth}px)` }}
+                          />
+                        </div>
+                      );
+                    }
                   }
 
                   if (isYouTube) {
