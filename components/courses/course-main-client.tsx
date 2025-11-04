@@ -544,10 +544,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                 className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-1 md:py-2 transition-colors text-sm ${previousLesson ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 cursor-not-allowed'}`}
                 disabled={!previousLesson}
               >
-                <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span className="hidden xs:inline">Previous</span>
+                <span className="text-sm font-medium">Previous</span>
               </button>
 
               {/* Show check/tick if lesson is completed */}
@@ -580,10 +577,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                     }}
                     className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-1 md:py-2 transition-colors text-sm text-gray-600 hover:text-gray-900`}
                   >
-                    <span className="hidden xs:inline">Next</span>
-                    <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <span className="text-sm font-medium">Next</span>
                   </button>
                 ) : (
                   // End Course button shown on the last lesson when there is no "next"
