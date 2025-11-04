@@ -4,6 +4,7 @@ import { Header } from '@/components/ui/header'
 import { Footer } from '@/components/ui/footer'
 import ClientOnly from '@/components/ClientOnly'
 import { CartProvider } from '@/hooks/use-cart'
+import DisableContextMenu from '@/components/disable-context-menu'
 import {
   ClerkProvider,
 } from '@clerk/nextjs'
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ClientOnly>
+          <DisableContextMenu />
           <CartProvider>
             <Header />
             {children}

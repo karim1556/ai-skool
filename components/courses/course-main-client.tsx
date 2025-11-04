@@ -635,6 +635,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2 md:p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setIsFullscreen(false); }}
+          onContextMenu={(e) => { e.preventDefault(); }}
         >
           <div className="relative w-full h-full max-w-full max-h-full md:max-w-[1400px] md:max-h-[90vh] bg-black rounded-lg overflow-hidden">
             <button
@@ -672,7 +673,11 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                     return (
                       <div className="relative w-full h-full overflow-hidden">
                         {/* mask the PDF viewer toolbar icons (download/print) in fullscreen */}
-                        <div className="absolute top-0 right-12 z-30 h-12 w-40 bg-black" aria-hidden />
+                        <div
+                          className="absolute top-0 right-12 z-30 h-12 w-40 bg-black"
+                          aria-hidden
+                          onContextMenu={(e) => { e.preventDefault(); }}
+                        />
                         <iframe
                           src={urlStr}
                           className="block h-full"
