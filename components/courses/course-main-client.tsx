@@ -520,6 +520,18 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                 <p className="text-gray-600 text-xs md:text-sm mt-1 line-clamp-2">{selectedLesson.description}</p>
               )}
             </div>
+
+            {/* Fullscreen toggle - opens the existing fullscreen overlay */}
+            <div className="ml-4 flex-shrink-0">
+              <button
+                onClick={() => setIsFullscreen(true)}
+                aria-label="Open fullscreen"
+                title="Open fullscreen"
+                className="px-3 py-1 text-sm rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+              >
+                Full screen
+              </button>
+            </div>
           </div>
         </div>
 
@@ -650,6 +662,8 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                     const thumbWidth = 240;
                     return (
                       <div className="relative w-full h-full overflow-hidden">
+                        {/* mask the PDF viewer toolbar icons (download/print) in fullscreen */}
+                        <div className="absolute top-0 right-12 z-30 h-12 w-40 bg-black" aria-hidden />
                         <iframe
                           src={urlStr}
                           className="block h-full"
