@@ -11,11 +11,22 @@ interface Lesson { id: string; title: string; type?: LessonType; duration?: numb
 interface Section { id: string; title: string; lessons: Lesson[] }
 
 function getIcon(lesson: Lesson) {
+  const base = 'w-5 h-5';
+  const color = lesson.completed
+    ? 'text-green-600'
+    : (lesson.type === 'video' || lesson.type === 'video_file')
+      ? 'text-blue-500'
+      : lesson.type === 'quiz'
+        ? 'text-green-500'
+        : lesson.type === 'assignment'
+          ? 'text-purple-500'
+          : 'text-gray-500';
+
   switch (lesson.type) {
-    case 'video': case 'video_file': return <PlayCircle className="w-5 h-5 text-blue-500" />;
-    case 'quiz': return <HelpCircle className="w-5 h-5 text-green-500" />;
-    case 'assignment': return <ClipboardEdit className="w-5 h-5 text-purple-500" />;
-    default: return <FileText className="w-5 h-5 text-gray-500" />;
+    case 'video': case 'video_file': return <PlayCircle className={`${base} ${color}`} />;
+    case 'quiz': return <HelpCircle className={`${base} ${color}`} />;
+    case 'assignment': return <ClipboardEdit className={`${base} ${color}`} />;
+    default: return <FileText className={`${base} ${color}`} />;
   }
 }
 
@@ -149,7 +160,7 @@ export default function CourseSidebarClient({ initialCurriculum, courseId, role 
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           {getIcon(lesson)}
-                          <span className={`text-sm ${lesson.completed ? 'line-through text-gray-500' : ''}`}>{lesson.title}</span>
+                          <span className={`text-sm ${lesson.completed ? 'text-green-600 font-medium' : ''}`}>{lesson.title}</span>
                         </div>
                         {(Number(lesson.duration) || 0) > 0 && <p className="text-xs text-gray-500 mt-1">{Math.floor((Number(lesson.duration)||0)/60)}m {(Number(lesson.duration)||0)%60}s</p>}
                       </div>
