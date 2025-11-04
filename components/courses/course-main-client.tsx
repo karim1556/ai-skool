@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Play } from 'lucide-react';
+import { Play, LayoutDashboard } from 'lucide-react';
 
 type LessonType = 'lesson' | 'quiz' | 'assignment' | 'video' | 'document' | 'video_file';
 interface Lesson { id: string; title: string; description?: string; type?: LessonType; duration?: number; completed?: boolean; video_url?: string; file_url?: string; attachment_url?: string }
@@ -507,6 +507,15 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
 
   return (
     <>
+      {/* Floating Dashboard button (small) - visible when nav/footer are absent */}
+      <button
+        onClick={() => router.push('/student/dashboard')}
+        title="Open dashboard"
+        aria-label="Open dashboard"
+        className="fixed left-4 bottom-6 z-50 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+      >
+        <LayoutDashboard className="w-5 h-5" />
+      </button>
       <div className="space-y-3 md:space-y-4 h-full flex flex-col">
         {/* Header - Responsive padding and text */}
         <div className="bg-white rounded-xl md:rounded-2xl shadow-lg md:shadow-xl border border-gray-100 p-3 md:p-4">
