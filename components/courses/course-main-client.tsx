@@ -338,7 +338,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                     return (
                       <div className="w-full">
                         {/* @ts-ignore */}
-                        <PDFJSViewer url={urlStr} />
+                        <PDFJSViewer url={urlStr} className="h-[75vh] w-full" />
                       </div>
                     );
                   } catch (e) {
@@ -676,7 +676,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                       return (
                         <div className="relative w-full h-full overflow-hidden">
                           {/* @ts-ignore */}
-                          <PDFJSViewer url={urlStr} className="h-full" />
+                          <PDFJSViewer url={urlStr} className="h-full w-full" />
                         </div>
                       );
                     } catch (e) {

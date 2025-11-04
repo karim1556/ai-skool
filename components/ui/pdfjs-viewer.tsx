@@ -7,7 +7,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 
 export default function PDFJSViewer({ url, className }: { url: string; className?: string }) {
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +23,6 @@ export default function PDFJSViewer({ url, className }: { url: string; className
         if (!res.ok) {
           // fallback to original url
           setBlobUrl(null);
-          setLoading(false);
           return;
         }
         const buf = await res.blob();
@@ -53,45 +51,33 @@ export default function PDFJSViewer({ url, className }: { url: string; className
 
   return (
     <div
-      className={className}
+      className={`${className || ''} flex flex-col`}
       onContextMenu={(e) => e.preventDefault()} // disable right click inside viewer
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-end mb-3">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            className="px-3 py-1 bg-gray-100 rounded-md text-sm hover:bg-gray-200"
-            aria-label="Previous page"
-          >Prev</button>
-
-          <button
-            onClick={() => setPage(p => Math.min((numPages||1), p + 1))}
-            className="px-3 py-1 bg-gray-100 rounded-md text-sm hover:bg-gray-200"
-            aria-label="Next page"
-          >Next</button>
-
-          <div className="text-sm text-gray-600">Page</div>
-          <div className="text-sm font-medium">{page}{numPages ? ` / ${numPages}` : ''}</div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button className="px-2 py-1 bg-gray-100 rounded-md text-sm" onClick={() => setScale(s => Math.max(0.5, s - 0.25))}>-</button>
+          <button className="px-2 py-1 bg-gray-100 rounded-md text-sm" onClick={() => setScale(s => Math.max(0.5, s - 0.25))} aria-label="Zoom out">-</button>
           <div className="text-sm">{Math.round(scale * 100)}%</div>
-          <button className="px-2 py-1 bg-gray-100 rounded-md text-sm" onClick={() => setScale(s => Math.min(3, s + 0.25))}>+</button>
+          <button className="px-2 py-1 bg-gray-100 rounded-md text-sm" onClick={() => setScale(s => Math.min(3, s + 0.25))} aria-label="Zoom in">+</button>
         </div>
       </div>
 
-      <div className="w-full bg-white rounded-lg overflow-auto" style={{ minHeight: 200 }}>
+      <div className="w-full bg-white rounded-lg overflow-auto flex-1">
         {loading ? (
           <div className="p-8 text-center text-gray-500">Loading PDF…</div>
         ) : (
           <Document
             file={source}
-            onLoadSuccess={(d) => { setNumPages(d.numPages); if (page > d.numPages) setPage(d.numPages); }}
+            onLoadSuccess={(d) => { setNumPages(d.numPages); }}
             loading={<div className="p-8 text-center text-gray-500">Loading PDF…</div>}
             className="flex flex-col items-center"
           >
-            <Page pageNumber={page} scale={scale} renderTextLayer={false} renderAnnotationLayer={false} className="inline-block" />
+            {/* Render all pages in a vertical scrollable column for smooth scrolling */}
+            {Array.from({ length: numPages || 0 }, (_, i) => (
+              <div key={i} className="w-full flex justify-center my-4">
+                <Page pageNumber={i + 1} scale={scale} renderTextLayer={false} renderAnnotationLayer={false} className="inline-block" />
+              </div>
+            ))}
           </Document>
         )}
       </div>
