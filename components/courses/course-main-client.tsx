@@ -527,7 +527,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                 onClick={() => setIsFullscreen(true)}
                 aria-label="Open fullscreen"
                 title="Open fullscreen"
-                className="px-3 py-1 text-sm rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+                className="px-4 py-2 text-sm md:text-base rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
               >
                 Full screen
               </button>
@@ -551,12 +551,12 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
 
             {/* Navigation - Responsive layout */}
             <div className="flex items-center justify-between mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-200">
-              <button 
+              <button
                 onClick={() => onNavigate(previousLesson)}
-                className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-1 md:py-2 transition-colors text-sm ${previousLesson ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 cursor-not-allowed'}`}
+                className={previousLesson ? 'px-4 py-2 md:px-5 md:py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm text-sm md:text-base' : 'px-4 py-2 md:px-5 md:py-2 rounded-md bg-gray-100 text-gray-400 cursor-not-allowed text-sm md:text-base'}
                 disabled={!previousLesson}
               >
-                <span className="text-sm font-medium">Previous</span>
+                <span className="text-sm md:text-base font-medium">Previous</span>
               </button>
 
               {/* Show check/tick if lesson is completed */}
@@ -587,7 +587,7 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
                       }
                       onNavigate(nextLesson);
                     }}
-                    className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-4 py-1 md:py-2 transition-colors text-sm text-gray-600 hover:text-gray-900`}
+                    className={'px-4 py-2 md:px-5 md:py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm text-sm md:text-base'}
                   >
                     <span className="text-sm font-medium">Next</span>
                   </button>
