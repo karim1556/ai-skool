@@ -47,6 +47,10 @@ export async function GET(req: NextRequest) {
     const studentId = searchParams.get('studentId')
     const trainerId = searchParams.get('trainerId')
     const batchId = searchParams.get('batchId')
+    // Log incoming query parameters for debugging
+    console.debug('[api/progress/lessons] GET params:', {
+      courseId, role, studentId, trainerId, batchId, orgId, schoolId
+    })
     if (!courseId || !role) return NextResponse.json({ error: 'courseId and role are required' }, { status: 400 })
 
     const where: string[] = ['school_id = $1', 'course_id = $2', 'completed = TRUE']
@@ -65,10 +69,23 @@ export async function GET(req: NextRequest) {
       params.push(trainerId)
     }
 
-    const rows = await db.all<{ lesson_id: string }>(`SELECT lesson_id FROM lesson_completions WHERE ${where.join(' AND ')}`, params)
-    return NextResponse.json({ completedLessonIds: rows.map(r => r.lesson_id) })
+    // Log the exact SQL and params to help trace failures
+    try {
+      console.debug('[api/progress/lessons] Executing SQL:', `SELECT lesson_id FROM lesson_completions WHERE ${where.join(' AND ')}`, 'params=', params)
+      const rows = await db.all<{ lesson_id: string }>(`SELECT lesson_id FROM lesson_completions WHERE ${where.join(' AND ')}`, params)
+      return NextResponse.json({ completedLessonIds: rows.map(r => r.lesson_id) })
+    } catch (sqlErr:any) {
+      console.error('[api/progress/lessons] SQL execution error:', sqlErr)
+      throw sqlErr
+    }
   } catch (e:any) {
-    return NextResponse.json({ error: e.message || 'Failed to fetch lesson completions' }, { status: 500 })
+    // Log the error server-side for debugging
+    console.error('[api/progress/lessons] Error fetching lesson completions:', e)
+    const isProd = process.env.NODE_ENV === 'production'
+    const message = e?.message || 'Failed to fetch lesson completions'
+    const payload: any = { error: message }
+    if (!isProd) payload.stack = e?.stack
+    return NextResponse.json(payload, { status: 500 })
   }
 }
 
