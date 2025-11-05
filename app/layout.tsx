@@ -10,9 +10,9 @@ import {
 } from '@clerk/nextjs'
 
 export const metadata: Metadata = {
-  title: 'karims skool',
-  description: 'Created with love',
-  generator: 'karim',
+  title: 'aiskool',
+  description: 'Aiskool - Learn Anything, Anywhere',
+  generator: 'aiskool',
 }
 
 export default function RootLayout({
