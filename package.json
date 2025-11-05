@@ -61,7 +61,7 @@
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
   "react-pdf": "^7.0.1",
-  "pdfjs-dist": "^3.11.307",
+  "pdfjs-dist": "^5.4.394",
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
