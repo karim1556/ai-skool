@@ -307,14 +307,27 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
     // Also treat lessons whose `video_url` points to a PDF as documents so they render in an iframe.
     const isPdfUrl = (() => {
       try {
-        const u = String(selectedLesson.video_url || '');
+        const u = String(selectedLesson?.video_url || '');
         return /\.pdf(\?|$)/i.test(u);
       } catch (e) {
         return false;
       }
     })();
 
-    const isAssignmentOrDocument = (selectedLesson.type === 'document' || selectedLesson.type === 'assignment') || (!selectedLesson.video_url && (selectedLesson.description || /assignment/i.test(String(selectedLesson.title || '')))) || isPdfUrl;
+    // Use the inferDisplayLabel helper to robustly detect assignment/document
+    // style lessons (covers missing/incorrect `type` values). Also consider
+    // explicit types and PDFs detected via video_url. This makes rendering
+    // for assignments more consistent even when video_url is present but not
+    // previewable.
+    const inferredLabel = inferDisplayLabel(selectedLesson);
+    const isAssignmentOrDocument = (
+      (selectedLesson?.type === 'document' || selectedLesson?.type === 'assignment') ||
+      inferredLabel === 'Assignment' || inferredLabel === 'Document' ||
+      isPdfUrl ||
+      // fallback: if no embeddable video but there is a description or any
+      // attachment/file hints, treat it as an assignment/document
+      (!selectedLesson?.video_url && (selectedLesson?.description || (selectedLesson as any)?.file_url || (selectedLesson as any)?.attachment_url))
+    );
     if (isAssignmentOrDocument) {
       return (
         <div className="bg-white rounded-2xl overflow-hidden border w-full">
