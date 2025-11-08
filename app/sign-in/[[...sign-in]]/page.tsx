@@ -182,31 +182,72 @@ export default function SignIn() {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-          // For demo mode: store a demo-user object so role-aware UI can use it
+        // For demo mode: store a demo-user object so role-aware UI can use it
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(
+              "demo-user",
+              JSON.stringify({
+                id: emailAddress,
+                name: emailAddress.split("@")[0] || emailAddress,
+                email: emailAddress,
+                role: selectedRole,
+                is_approved: true,
+              })
+            );
+          }
+        } catch (e) {
+          // ignore storage errors
+        }
+
+        router.push("/dashboard");
+      } else {
+        console.error(JSON.stringify(result, null, 2));
+        // If Clerk didn't complete but we're in dev/demo, fall back to demo-user
+        if (process.env.NODE_ENV !== "production") {
           try {
             if (typeof window !== "undefined") {
               localStorage.setItem(
                 "demo-user",
                 JSON.stringify({
-                  id: emailAddress,
-                  name: emailAddress.split("@")[0] || emailAddress,
-                  email: emailAddress,
+                  id: emailAddress || "dev-user",
+                  name: (emailAddress && emailAddress.split("@")[0]) || "Dev User",
+                  email: emailAddress || "dev@local",
                   role: selectedRole,
                   is_approved: true,
                 })
               );
             }
           } catch (e) {
-            // ignore storage errors
+            // ignore
           }
-
           router.push("/dashboard");
-      } else {
-        console.error(JSON.stringify(result, null, 2));
+        }
       }
     } catch (err: any) {
-      console.error("error", err.errors[0].message);
-      setError(err.errors[0].message);
+      console.error("error", err?.errors?.[0]?.message ?? err);
+      setError(err?.errors?.[0]?.message ?? String(err));
+      // Development/demo fallback: create demo-user locally and continue
+      if (process.env.NODE_ENV !== "production") {
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(
+              "demo-user",
+              JSON.stringify({
+                id: emailAddress || "dev-user",
+                name: (emailAddress && emailAddress.split("@")[0]) || "Dev User",
+                email: emailAddress || "dev@local",
+                role: selectedRole,
+                is_approved: true,
+              })
+            );
+          }
+        } catch (e) {
+          // ignore storage errors
+        }
+        router.push("/dashboard");
+        return;
+      }
     } finally {
       setIsLoading(false);
     }

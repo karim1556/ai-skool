@@ -25,22 +25,37 @@ export default clerkMiddleware(async (auth, req) => {
     console.log('[middleware]', p, flags)
   }
 
-  if(isAdminRoute(req)){
-    await auth.protect((has) => {
-      return has({role: 'admin'})
-    })
-  } 
-
-  if(isInstructorRoute(req)){
-    await auth.protect((has) => {
-      return has({role: 'instructor'})
-    })
+  if (isAdminRoute(req)) {
+    try {
+      await auth.protect((has) => {
+        return has({ role: 'admin' })
+      })
+    } catch (err) {
+      // auth.protect may throw an HTTP access fallback (notFound/redirect) when
+      // the user is not authenticated/authorized. Redirect to sign-in instead
+      // so the user gets a standard sign-in flow rather than a 404.
+      return NextResponse.redirect(new URL('/sign-in', req.url))
+    }
   }
 
-  if(isTrainerRoute(req)){
-    await auth.protect((has) => {
-      return has({role: 'trainer'})
-    })
+  if (isInstructorRoute(req)) {
+    try {
+      await auth.protect((has) => {
+        return has({ role: 'instructor' })
+      })
+    } catch (err) {
+      return NextResponse.redirect(new URL('/sign-in', req.url))
+    }
+  }
+
+  if (isTrainerRoute(req)) {
+    try {
+      await auth.protect((has) => {
+        return has({ role: 'trainer' })
+      })
+    } catch (err) {
+      return NextResponse.redirect(new URL('/sign-in', req.url))
+    }
   }
 
   if (isCoordinatorRoute(req)) {
@@ -53,19 +68,27 @@ export default clerkMiddleware(async (auth, req) => {
     ))
   }
 
-  if(isStudentRoute(req)){
-    await auth.protect((has) => {
-      return has({role: 'student'})
-    })
+  if (isStudentRoute(req)) {
+    try {
+      await auth.protect((has) => {
+        return has({ role: 'student' })
+      })
+    } catch (err) {
+      return NextResponse.redirect(new URL('/sign-in', req.url))
+    }
   }
 
   if (isCampCoordinatorRoute(req)) {
-    await auth.protect((has) => (
-      has({ role: 'campCoordinator' }) ||
-      has({ role: 'camp_coordinator' }) ||
-      has({ role: 'camp-coordinator' }) ||
-      has({ role: 'campcoordinator' })
-    ))
+    try {
+      await auth.protect((has) => (
+        has({ role: 'campCoordinator' }) ||
+        has({ role: 'camp_coordinator' }) ||
+        has({ role: 'camp-coordinator' }) ||
+        has({ role: 'campcoordinator' })
+      ))
+    } catch (err) {
+      return NextResponse.redirect(new URL('/sign-in', req.url))
+    }
   }
 
   // For org-scoped sections, ensure an active organization is selected
