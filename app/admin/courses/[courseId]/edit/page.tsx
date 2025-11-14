@@ -261,7 +261,7 @@ export default function EditCoursePage() {
       </div>
     </div>,
     <div key="requirements" className="space-y-6">
-      <h2 className="text-2xl font-bold">Course Requirements & Outcomes</h2>
+      <h2 className="text-2xl font-bold">Course Requirements</h2>
       <div>
         <Label htmlFor="requirements">Course Requirements</Label>
         <Textarea
@@ -271,6 +271,10 @@ export default function EditCoursePage() {
           placeholder="What prerequisites are needed for this course?"
         />
       </div>
+    </div>,
+
+    <div key="outcomes" className="space-y-6">
+      <h2 className="text-2xl font-bold">Course Outcomes & Objectives</h2>
       <div>
         <Label htmlFor="objectives">Course Objectives</Label>
         <Textarea

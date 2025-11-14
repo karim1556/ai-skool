@@ -139,6 +139,11 @@ export default function AddCoursePage() {
   };
 
   const steps = [
+    <div key="curriculum" className="space-y-6">
+      <h2 className="text-2xl font-bold">Curriculum</h2>
+      <p className="text-gray-600">You can add curriculum content after creating the course. Click Finish to create the course and then open the curriculum editor.</p>
+    </div>,
+
     <div key="basic" className="space-y-6">
       <h2 className="text-2xl font-bold">Basic Information</h2>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -163,8 +168,7 @@ export default function AddCoursePage() {
           onChange={(e) => handleInputChange("description", e.target.value)}
         />
       </div>
-    </div>,
-    <div key="details" className="space-y-6">
+
       <h2 className="text-2xl font-bold">Course Details</h2>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
@@ -239,7 +243,7 @@ export default function AddCoursePage() {
     </div>,
 
     <div key="requirements" className="space-y-6">
-      <h2 className="text-2xl font-bold">Course Requirements & Outcomes</h2>
+      <h2 className="text-2xl font-bold">Course Requirements</h2>
       <div>
         <Label htmlFor="requirements">Course Requirements</Label>
         <Textarea
@@ -249,25 +253,26 @@ export default function AddCoursePage() {
           placeholder="What prerequisites are needed for this course?"
         />
       </div>
-      <div>
-        <Label>What You'll Learn (Objectives)</Label>
-        {courseData.objectives.map((objective, index) => (
-          <div key={index} className="flex items-center gap-2 mb-2">
-            <Input
-              value={objective}
-              onChange={(e) => handleListChange('objectives', index, '', e.target.value)}
-              placeholder={`Objective ${index + 1}`}
-            />
-            <Button variant="ghost" size="icon" onClick={() => removeListItem('objectives', index)}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-        <Button variant="outline" size="sm" onClick={() => addListItem('objectives')}>
-          <PlusCircle className="h-4 w-4 mr-2" />
-          Add Objective
-        </Button>
-      </div>
+    </div>,
+
+    <div key="outcomes" className="space-y-6">
+      <h2 className="text-2xl font-bold">What You'll Learn (Objectives)</h2>
+      {courseData.objectives.map((objective, index) => (
+        <div key={index} className="flex items-center gap-2 mb-2">
+          <Input
+            value={objective}
+            onChange={(e) => handleListChange('objectives', index, '', e.target.value)}
+            placeholder={`Objective ${index + 1}`}
+          />
+          <Button variant="ghost" size="icon" onClick={() => removeListItem('objectives', index)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <Button variant="outline" size="sm" onClick={() => addListItem('objectives')}>
+        <PlusCircle className="h-4 w-4 mr-2" />
+        Add Objective
+      </Button>
     </div>,
 
     <div key="pricing" className="space-y-6">
