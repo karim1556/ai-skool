@@ -114,6 +114,15 @@ export function AddLessonModal({ isOpen, onClose, onAdd, onEdit, lessonToEdit, s
         formData.append('file', attachment);
       }
 
+      // For local development, automatically request local storage so devs don't need Supabase
+      try {
+        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+          formData.append('use_local', '1')
+        }
+      } catch (e) {
+        // ignore
+      }
+
       const url = isEditMode ? `/api/lessons/${lessonToEdit.id}` : `/api/sections/${selectedSection}/lessons`;
       const method = isEditMode ? 'PATCH' : 'POST';
 

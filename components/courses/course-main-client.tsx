@@ -252,6 +252,49 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
     console.log('course-main: selectedLesson', selectedLesson);
   }, [selectedLesson]);
 
+  // Map of lessonId -> resolved absolute playable URL (stream URL or signed URL)
+  const [resolvedVideoSrc, setResolvedVideoSrc] = useState<Record<string, string>>({});
+
+  // When selectedLesson changes, if it has a relative storage path (courseId/file) try to request
+  // a signed token and set a streaming URL. This makes the component resilient when server-side
+  // logic hasn't yet exchanged relative paths for stream URLs.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        if (!selectedLesson) return;
+        const raw = String(selectedLesson.video_url || (selectedLesson as any).file_url || '');
+        if (!raw) return;
+
+        // If it's already an absolute URL (http/https) or starts with our API path, nothing to do
+        if (/^https?:\/\//i.test(raw) || /^\/?api\//i.test(raw)) return;
+
+        // Otherwise assume it's a relative protected path like "<courseId>/<file>"
+        const protectedPath = raw.replace(/^\/+/, '');
+        console.log('course-main: resolving protected path', protectedPath);
+        const res = await fetch('/api/media/get-signed-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: protectedPath }),
+        });
+        if (!active) return;
+        if (!res.ok) {
+          console.warn('course-main: token request failed', await res.text());
+          return;
+        }
+        const body = await res.json();
+        if (!body?.token) return;
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const abs = `${origin}/api/media/stream?token=${encodeURIComponent(body.token)}`;
+        if (!active) return;
+        setResolvedVideoSrc(prev => ({ ...prev, [String(selectedLesson.id)]: abs }));
+      } catch (e) {
+        console.warn('course-main: failed to resolve protected video', e);
+      }
+    })();
+    return () => { active = false };
+  }, [selectedLesson?.id, selectedLesson?.video_url, selectedLesson?.file_url]);
+
   // Fullscreen mode for the lesson player
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
@@ -333,7 +376,14 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
         <div className="bg-white rounded-2xl overflow-hidden border w-full">
           {selectedLesson.video_url ? (
             (() => {
-              const urlStr = selectedLesson.video_url as string;
+              const urlStr = (resolvedVideoSrc[String(selectedLesson.id)] as string) || (selectedLesson.video_url as string);
+              // If the urlStr is a relative protected path and we haven't resolved it yet,
+              // avoid attempting to construct a URL or load the raw path (which 404s).
+              if (urlStr && !/^https?:\/\//i.test(urlStr) && !/^\/?api\//i.test(urlStr) && !(typeof window !== 'undefined' && urlStr.startsWith(window.location.origin))) {
+                return (
+                  <div className="flex items-center justify-center h-[60vh] text-gray-400">Preparing video…</div>
+                );
+              }
               try {
                 const url = new URL(urlStr);
                 const host = url.hostname.replace('www.', '');
@@ -439,7 +489,12 @@ export default function CourseMainClient({ initialCurriculum, courseId, role = '
       return (
         <div className="aspect-video bg-black rounded-2xl overflow-hidden w-full max-w-full">
           {(() => {
-            const urlStr = selectedLesson.video_url as string;
+            const urlStr = (resolvedVideoSrc[String(selectedLesson.id)] as string) || (selectedLesson.video_url as string);
+            if (urlStr && !/^https?:\/\//i.test(urlStr) && !/^\/?api\//i.test(urlStr) && !(typeof window !== 'undefined' && urlStr.startsWith(window.location.origin))) {
+              return (
+                <div className="flex items-center justify-center h-[60vh] text-white">Preparing video…</div>
+              );
+            }
             try {
               const url = new URL(urlStr);
               // Helper: build embed URL for YouTube links

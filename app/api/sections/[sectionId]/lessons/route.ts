@@ -1,6 +1,10 @@
+export const runtime = 'nodejs'
+
 import { NextResponse, NextRequest } from 'next/server';
 import { getDb } from '@/lib/db';
 import { createClient } from '@supabase/supabase-js';
+import fs from 'fs'
+import path from 'path'
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,8 +17,12 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // GET handler to fetch all lessons for a section
-export async function GET(request: NextRequest, { params }: { params: { sectionId: string } }) {
-  const { sectionId } = params;
+export async function GET(request: NextRequest, { params }: { params: any }) {
+  const resolvedParams = await params;
+  const sectionId = resolvedParams?.sectionId || resolvedParams?.sectionid || resolvedParams?.sectionID;
+  if (!sectionId) {
+    return NextResponse.json({ error: 'sectionId is required' }, { status: 400 })
+  }
   try {
     const db = await getDb();
     // First check if the sort_order column exists
@@ -47,9 +55,16 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
 }
 
 // POST handler to create a new lesson
-export async function POST(request: NextRequest, { params }: { params: { sectionId: string } }) {
-  const { sectionId } = params;
+export async function POST(request: NextRequest, { params }: { params: any }) {
+  const resolvedParams = await params;
+  const sectionId = resolvedParams?.sectionId || resolvedParams?.sectionid || resolvedParams?.sectionID;
+  if (!sectionId) {
+    return NextResponse.json({ error: 'sectionId is required' }, { status: 400 })
+  }
   const formData = await request.formData();
+  // Allow forcing local storage via a form field for testing: use_local=1 or use_local=true
+  const forceLocalField = String(formData.get('use_local') || formData.get('force_local') || '')
+  const forceLocal = forceLocalField.toLowerCase() === '1' || forceLocalField.toLowerCase() === 'true'
   
   try {
     const title = formData.get('title') as string;
@@ -67,24 +82,52 @@ export async function POST(request: NextRequest, { params }: { params: { section
     
     // Handle file upload if present
     if (file) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `lessons/${fileName}`;
+      console.log('[lessons route] received file:', file.name, 'size=', file.size)
+  // Optionally support local storage instead of Supabase based on env or form override
+  const envLocal = process.env.MEDIA_USE_LOCAL === '1' || process.env.MEDIA_USE_LOCAL === 'true'
+  const USE_LOCAL = forceLocal || envLocal
+      console.log('[lessons route] MEDIA_USE_LOCAL=', USE_LOCAL)
 
-      const { error: uploadError } = await supabase.storage
-        .from('course-files')
-        .upload(filePath, file);
+      const fileExt = (file.name || '').split('.').pop() || 'bin'
+      const safeBase = Math.random().toString(36).substring(2)
+      const safeName = `${safeBase}.${fileExt}`
 
-      if (uploadError) {
-        console.error('File upload error:', uploadError);
-        return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+      if (USE_LOCAL) {
+        try {
+          // determine course id from section
+          const db = await getDb()
+          const sec = await db.get('SELECT course_id FROM sections WHERE id = $1', [sectionId])
+          const courseId = (sec as any)?.course_id || 'misc'
+          const baseDir = path.join(process.cwd(), 'protected-videos', String(courseId))
+          fs.mkdirSync(baseDir, { recursive: true })
+          const outPath = path.join(baseDir, safeName)
+          const buffer = Buffer.from(await file.arrayBuffer())
+          fs.writeFileSync(outPath, buffer)
+          // store relative path so players can request tokens for it
+          fileUrl = `${courseId}/${safeName}`
+          console.log('[lessons route] saved local file to', outPath)
+        } catch (e) {
+          console.error('Local file save failed', e)
+          return NextResponse.json({ error: 'Failed to save file locally' }, { status: 500 })
+        }
+      } else {
+        const fileName = `lessons/${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('course-files')
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error('File upload error:', uploadError);
+          return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('course-files')
+          .getPublicUrl(fileName);
+        fileUrl = urlData.publicUrl;
+        console.log('[lessons route] uploaded to supabase path=', fileName)
       }
-
-      const { data: urlData } = supabase.storage
-        .from('course-files')
-        .getPublicUrl(filePath);
-
-      fileUrl = urlData.publicUrl;
     }
 
     const db = await getDb();

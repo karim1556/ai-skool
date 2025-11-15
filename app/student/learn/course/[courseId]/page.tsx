@@ -185,13 +185,13 @@ export default function StudentCoursePlaybackPage() {
           }
         }
 
-        // Second: request signed URLs for any lesson resource that references our storage path
+        // Second: request signed URLs or tokens for any lesson resource that references our storage path
         for (const section of updatedCourse.curriculum || []) {
           for (const lesson of section.lessons || []) {
             const urlCandidate = String(lesson.video_url || (lesson as any).file_url || (lesson as any).attachment_url || lesson.url || '').trim();
             if (!urlCandidate) continue;
 
-            // Determine if this references our storage bucket path
+            // 1) If the URL references our Supabase `course-files` bucket, request its signed URL
             let path = '';
             if (/course-files\//.test(urlCandidate)) {
               try {
@@ -206,29 +206,59 @@ export default function StudentCoursePlaybackPage() {
               } catch (e) {
                 // ignore
               }
+
+              if (path) {
+                try {
+                  console.log('student-page: requesting signed url for', path);
+                  const res = await fetch('/api/course-files/signed-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                  });
+                  if (!active) return;
+                  const body = await res.json();
+                  console.log('student-page: signed-url response', res.status, body);
+                  if (res.ok && body?.signedUrl) {
+                    lesson.video_url = body.signedUrl;
+                    changed = true;
+                  } else {
+                    console.warn('Signed URL endpoint failed for', path, body);
+                  }
+                } catch (e) {
+                  console.warn('Exception requesting signed URL for', path, e);
+                }
+              }
+              continue;
             }
 
-            if (!path) continue;
-
-            try {
-              console.log('student-page: requesting signed url for', path);
-              const res = await fetch('/api/course-files/signed-url', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path })
-              });
-              if (!active) return;
-              const body = await res.json();
-              console.log('student-page: signed-url response', res.status, body);
-              if (res.ok && body?.signedUrl) {
-                // prefer to set video_url so client components embed/open it
-                lesson.video_url = body.signedUrl;
-                changed = true;
-              } else {
-                console.warn('Signed URL endpoint failed for', path, body);
+            // 2) If the urlCandidate looks like a relative protected-videos path (e.g. "<courseId>/<filename>")
+            // request a short-lived token and set the lesson.video_url to our streaming endpoint.
+            // Heuristic: contains a slash and does not start with http(s):
+            // Only treat raw relative storage paths (courseId/filename). Skip if it's an absolute URL,
+            // already a stream URL (`/api/...`) or other API path to avoid double-wrapping.
+            if (!/^https?:\/\//i.test(urlCandidate) && /\/.+/.test(urlCandidate) && !/^\/?api\//i.test(urlCandidate)) {
+              const protectedPath = urlCandidate.replace(/^\/+/, '');
+              try {
+                console.log('student-page: requesting media token for', protectedPath);
+                const tRes = await fetch('/api/media/get-signed-token', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ path: protectedPath })
+                });
+                if (!active) return;
+                const tb = await tRes.json();
+                console.log('student-page: token response', tRes.status, tb);
+                if (tRes.ok && tb?.token) {
+                  // Use an absolute URL so downstream code that calls `new URL()` won't throw.
+                  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                  lesson.video_url = `${origin}/api/media/stream?token=${encodeURIComponent(tb.token)}`;
+                  changed = true;
+                } else {
+                  console.warn('Media token endpoint failed for', protectedPath, tb);
+                }
+              } catch (e) {
+                console.warn('Exception requesting media token for', protectedPath, e);
               }
-            } catch (e) {
-              console.warn('Exception requesting signed URL for', path, e);
             }
           }
         }

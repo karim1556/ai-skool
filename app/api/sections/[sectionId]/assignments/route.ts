@@ -16,7 +16,8 @@ export const dynamic = 'force-dynamic';
 
 // GET handler to fetch all assignments for a section
 export async function GET(request: NextRequest, { params }: { params: { sectionId: string } }) {
-  const { sectionId } = params;
+  const resolvedParams = await params;
+  const { sectionId } = resolvedParams;
   try {
     const db = await getDb();
     
@@ -57,7 +58,8 @@ export async function GET(request: NextRequest, { params }: { params: { sectionI
 
 // POST handler to create a new assignment
 export async function POST(request: NextRequest, { params }: { params: { sectionId: string } }) {
-  const { sectionId } = params;
+  const resolvedParams = await params;
+  const { sectionId } = resolvedParams;
   const formData = await request.formData();
   
   try {
